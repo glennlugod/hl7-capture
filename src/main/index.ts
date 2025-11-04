@@ -358,6 +358,9 @@ function createWindow(): void {
     },
   });
 
+  console.debug(`Dev Server URL: ${MAIN_WINDOW_VITE_DEV_SERVER_URL}`);
+  // console.debug("MAIN_WINDOW_VITE_NAME", MAIN_WINDOW_VITE_NAME);
+
   // Electron Forge's Vite plugin provides these environment variables
   if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
     mainWindow.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);

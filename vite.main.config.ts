@@ -8,6 +8,7 @@ export default defineConfig({
   },
   build: {
     outDir: ".vite/build",
+    sourcemap: true,
     lib: {
       entry: path.resolve(__dirname, "src/main/index.ts"),
       formats: ["cjs"],

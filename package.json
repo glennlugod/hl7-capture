@@ -8,6 +8,7 @@
   "scripts": {
     "start": "electron-forge start",
     "dev": "electron-forge start",
+    "dev:renderer": "vite",
     "package": "electron-forge package",
     "make": "electron-forge make",
     "postinstall": "electron-rebuild && node scripts/setup-npcap.js",

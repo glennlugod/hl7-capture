@@ -28,7 +28,6 @@ const config = {
         {
           name: "main_window",
           config: "vite.config.ts",
-          entry: "public/index.html",
         },
       ],
     }),
