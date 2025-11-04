@@ -1,13 +1,36 @@
-import { Cap, Decoders } from "cap";
+// Add Npcap to PATH before importing cap module (Windows only)
+if (process.platform === "win32") {
+  const npcapPath = "C:\\Program Files\\Npcap";
+  if (!process.env.PATH?.includes(npcapPath)) {
+    process.env.PATH = `${npcapPath};${process.env.PATH}`;
+  }
+}
+
 import { app, BrowserWindow, ipcMain } from "electron";
 import os from "os";
 import path from "path";
 import { v4 as uuidv4 } from "uuid";
 
+import type { Cap as CapType } from "cap";
 import type { CapturedPacket, NetworkInterface, CaptureStatus } from "@common/types";
 
+// Dynamic import of cap module after PATH is set
+let Cap: any;
+let Decoders: any;
+
+async function loadCapModule() {
+  const capModule = await import("cap");
+  Cap = capModule.Cap;
+  Decoders = capModule.Decoders;
+}
+
+// Load cap module immediately
+loadCapModule().catch((error) => {
+  console.error("Failed to load cap module:", error);
+});
+
 let mainWindow: BrowserWindow | null = null;
-let captureSession: Cap | null = null;
+let captureSession: CapType | null = null;
 let isCapturing = false;
 let isPaused = false;
 let selectedInterface = "";
@@ -50,6 +73,10 @@ async function startCapture(interfaceName: string): Promise<void> {
   try {
     selectedInterface = interfaceName;
     captureSession = new Cap();
+
+    if (!captureSession) {
+      throw new Error("Failed to create capture session");
+    }
 
     const filter = "ip or ip6";
     const linkType = captureSession.open(interfaceName, filter, BUFFER_SIZE, capBuffer);
@@ -331,15 +358,12 @@ function createWindow(): void {
     },
   });
 
-  const isDev = process.env.NODE_ENV === "development";
-  const startUrl = isDev
-    ? "http://localhost:5173"
-    : `file://${path.join(__dirname, "../renderer/index.html")}`;
-
-  mainWindow.loadURL(startUrl);
-
-  if (isDev) {
+  // Electron Forge's Vite plugin provides these environment variables
+  if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
+    mainWindow.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
     mainWindow.webContents.openDevTools();
+  } else {
+    mainWindow.loadFile(path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`));
   }
 
   mainWindow.on("closed", () => {

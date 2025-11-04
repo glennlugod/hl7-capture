@@ -17,11 +17,11 @@ const config = {
       build: [
         {
           entry: "src/main/index.ts",
-          config: "vite.config.ts",
+          config: "vite.main.config.ts",
         },
         {
           entry: "src/preload/index.ts",
-          config: "vite.config.ts",
+          config: "vite.preload.config.ts",
         },
       ],
       renderer: [
