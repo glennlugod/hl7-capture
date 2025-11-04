@@ -1,17 +1,20 @@
-import { app, BrowserWindow, ipcMain } from 'electron'
-import os from 'os'
-import path from 'path'
-import { v4 as uuidv4 } from 'uuid'
+import { Cap, Decoders } from "cap";
+import { app, BrowserWindow, ipcMain } from "electron";
+import os from "os";
+import path from "path";
+import { v4 as uuidv4 } from "uuid";
 
 import type { CapturedPacket, NetworkInterface, CaptureStatus } from "@common/types";
 
 let mainWindow: BrowserWindow | null = null;
-let captureSession: any = null;
+let captureSession: Cap | null = null;
 let isCapturing = false;
 let isPaused = false;
 let selectedInterface = "";
 let packetBuffer: CapturedPacket[] = [];
 const MAX_PACKETS = 1000;
+const BUFFER_SIZE = 10 * 1024 * 1024; // 10MB buffer
+const capBuffer = Buffer.alloc(65535);
 
 /**
  * Get list of available network interfaces
@@ -45,42 +48,68 @@ async function startCapture(interfaceName: string): Promise<void> {
   }
 
   try {
-    // Dynamically import pcap since it has native bindings
-    const pcap = await import("pcap");
-
     selectedInterface = interfaceName;
-    captureSession = pcap.createSession(interfaceName, {
-      bufferSize: 0,
-      filter: "ip",
-      snaplen: 65535,
-    });
+    captureSession = new Cap();
 
-    captureSession.on("packet", (rawPacket: Buffer) => {
-      if (!isPaused) {
-        const packet = parsePacket(rawPacket, interfaceName);
-        addToBuffer(packet);
+    const filter = "ip or ip6";
+    const linkType = captureSession.open(interfaceName, filter, BUFFER_SIZE, capBuffer);
 
-        if (mainWindow) {
-          mainWindow.webContents.send("packet-received", packet);
-        }
-      }
-    });
-
-    captureSession.on("error", (error: Error) => {
-      console.error("Capture error:", error);
-      if (mainWindow) {
-        mainWindow.webContents.send("capture-error", error.message);
-      }
-    });
+    captureSession.setMinBytes(0);
 
     isCapturing = true;
     isPaused = false;
-    captureSession.resume();
+
+    // Start packet capture loop
+    startPacketLoop();
 
     broadcastCaptureStatus();
   } catch (error) {
     isCapturing = false;
+    captureSession = null;
     throw error;
+  }
+}
+
+/**
+ * Packet capture loop
+ */
+function startPacketLoop(): void {
+  if (!captureSession || !isCapturing) {
+    return;
+  }
+
+  try {
+    const readPackets = () => {
+      if (!captureSession || !isCapturing) {
+        return;
+      }
+
+      captureSession.read((nbytes: number, truncated: boolean) => {
+        if (!isPaused && isCapturing) {
+          try {
+            const packet = parseCapPacket(capBuffer, nbytes, selectedInterface);
+            addToBuffer(packet);
+
+            if (mainWindow) {
+              mainWindow.webContents.send("packet-received", packet);
+            }
+          } catch (error) {
+            console.debug("Error processing packet:", error);
+          }
+        }
+
+        // Continue reading packets
+        setImmediate(readPackets);
+      });
+    };
+
+    // Start the packet reading loop
+    readPackets();
+  } catch (error) {
+    console.error("Capture error:", error);
+    if (mainWindow) {
+      mainWindow.webContents.send("capture-error", (error as Error).message);
+    }
   }
 }
 
@@ -161,9 +190,9 @@ function addToBuffer(packet: CapturedPacket): void {
 }
 
 /**
- * Parse raw packet and extract headers
+ * Parse packet captured with cap library
  */
-function parsePacket(rawPacket: Buffer, interfaceName: string): CapturedPacket {
+function parseCapPacket(buffer: Buffer, nbytes: number, interfaceName: string): CapturedPacket {
   const id = uuidv4();
   const timestamp = Date.now();
 
@@ -172,39 +201,80 @@ function parsePacket(rawPacket: Buffer, interfaceName: string): CapturedPacket {
   let protocol = "Unknown";
   let sourcePort: number | undefined;
   let destinationPort: number | undefined;
+  let packetLength = nbytes;
 
   try {
-    // Skip Ethernet header (14 bytes) if present
-    let offset = 14;
+    // Decode Ethernet frame
+    const ethernetPacket = Decoders.Ethernet(buffer);
 
-    // Check if raw packet starts with IP header
-    if (rawPacket.length > 20) {
-      const version = rawPacket[offset] >> 4;
+    if (ethernetPacket) {
+      // Check for IPv4
+      if (ethernetPacket.info.type === Decoders.PROTOCOL.ETHERNET.IPV4) {
+        const ipv4Packet = Decoders.IPV4(buffer, ethernetPacket.offset);
 
-      if (version === 4) {
-        // IPv4
-        sourceIP = rawPacket.slice(offset + 12, offset + 16).join(".");
-        destinationIP = rawPacket.slice(offset + 16, offset + 20).join(".");
+        if (ipv4Packet) {
+          sourceIP = ipv4Packet.info.srcaddr;
+          destinationIP = ipv4Packet.info.dstaddr;
+          packetLength = ipv4Packet.info.totallen;
 
-        const protocolNumber = rawPacket[offset + 9];
-        protocol = getProtocolName(protocolNumber);
+          const protocolNumber = ipv4Packet.info.protocol;
+          protocol = getProtocolName(protocolNumber);
 
-        // Parse transport layer if TCP/UDP
-        const headerLength = (rawPacket[offset] & 0x0f) * 4;
-        const transportOffset = offset + headerLength;
+          // Parse TCP
+          if (protocolNumber === Decoders.PROTOCOL.IP.TCP) {
+            const tcpPacket = Decoders.TCP(buffer, ipv4Packet.offset);
+            if (tcpPacket) {
+              sourcePort = tcpPacket.info.srcport;
+              destinationPort = tcpPacket.info.dstport;
+            }
+          }
+          // Parse UDP
+          else if (protocolNumber === Decoders.PROTOCOL.IP.UDP) {
+            const udpPacket = Decoders.UDP(buffer, ipv4Packet.offset);
+            if (udpPacket) {
+              sourcePort = udpPacket.info.srcport;
+              destinationPort = udpPacket.info.dstport;
+            }
+          }
+        }
+      }
+      // Check for IPv6
+      else if (ethernetPacket.info.type === Decoders.PROTOCOL.ETHERNET.IPV6) {
+        const ipv6Packet = Decoders.IPV6(buffer, ethernetPacket.offset);
 
-        if (
-          (protocolNumber === 6 || protocolNumber === 17) &&
-          rawPacket.length > transportOffset + 4
-        ) {
-          sourcePort = rawPacket.readUInt16BE(transportOffset);
-          destinationPort = rawPacket.readUInt16BE(transportOffset + 2);
+        if (ipv6Packet) {
+          sourceIP = ipv6Packet.info.srcaddr;
+          destinationIP = ipv6Packet.info.dstaddr;
+
+          const protocolNumber = ipv6Packet.info.protocol;
+          protocol = getProtocolName(protocolNumber);
+
+          // Parse TCP
+          if (protocolNumber === Decoders.PROTOCOL.IP.TCP) {
+            const tcpPacket = Decoders.TCP(buffer, ipv6Packet.offset);
+            if (tcpPacket) {
+              sourcePort = tcpPacket.info.srcport;
+              destinationPort = tcpPacket.info.dstport;
+            }
+          }
+          // Parse UDP
+          else if (protocolNumber === Decoders.PROTOCOL.IP.UDP) {
+            const udpPacket = Decoders.UDP(buffer, ipv6Packet.offset);
+            if (udpPacket) {
+              sourcePort = udpPacket.info.srcport;
+              destinationPort = udpPacket.info.dstport;
+            }
+          }
         }
       }
     }
   } catch (error) {
     console.debug("Error parsing packet:", error);
   }
+
+  // Create a copy of the packet data
+  const rawData = Buffer.alloc(nbytes);
+  buffer.copy(rawData, 0, 0, nbytes);
 
   return {
     id,
@@ -214,8 +284,8 @@ function parsePacket(rawPacket: Buffer, interfaceName: string): CapturedPacket {
     protocol,
     sourcePort,
     destinationPort,
-    length: rawPacket.length,
-    rawData: rawPacket,
+    length: packetLength,
+    rawData,
   };
 }
 
@@ -258,7 +328,6 @@ function createWindow(): void {
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
-      enableRemoteModule: false,
     },
   });
 

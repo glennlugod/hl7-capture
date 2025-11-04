@@ -9,6 +9,7 @@ bun.lockb
 dist/
 build/
 out/
+.vite/renderer/
 
 # Electron
 *.asar
@@ -32,7 +33,6 @@ lerna-debug.log*
 .pnpm-debug.log*
 
 # IDE
-.vscode/
 .idea/
 *.swp
 *.swo
