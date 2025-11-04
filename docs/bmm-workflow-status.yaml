@@ -1,0 +1,32 @@
+# Workflow Status - hl7-capture
+# Generated: 2025-11-04
+# Project: hl7-capture
+# Type: software (greenfield, level 0)
+# Path: greenfield-level-0.yaml
+
+# STATUS DEFINITIONS:
+# - required: Must be completed to progress
+# - optional: Can be completed but not required
+# - recommended: Strongly suggested but not required
+# - {file-path}: File created/found (e.g., "docs/tech-spec.md")
+# - skipped: Optional/conditional workflow that was skipped
+
+generated: '2025-11-04'
+project: 'hl7-capture'
+project_type: 'software'
+project_level: 0
+field_type: 'greenfield'
+workflow_path: 'greenfield-level-0.yaml'
+
+workflow_status:
+  # Phase 1: Analysis (Optional)
+  brainstorm-project: optional
+  product-brief: optional
+
+  # Phase 2: Planning (Required)
+  tech-spec: docs/tech-spec.md
+
+  # Phase 3: Solutioning (Skip for Level 0)
+
+  # Phase 4: Implementation (Tracked separately in sprint plan)
+  sprint-planning: required
