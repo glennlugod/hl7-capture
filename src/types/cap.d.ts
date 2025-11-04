@@ -4,7 +4,7 @@ declare module "cap" {
     close(): void;
     setMinBytes(bytes: number): void;
     send(buffer: Buffer, length: number): number;
-    read(callback: (nbytes: number, truncated: boolean) => void): void;
+    on(event: "packet", callback: (nbytes: number, truncated: boolean) => void): void;
   }
 
   // Note: At runtime, the module exports 'decoders' (lowercase)

@@ -6,10 +6,10 @@ if (process.platform === "win32") {
   }
 }
 
+import crypto from "crypto";
 import { app, BrowserWindow, ipcMain } from "electron";
 import os from "os";
 import path from "path";
-import { v4 as uuidv4 } from "uuid";
 
 import type { Cap as CapType } from "cap";
 import type { CapturedPacket, NetworkInterface, CaptureStatus } from "@common/types";
@@ -84,24 +84,56 @@ const capBuffer = Buffer.alloc(65535);
 /**
  * Get list of available network interfaces
  */
-function getNetworkInterfaces(): NetworkInterface[] {
-  const interfaces = os.networkInterfaces();
-  const result: NetworkInterface[] = [];
+async function getNetworkInterfaces(): Promise<NetworkInterface[]> {
+  // Ensure cap module is loaded
+  await capModuleLoaded;
 
-  for (const [name, addrs] of Object.entries(interfaces)) {
-    if (!addrs) continue;
-
-    const ipv4 = addrs.find((addr) => addr.family === "IPv4");
-    if (ipv4) {
-      result.push({
-        name,
-        ip: ipv4.address,
-        mac: ipv4.mac,
-      });
-    }
+  if (!Cap) {
+    throw new Error("Cap module not loaded");
   }
 
-  return result;
+  try {
+    // Use Cap.deviceList() to get proper device names for capture
+    const devices = Cap.deviceList();
+    const result: NetworkInterface[] = [];
+
+    for (const device of devices) {
+      // device.name contains the NPF device name (e.g., \Device\NPF_{GUID})
+      // device.addresses contains array of address objects
+      const addresses = device.addresses || [];
+
+      // Find IPv4 address
+      const ipv4Addr = addresses.find((addr: any) => addr.addr && addr.addr.indexOf(".") > 0);
+
+      result.push({
+        name: device.name, // This is the device name that cap.open() needs
+        ip: ipv4Addr?.addr || "N/A",
+        mac: device.description || device.name, // Use description as friendly name
+      });
+    }
+
+    return result;
+  } catch (error) {
+    console.error("Error getting network interfaces:", error);
+    // Fallback to os.networkInterfaces() if Cap.deviceList() fails
+    const interfaces = os.networkInterfaces();
+    const result: NetworkInterface[] = [];
+
+    for (const [name, addrs] of Object.entries(interfaces)) {
+      if (!addrs) continue;
+
+      const ipv4 = addrs.find((addr) => addr.family === "IPv4");
+      if (ipv4) {
+        result.push({
+          name,
+          ip: ipv4.address,
+          mac: ipv4.mac,
+        });
+      }
+    }
+
+    return result;
+  }
 }
 
 /**
@@ -130,62 +162,35 @@ async function startCapture(interfaceName: string): Promise<void> {
     const filter = "ip or ip6";
     const linkType = captureSession.open(interfaceName, filter, BUFFER_SIZE, capBuffer);
 
-    captureSession.setMinBytes(0);
+    // Set minimum bytes for Windows (helps with packet delivery)
+    if (captureSession.setMinBytes) {
+      captureSession.setMinBytes(0);
+    }
 
     isCapturing = true;
     isPaused = false;
 
-    // Start packet capture loop
-    startPacketLoop();
+    // Set up packet event listener
+    captureSession.on("packet", (nbytes: number, truncated: boolean) => {
+      if (!isPaused && isCapturing) {
+        try {
+          const packet = parseCapPacket(capBuffer, nbytes, selectedInterface);
+          addToBuffer(packet);
+
+          if (mainWindow) {
+            mainWindow.webContents.send("packet-received", packet);
+          }
+        } catch (error) {
+          console.debug("Error processing packet:", error);
+        }
+      }
+    });
 
     broadcastCaptureStatus();
   } catch (error) {
     isCapturing = false;
     captureSession = null;
     throw error;
-  }
-}
-
-/**
- * Packet capture loop
- */
-function startPacketLoop(): void {
-  if (!captureSession || !isCapturing) {
-    return;
-  }
-
-  try {
-    const readPackets = () => {
-      if (!captureSession || !isCapturing) {
-        return;
-      }
-
-      captureSession.read((nbytes: number, truncated: boolean) => {
-        if (!isPaused && isCapturing) {
-          try {
-            const packet = parseCapPacket(capBuffer, nbytes, selectedInterface);
-            addToBuffer(packet);
-
-            if (mainWindow) {
-              mainWindow.webContents.send("packet-received", packet);
-            }
-          } catch (error) {
-            console.debug("Error processing packet:", error);
-          }
-        }
-
-        // Continue reading packets
-        setImmediate(readPackets);
-      });
-    };
-
-    // Start the packet reading loop
-    readPackets();
-  } catch (error) {
-    console.error("Capture error:", error);
-    if (mainWindow) {
-      mainWindow.webContents.send("capture-error", (error as Error).message);
-    }
   }
 }
 
@@ -269,7 +274,7 @@ function addToBuffer(packet: CapturedPacket): void {
  * Parse packet captured with cap library
  */
 function parseCapPacket(buffer: Buffer, nbytes: number, interfaceName: string): CapturedPacket {
-  const id = uuidv4();
+  const id = crypto.randomUUID();
   const timestamp = Date.now();
 
   let sourceIP = "0.0.0.0";

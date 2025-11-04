@@ -15,6 +15,16 @@ export default function InterfaceSelector({
   onSelectInterface,
   isCapturing,
 }: Readonly<Props>): JSX.Element {
+  // Helper function to get friendly display name
+  const getDisplayName = (iface: NetworkInterface): string => {
+    // The 'mac' field now contains the description/friendly name
+    const friendlyName = iface.mac;
+    const ip = iface.ip;
+
+    // Show description and IP address
+    return `${friendlyName} (${ip})`;
+  };
+
   return (
     <div className="interface-selector">
       <label htmlFor="interface-select">Network Interface:</label>
@@ -26,7 +36,7 @@ export default function InterfaceSelector({
       >
         {interfaces.map((iface) => (
           <option key={iface.name} value={iface.name}>
-            {iface.name} ({iface.ip})
+            {getDisplayName(iface)}
           </option>
         ))}
       </select>
