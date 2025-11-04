@@ -17,16 +17,58 @@ import type { CapturedPacket, NetworkInterface, CaptureStatus } from "@common/ty
 // Dynamic import of cap module after PATH is set
 let Cap: any;
 let Decoders: any;
+let capModuleLoaded: Promise<void>;
 
 async function loadCapModule() {
   const capModule = await import("cap");
-  Cap = capModule.Cap;
-  Decoders = capModule.Decoders;
+
+  // Debug: Log the module structure to understand exports
+  console.log("Cap module keys:", Object.keys(capModule));
+
+  // When dynamically importing CommonJS modules, everything is under 'default'
+  const capLib = capModule.default || capModule;
+
+  console.log("Cap lib keys:", Object.keys(capLib));
+
+  // Extract Cap and Decoders from the library
+  // Note: The module exports 'decoders' (lowercase) not 'Decoders'
+  Cap = capLib.Cap;
+  Decoders = capLib.decoders;
+
+  console.log("Cap loaded:", typeof Cap, Cap?.name);
+  console.log(
+    "Decoders loaded:",
+    typeof Decoders,
+    Decoders ? Object.keys(Decoders).slice(0, 5) : "undefined"
+  );
+
+  if (!Cap) {
+    throw new Error(
+      "Failed to load Cap from cap module. " +
+        "Module keys: " +
+        JSON.stringify(Object.keys(capModule)) +
+        ", " +
+        "Lib keys: " +
+        JSON.stringify(Object.keys(capLib))
+    );
+  }
+
+  if (!Decoders) {
+    throw new Error(
+      "Failed to load Decoders from cap module. " +
+        "Module keys: " +
+        JSON.stringify(Object.keys(capModule)) +
+        ", " +
+        "Lib keys: " +
+        JSON.stringify(Object.keys(capLib))
+    );
+  }
 }
 
-// Load cap module immediately
-loadCapModule().catch((error) => {
+// Load cap module immediately and track the promise
+capModuleLoaded = loadCapModule().catch((error) => {
   console.error("Failed to load cap module:", error);
+  throw error;
 });
 
 let mainWindow: BrowserWindow | null = null;
@@ -68,6 +110,13 @@ function getNetworkInterfaces(): NetworkInterface[] {
 async function startCapture(interfaceName: string): Promise<void> {
   if (isCapturing) {
     throw new Error("Capture already in progress");
+  }
+
+  // Ensure cap module is loaded before attempting to use it
+  await capModuleLoaded;
+
+  if (!Cap) {
+    throw new Error("Cap module failed to load");
   }
 
   try {

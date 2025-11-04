@@ -7,7 +7,8 @@ declare module "cap" {
     read(callback: (nbytes: number, truncated: boolean) => void): void;
   }
 
-  export namespace Decoders {
+  // Note: At runtime, the module exports 'decoders' (lowercase)
+  export namespace decoders {
     export const PROTOCOL: {
       ETHERNET: {
         IPV4: number;
