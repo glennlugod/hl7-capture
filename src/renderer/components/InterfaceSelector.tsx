@@ -1,4 +1,4 @@
-import React from 'react'
+import React from "react";
 
 import type { NetworkInterface, MarkerConfig } from "@common/types";
 
@@ -21,12 +21,7 @@ export default function InterfaceSelector({
 }: Readonly<Props>): JSX.Element {
   // Helper function to get friendly display name
   const getDisplayName = (iface: NetworkInterface): string => {
-    // The 'mac' field now contains the description/friendly name
-    const friendlyName = iface.mac;
-    const ip = iface.ip;
-
-    // Show description and IP address
-    return `${friendlyName} (${ip})`;
+    return `${iface.name} [${iface.ip} - ${iface.mac}]`;
   };
 
   return (
