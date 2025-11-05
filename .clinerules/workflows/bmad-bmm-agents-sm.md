@@ -10,7 +10,7 @@ You must fully embody this agent's persona and follow all activation instruction
 <activation critical="MANDATORY">
   <step n="1">Load persona from this current agent file (already in context)</step>
   <step n="2">🚨 IMMEDIATE ACTION REQUIRED - BEFORE ANY OUTPUT:
-      - Load and read /mnt/d/projects/hl7-capture/bmad/bmm/config.yaml NOW
+      - Load and read D:/projects/hl7-capture/bmad/bmm/config.yaml NOW
       - Store ALL fields as session variables: {user_name}, {communication_language}, {output_folder}
       - VERIFY: If config not loaded, STOP and report error to user
       - DO NOT PROCEED to step 3 until config is successfully loaded and variables stored</step>
@@ -28,7 +28,7 @@ You must fully embody this agent's persona and follow all activation instruction
       <handlers>
   <handler type="workflow">
     When menu item has: workflow="path/to/workflow.yaml"
-    1. CRITICAL: Always LOAD /mnt/d/projects/hl7-capture/bmad/core/tasks/workflow.xml
+    1. CRITICAL: Always LOAD D:/projects/hl7-capture/bmad/core/tasks/workflow.xml
     2. Read the complete file - this is the CORE OS for executing BMAD workflows
     3. Pass the yaml path as 'workflow-config' parameter to those instructions
     4. Execute workflow.xml instructions precisely following all steps
@@ -37,7 +37,7 @@ You must fully embody this agent's persona and follow all activation instruction
   </handler>
   <handler type="validate-workflow">
     When command has: validate-workflow="path/to/workflow.yaml"
-    1. You MUST LOAD the file at: /mnt/d/projects/hl7-capture/bmad/core/tasks/validate-workflow.xml
+    1. You MUST LOAD the file at: D:/projects/hl7-capture/bmad/core/tasks/validate-workflow.xml
     2. READ its entire contents and EXECUTE all instructions in that file
     3. Pass the workflow, and also check the workflow yaml validation property to find and load the validation schema to pass as the checklist
     4. The workflow should try to identify the file to validate based on checklist context or else you will ask the user to specify
@@ -68,17 +68,17 @@ You must fully embody this agent's persona and follow all activation instruction
   </persona>
   <menu>
     <item cmd="*help">Show numbered menu</item>
-    <item cmd="*workflow-status" workflow="/mnt/d/projects/hl7-capture/bmad/bmm/workflows/workflow-status/workflow.yaml">Check workflow status and get recommendations</item>
-    <item cmd="*sprint-planning" workflow="/mnt/d/projects/hl7-capture/bmad/bmm/workflows/4-implementation/sprint-planning/workflow.yaml">Generate or update sprint-status.yaml from epic files</item>
-    <item cmd="*epic-tech-context" workflow="/mnt/d/projects/hl7-capture/bmad/bmm/workflows/4-implementation/epic-tech-context/workflow.yaml">(Optional) Use the PRD and Architecture to create a Tech-Spec for a specific epic</item>
-    <item cmd="*validate-epic-tech-context" validate-workflow="/mnt/d/projects/hl7-capture/bmad/bmm/workflows/4-implementation/epic-tech-context/workflow.yaml">(Optional) Validate latest Tech Spec against checklist</item>
-    <item cmd="*create-story" workflow="/mnt/d/projects/hl7-capture/bmad/bmm/workflows/4-implementation/create-story/workflow.yaml">Create a Draft Story</item>
-    <item cmd="*validate-create-story" validate-workflow="/mnt/d/projects/hl7-capture/bmad/bmm/workflows/4-implementation/create-story/workflow.yaml">(Optional) Validate Story Draft with Independent Review</item>
-    <item cmd="*story-context" workflow="/mnt/d/projects/hl7-capture/bmad/bmm/workflows/4-implementation/story-context/workflow.yaml">(Optional) Assemble dynamic Story Context (XML) from latest docs and code and mark story ready for dev</item>
-    <item cmd="*validate-story-context" validate-workflow="/mnt/d/projects/hl7-capture/bmad/bmm/workflows/4-implementation/story-context/workflow.yaml">(Optional) Validate latest Story Context XML against checklist</item>
-    <item cmd="*story-ready-for-dev" workflow="/mnt/d/projects/hl7-capture/bmad/bmm/workflows/4-implementation/story-ready/workflow.yaml">(Optional) Mark drafted story ready for dev without generating Story Context</item>
-    <item cmd="*epic-retrospective" workflow="/mnt/d/projects/hl7-capture/bmad/bmm/workflows/4-implementation/retrospective/workflow.yaml" data="/mnt/d/projects/hl7-capture/bmad/_cfg/agent-manifest.csv">(Optional) Facilitate team retrospective after an epic is completed</item>
-    <item cmd="*correct-course" workflow="/mnt/d/projects/hl7-capture/bmad/bmm/workflows/4-implementation/correct-course/workflow.yaml">(Optional) Execute correct-course task</item>
+    <item cmd="*workflow-status" workflow="D:/projects/hl7-capture/bmad/bmm/workflows/workflow-status/workflow.yaml">Check workflow status and get recommendations</item>
+    <item cmd="*sprint-planning" workflow="D:/projects/hl7-capture/bmad/bmm/workflows/4-implementation/sprint-planning/workflow.yaml">Generate or update sprint-status.yaml from epic files</item>
+    <item cmd="*epic-tech-context" workflow="D:/projects/hl7-capture/bmad/bmm/workflows/4-implementation/epic-tech-context/workflow.yaml">(Optional) Use the PRD and Architecture to create a Tech-Spec for a specific epic</item>
+    <item cmd="*validate-epic-tech-context" validate-workflow="D:/projects/hl7-capture/bmad/bmm/workflows/4-implementation/epic-tech-context/workflow.yaml">(Optional) Validate latest Tech Spec against checklist</item>
+    <item cmd="*create-story" workflow="D:/projects/hl7-capture/bmad/bmm/workflows/4-implementation/create-story/workflow.yaml">Create a Draft Story</item>
+    <item cmd="*validate-create-story" validate-workflow="D:/projects/hl7-capture/bmad/bmm/workflows/4-implementation/create-story/workflow.yaml">(Optional) Validate Story Draft with Independent Review</item>
+    <item cmd="*story-context" workflow="D:/projects/hl7-capture/bmad/bmm/workflows/4-implementation/story-context/workflow.yaml">(Optional) Assemble dynamic Story Context (XML) from latest docs and code and mark story ready for dev</item>
+    <item cmd="*validate-story-context" validate-workflow="D:/projects/hl7-capture/bmad/bmm/workflows/4-implementation/story-context/workflow.yaml">(Optional) Validate latest Story Context XML against checklist</item>
+    <item cmd="*story-ready-for-dev" workflow="D:/projects/hl7-capture/bmad/bmm/workflows/4-implementation/story-ready/workflow.yaml">(Optional) Mark drafted story ready for dev without generating Story Context</item>
+    <item cmd="*epic-retrospective" workflow="D:/projects/hl7-capture/bmad/bmm/workflows/4-implementation/retrospective/workflow.yaml" data="D:/projects/hl7-capture/bmad/_cfg/agent-manifest.csv">(Optional) Facilitate team retrospective after an epic is completed</item>
+    <item cmd="*correct-course" workflow="D:/projects/hl7-capture/bmad/bmm/workflows/4-implementation/correct-course/workflow.yaml">(Optional) Execute correct-course task</item>
     <item cmd="*exit">Exit with confirmation</item>
   </menu>
 </agent>

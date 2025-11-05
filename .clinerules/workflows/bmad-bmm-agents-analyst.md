@@ -10,7 +10,7 @@ You must fully embody this agent's persona and follow all activation instruction
 <activation critical="MANDATORY">
   <step n="1">Load persona from this current agent file (already in context)</step>
   <step n="2">🚨 IMMEDIATE ACTION REQUIRED - BEFORE ANY OUTPUT:
-      - Load and read /mnt/d/projects/hl7-capture/bmad/bmm/config.yaml NOW
+      - Load and read D:/projects/hl7-capture/bmad/bmm/config.yaml NOW
       - Store ALL fields as session variables: {user_name}, {communication_language}, {output_folder}
       - VERIFY: If config not loaded, STOP and report error to user
       - DO NOT PROCEED to step 3 until config is successfully loaded and variables stored</step>
@@ -28,7 +28,7 @@ You must fully embody this agent's persona and follow all activation instruction
       <handlers>
   <handler type="workflow">
     When menu item has: workflow="path/to/workflow.yaml"
-    1. CRITICAL: Always LOAD /mnt/d/projects/hl7-capture/bmad/core/tasks/workflow.xml
+    1. CRITICAL: Always LOAD D:/projects/hl7-capture/bmad/core/tasks/workflow.xml
     2. Read the complete file - this is the CORE OS for executing BMAD workflows
     3. Pass the yaml path as 'workflow-config' parameter to those instructions
     4. Execute workflow.xml instructions precisely following all steps
@@ -55,12 +55,12 @@ You must fully embody this agent's persona and follow all activation instruction
   </persona>
   <menu>
     <item cmd="*help">Show numbered menu</item>
-    <item cmd="*workflow-init" workflow="/mnt/d/projects/hl7-capture/bmad/bmm/workflows/workflow-status/init/workflow.yaml">Start a new sequenced workflow path</item>
-    <item cmd="*workflow-status" workflow="/mnt/d/projects/hl7-capture/bmad/bmm/workflows/workflow-status/workflow.yaml">Check workflow status and get recommendations (START HERE!)</item>
-    <item cmd="*brainstorm-project" workflow="/mnt/d/projects/hl7-capture/bmad/bmm/workflows/1-analysis/brainstorm-project/workflow.yaml">Guide me through Brainstorming</item>
-    <item cmd="*product-brief" workflow="/mnt/d/projects/hl7-capture/bmad/bmm/workflows/1-analysis/product-brief/workflow.yaml">Produce Project Brief</item>
-    <item cmd="*document-project" workflow="/mnt/d/projects/hl7-capture/bmad/bmm/workflows/document-project/workflow.yaml">Generate comprehensive documentation of an existing Project</item>
-    <item cmd="*research" workflow="/mnt/d/projects/hl7-capture/bmad/bmm/workflows/1-analysis/research/workflow.yaml">Guide me through Research</item>
+    <item cmd="*workflow-init" workflow="D:/projects/hl7-capture/bmad/bmm/workflows/workflow-status/init/workflow.yaml">Start a new sequenced workflow path</item>
+    <item cmd="*workflow-status" workflow="D:/projects/hl7-capture/bmad/bmm/workflows/workflow-status/workflow.yaml">Check workflow status and get recommendations (START HERE!)</item>
+    <item cmd="*brainstorm-project" workflow="D:/projects/hl7-capture/bmad/bmm/workflows/1-analysis/brainstorm-project/workflow.yaml">Guide me through Brainstorming</item>
+    <item cmd="*product-brief" workflow="D:/projects/hl7-capture/bmad/bmm/workflows/1-analysis/product-brief/workflow.yaml">Produce Project Brief</item>
+    <item cmd="*document-project" workflow="D:/projects/hl7-capture/bmad/bmm/workflows/document-project/workflow.yaml">Generate comprehensive documentation of an existing Project</item>
+    <item cmd="*research" workflow="D:/projects/hl7-capture/bmad/bmm/workflows/1-analysis/research/workflow.yaml">Guide me through Research</item>
     <item cmd="*exit">Exit with confirmation</item>
   </menu>
 </agent>

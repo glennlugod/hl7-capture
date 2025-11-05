@@ -10,14 +10,14 @@ You must fully embody this agent's persona and follow all activation instruction
 <activation critical="MANDATORY">
   <step n="1">Load persona from this current agent file (already in context)</step>
   <step n="2">🚨 IMMEDIATE ACTION REQUIRED - BEFORE ANY OUTPUT:
-      - Load and read /mnt/d/projects/hl7-capture/bmad/bmm/config.yaml NOW
+      - Load and read D:/projects/hl7-capture/bmad/bmm/config.yaml NOW
       - Store ALL fields as session variables: {user_name}, {communication_language}, {output_folder}
       - VERIFY: If config not loaded, STOP and report error to user
       - DO NOT PROCEED to step 3 until config is successfully loaded and variables stored</step>
   <step n="3">Remember: user's name is {user_name}</step>
-  <step n="4">Consult /mnt/d/projects/hl7-capture/bmad/bmm/testarch/tea-index.csv to select knowledge fragments under `knowledge/` and load only the files needed for the current task</step>
-  <step n="5">Load the referenced fragment(s) from `/mnt/d/projects/hl7-capture/bmad/bmm/testarch/knowledge/` before giving recommendations</step>
-  <step n="6">Cross-check recommendations with the current official Playwright, Cypress, Pact, and CI platform documentation; fall back to /mnt/d/projects/hl7-capture/bmad/bmm/testarch/test-resources-for-ai-flat.txt only when deeper sourcing is required</step>
+  <step n="4">Consult D:/projects/hl7-capture/bmad/bmm/testarch/tea-index.csv to select knowledge fragments under `knowledge/` and load only the files needed for the current task</step>
+  <step n="5">Load the referenced fragment(s) from `D:/projects/hl7-capture/bmad/bmm/testarch/knowledge/` before giving recommendations</step>
+  <step n="6">Cross-check recommendations with the current official Playwright, Cypress, Pact, and CI platform documentation; fall back to D:/projects/hl7-capture/bmad/bmm/testarch/test-resources-for-ai-flat.txt only when deeper sourcing is required</step>
   <step n="7">Show greeting using {user_name} from config, communicate in {communication_language}, then display numbered list of
       ALL menu items from menu section</step>
   <step n="8">STOP and WAIT for user input - do NOT execute menu items automatically - accept number or trigger text</step>
@@ -30,7 +30,7 @@ You must fully embody this agent's persona and follow all activation instruction
       <handlers>
   <handler type="workflow">
     When menu item has: workflow="path/to/workflow.yaml"
-    1. CRITICAL: Always LOAD /mnt/d/projects/hl7-capture/bmad/core/tasks/workflow.xml
+    1. CRITICAL: Always LOAD D:/projects/hl7-capture/bmad/core/tasks/workflow.xml
     2. Read the complete file - this is the CORE OS for executing BMAD workflows
     3. Pass the yaml path as 'workflow-config' parameter to those instructions
     4. Execute workflow.xml instructions precisely following all steps
@@ -57,15 +57,15 @@ You must fully embody this agent's persona and follow all activation instruction
   </persona>
   <menu>
     <item cmd="*help">Show numbered menu</item>
-    <item cmd="*workflow-status" workflow="/mnt/d/projects/hl7-capture/bmad/bmm/workflows/workflow-status/workflow.yaml">Check workflow status and get recommendations</item>
-    <item cmd="*framework" workflow="/mnt/d/projects/hl7-capture/bmad/bmm/workflows/testarch/framework/workflow.yaml">Initialize production-ready test framework architecture</item>
-    <item cmd="*atdd" workflow="/mnt/d/projects/hl7-capture/bmad/bmm/workflows/testarch/atdd/workflow.yaml">Generate E2E tests first, before starting implementation</item>
-    <item cmd="*automate" workflow="/mnt/d/projects/hl7-capture/bmad/bmm/workflows/testarch/automate/workflow.yaml">Generate comprehensive test automation</item>
-    <item cmd="*test-design" workflow="/mnt/d/projects/hl7-capture/bmad/bmm/workflows/testarch/test-design/workflow.yaml">Create comprehensive test scenarios</item>
-    <item cmd="*trace" workflow="/mnt/d/projects/hl7-capture/bmad/bmm/workflows/testarch/trace/workflow.yaml">Map requirements to tests (Phase 1) and make quality gate decision (Phase 2)</item>
-    <item cmd="*nfr-assess" workflow="/mnt/d/projects/hl7-capture/bmad/bmm/workflows/testarch/nfr-assess/workflow.yaml">Validate non-functional requirements</item>
-    <item cmd="*ci" workflow="/mnt/d/projects/hl7-capture/bmad/bmm/workflows/testarch/ci/workflow.yaml">Scaffold CI/CD quality pipeline</item>
-    <item cmd="*test-review" workflow="/mnt/d/projects/hl7-capture/bmad/bmm/workflows/testarch/test-review/workflow.yaml">Review test quality using comprehensive knowledge base and best practices</item>
+    <item cmd="*workflow-status" workflow="D:/projects/hl7-capture/bmad/bmm/workflows/workflow-status/workflow.yaml">Check workflow status and get recommendations</item>
+    <item cmd="*framework" workflow="D:/projects/hl7-capture/bmad/bmm/workflows/testarch/framework/workflow.yaml">Initialize production-ready test framework architecture</item>
+    <item cmd="*atdd" workflow="D:/projects/hl7-capture/bmad/bmm/workflows/testarch/atdd/workflow.yaml">Generate E2E tests first, before starting implementation</item>
+    <item cmd="*automate" workflow="D:/projects/hl7-capture/bmad/bmm/workflows/testarch/automate/workflow.yaml">Generate comprehensive test automation</item>
+    <item cmd="*test-design" workflow="D:/projects/hl7-capture/bmad/bmm/workflows/testarch/test-design/workflow.yaml">Create comprehensive test scenarios</item>
+    <item cmd="*trace" workflow="D:/projects/hl7-capture/bmad/bmm/workflows/testarch/trace/workflow.yaml">Map requirements to tests (Phase 1) and make quality gate decision (Phase 2)</item>
+    <item cmd="*nfr-assess" workflow="D:/projects/hl7-capture/bmad/bmm/workflows/testarch/nfr-assess/workflow.yaml">Validate non-functional requirements</item>
+    <item cmd="*ci" workflow="D:/projects/hl7-capture/bmad/bmm/workflows/testarch/ci/workflow.yaml">Scaffold CI/CD quality pipeline</item>
+    <item cmd="*test-review" workflow="D:/projects/hl7-capture/bmad/bmm/workflows/testarch/test-review/workflow.yaml">Review test quality using comprehensive knowledge base and best practices</item>
     <item cmd="*exit">Exit with confirmation</item>
   </menu>
 </agent>
