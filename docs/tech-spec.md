@@ -138,40 +138,63 @@ hl7-capture/
 
 ### 2.1 Problem Statement
 
-Developers and network engineers need to capture and analyze network traffic on their systems. Currently, they must use separate command-line tools (tcpdump, Wireshark) that can be complex. A native desktop application providing simple traffic capture with basic visualization would improve usability.
+Medical device engineers and LIS (Laboratory Information System) integrators need to capture and analyze HL7 communication between medical devices and LIS systems. Currently, they use generic packet capture tools (Wireshark, tcpdump) that are not optimized for HL7 protocol specifics. A specialized desktop application that captures, parses, and displays HL7 medical device communication would significantly improve troubleshooting and integration workflows.
 
 ### 2.2 Solution Overview
 
-Build **hl7-capture**: An Electron desktop application that:
+Build **hl7-capture**: A specialized Electron desktop application for capturing and analyzing HL7 medical device communication:
 
-1. Detects available network interfaces on the user's machine
-2. Allows the user to select an interface and start packet capture
-3. Captures raw network packets in real-time
-4. Displays captured packets in a table with basic information (source, destination, protocol, size, timestamp)
-5. Provides ability to stop/pause capture
-6. Clears or archives captured packets
+1. Allow user to configure capture parameters:
+   - Source IP (medical device)
+   - Destination IP (LIS/PC)
+   - Protocol markers (start, acknowledge, end)
+2. Capture only TCP traffic between configured IPs
+3. Parse HL7 communication protocol:
+   - Detect device start transmission (0x05)
+   - Track HL7 messages (0x02...CR LF)
+   - Identify PC acknowledgments (0x06)
+   - Recognize end transmission (0x04)
+4. Display captured HL7 sessions in organized view
+5. Show individual HL7 messages with metadata
+6. Support protocol marker customization for variants
 
 ### 2.3 Scope: IN
 
-- ✅ Network interface detection (using system APIs or pcap library)
-- ✅ Start/stop capture on selected interface
-- ✅ Real-time packet capture using pcap
-- ✅ Electron window with React UI
-- ✅ Display captured packets in a table/list format
-- ✅ Show packet metadata: source IP, destination IP, protocol, size, timestamp
+- ✅ Network interface detection
+- ✅ Configurable capture parameters:
+  - Source IP (medical device)
+  - Destination IP (LIS system)
+  - Start transmission marker (default: 0x05) - customizable
+  - Acknowledge marker (default: 0x06) - customizable
+  - End transmission marker (default: 0x04) - customizable
+- ✅ TCP-only packet capture (filter for TCP traffic)
+- ✅ HL7 protocol parsing:
+  - Detect device start transmission (0x05)
+  - Extract HL7 messages (0x02...CR LF sequences)
+  - Track PC acknowledgments (0x06)
+  - Identify end transmission (0x04)
+- ✅ HL7 session tracking (group related device/PC exchanges)
+- ✅ Display sessions in organized view
+- ✅ Show individual HL7 messages with:
+  - Timestamp
+  - Direction (Device → PC or PC → Device)
+  - Marker type (start, HL7 message, ack, end)
+  - Raw hexadecimal view of payload
+  - Decoded HL7 message (if valid)
 - ✅ Pause/resume capture
-- ✅ Clear packet list (in-memory only, no persistence)
+- ✅ Clear captured sessions
+- ✅ Marker configuration UI (allow custom start/ack/end markers)
 
 ### 2.4 Scope: OUT (Future)
 
-- ❌ Packet filtering or search
-- ❌ Packet detail inspection (deep protocol analysis)
-- ❌ Export to PCAP, JSON, or CSV
-- ❌ Packet statistics or graphs
-- ❌ Protocol dissection (TCP/UDP payload analysis)
+- ❌ HL7 message validation against HL7 standards (v2.x)
+- ❌ Export to HL7 files, PCAP, JSON, or CSV
+- ❌ Traffic statistics or performance graphs
 - ❌ Multi-interface simultaneous capture
-- ❌ Persistent storage of captures
-- ❌ Advanced visualization
+- ❌ Persistent database storage of captures
+- ❌ HL7 message editing or modification
+- ❌ Integration with actual LIS systems for live testing
+- ❌ Network simulation or playback of captures
 
 ---
 
@@ -211,12 +234,14 @@ Build **hl7-capture**: An Electron desktop application that:
 - Renderer requests via `window.electron.send()`
 - Main responds via `ipcRenderer.on()`
 
-**Packet Storage:**
+**HL7 Session Storage:**
 
-- In-memory array during active capture
-- Store up to 1,000 packets in memory (configurable)
-- Oldest packets dropped when limit reached
+- In-memory array of HL7 sessions during active capture
+- Each session groups related device-to-PC exchanges
+- Store up to 100 complete HL7 sessions (configurable)
+- Sessions dropped when limit reached (oldest first)
 - Cleared when user clicks "Clear"
+- Session includes all related TCP packets and parsed messages
 
 **Platform Compatibility:**
 
@@ -235,40 +260,63 @@ Build **hl7-capture**: An Electron desktop application that:
 - Initialize Electron app
 - Create browser window
 - Set up IPC listeners
-- Initialize packet capture
-- Manage packet buffer
+- Initialize packet capture with TCP filter
+- Parse HL7 protocol sequences
+- Manage HL7 session buffer
+- Validate configured markers
 
 **Key Functions:**
 
 ```typescript
 // App initialization
-app.on('ready', () => createWindow())
+app.on("ready", () => createWindow());
 
 // IPC Handlers
-ipcMain.handle('get-interfaces', getNetworkInterfaces)
-ipcMain.handle('start-capture', startCapture)
-ipcMain.handle('stop-capture', stopCapture)
-ipcMain.handle('get-packets', getPackets)
-ipcMain.handle('clear-packets', clearPackets)
+ipcMain.handle("get-interfaces", getNetworkInterfaces);
+ipcMain.handle("start-capture", startCapture);
+ipcMain.handle("stop-capture", stopCapture);
+ipcMain.handle("get-sessions", getSessions);
+ipcMain.handle("clear-sessions", clearSessions);
+ipcMain.handle("save-marker-config", saveMarkerConfig);
 
-// Packet handling
-function handlePacket(packet: Buffer, interface: string)
-function getNetworkInterfaces(): Promise<NetworkInterface[]>
+// HL7 parsing
+function parseHL7Payload(tcpPayload: Buffer, config: MarkerConfig): HL7Element[];
+function trackHL7Session(element: HL7Element): HL7Session;
+function validateMarkerConfig(config: MarkerConfig): boolean;
 ```
 
-**Packet Structure (stored in memory):**
+**Configuration Interface:**
 
 ```typescript
-interface CapturedPacket {
-  id: string // Unique ID
-  timestamp: number // Unix timestamp (ms)
-  sourceIP: string // Source IP address
-  destinationIP: string // Destination IP address
-  protocol: string // 'TCP' | 'UDP' | 'ICMP' | 'Other'
-  sourcePort?: number // Source port (if applicable)
-  destinationPort?: number // Destination port (if applicable)
-  length: number // Packet size in bytes
-  rawData: Buffer // Full packet binary data
+interface MarkerConfig {
+  startMarker: number; // Default 0x05
+  acknowledgeMarker: number; // Default 0x06
+  endMarker: number; // Default 0x04
+  sourceIP: string; // Medical device IP
+  destinationIP: string; // LIS PC IP
+}
+```
+
+**HL7 Session Structure (stored in memory):**
+
+```typescript
+interface HL7Element {
+  id: string;
+  timestamp: number;
+  direction: "device-to-pc" | "pc-to-device";
+  type: "start" | "message" | "ack" | "end";
+  hexData: string; // Raw hex representation
+  decodedMessage?: string; // Decoded if valid HL7
+  rawBytes: Buffer;
+}
+
+interface HL7Session {
+  id: string;
+  startTime: number;
+  deviceIP: string;
+  pcIP: number;
+  elements: HL7Element[];
+  isComplete: boolean; // true when 0x04 received
 }
 ```
 
@@ -280,36 +328,47 @@ interface CapturedPacket {
 App
 ├── Header
 │   └── Title + Version
-├── ControlPanel
+├── ConfigPanel
 │   ├── Interface Selector (dropdown)
+│   ├── Source IP Input
+│   ├── Destination IP Input
+│   ├── Marker Configuration (editable)
+│   └── Save Configuration Button
+├── ControlPanel
 │   ├── Start/Stop Button
 │   ├── Pause Button
 │   └── Clear Button
-└── PacketTable
-    ├── Column: Timestamp
-    ├── Column: Source IP:Port
-    ├── Column: Destination IP:Port
-    ├── Column: Protocol
-    ├── Column: Size (bytes)
-    └── Pagination / Infinite scroll
+└── SessionView
+    ├── SessionList
+    │   ├── Each session timeline
+    │   └── Expandable session details
+    └── MessageDetail
+        ├── Individual message viewer
+        ├── Hex display
+        └── Decoded HL7 display
 ```
 
 **Key Components:**
 
 - `InterfaceSelector.tsx` - Dropdown to select network interface
+- `ConfigurationPanel.tsx` - IP and marker configuration
 - `ControlButtons.tsx` - Start, Stop, Pause, Clear buttons
-- `PacketTable.tsx` - Display packets in table format
-- `StatusBar.tsx` - Show capture status, packet count, interface name
+- `SessionList.tsx` - Display HL7 sessions
+- `SessionTimeline.tsx` - Visual timeline of device/PC exchanges
+- `MessageViewer.tsx` - Show individual messages with hex and decoded views
+- `StatusBar.tsx` - Show capture status, session count, interface name
 
 **State Management:**
 Use React hooks (`useState`, `useEffect`, `useReducer`):
 
 ```typescript
-const [interfaces, setInterfaces] = useState<NetworkInterface[]>([])
-const [selectedInterface, setSelectedInterface] = useState<string>('')
-const [isCapturing, setIsCapturing] = useState<boolean>(false)
-const [packets, setPackets] = useState<CapturedPacket[]>([])
-const [packetCount, setPacketCount] = useState<number>(0)
+const [interfaces, setInterfaces] = useState<NetworkInterface[]>([]);
+const [selectedInterface, setSelectedInterface] = useState<string>("");
+const [markerConfig, setMarkerConfig] = useState<MarkerConfig>(defaultConfig);
+const [isCapturing, setIsCapturing] = useState<boolean>(false);
+const [sessions, setSessions] = useState<HL7Session[]>([]);
+const [sessionCount, setSessionCount] = useState<number>(0);
+const [selectedSession, setSelectedSession] = useState<HL7Session | null>(null);
 ```
 
 ### 4.3 IPC Communication Layer (`src/preload/index.ts`)
@@ -318,49 +377,66 @@ const [packetCount, setPacketCount] = useState<number>(0)
 
 ```typescript
 window.electron = {
-  // Packet capture operations
-  getNetworkInterfaces: (): Promise<NetworkInterface[]> =>
-    ipcRenderer.invoke('get-interfaces'),
+  // HL7 capture operations
+  getNetworkInterfaces: (): Promise<NetworkInterface[]> => ipcRenderer.invoke("get-interfaces"),
 
-  startCapture: (interface: string): Promise<void> =>
-    ipcRenderer.invoke('start-capture', interface),
+  startCapture: (interface: string, config: MarkerConfig): Promise<void> =>
+    ipcRenderer.invoke("start-capture", interface, config),
 
-  stopCapture: (): Promise<void> => ipcRenderer.invoke('stop-capture'),
+  stopCapture: (): Promise<void> => ipcRenderer.invoke("stop-capture"),
 
-  getPackets: (): Promise<CapturedPacket[]> =>
-    ipcRenderer.invoke('get-packets'),
+  getSessions: (): Promise<HL7Session[]> => ipcRenderer.invoke("get-sessions"),
 
-  clearPackets: (): Promise<void> => ipcRenderer.invoke('clear-packets'),
+  clearSessions: (): Promise<void> => ipcRenderer.invoke("clear-sessions"),
+
+  saveMarkerConfig: (config: MarkerConfig): Promise<void> =>
+    ipcRenderer.invoke("save-marker-config", config),
+
+  validateMarkerConfig: (config: MarkerConfig): Promise<boolean> =>
+    ipcRenderer.invoke("validate-marker-config", config),
 
   // Event listeners
-  onNewPacket: (callback: (packet: CapturedPacket) => void) =>
-    ipcRenderer.on('packet-received', callback),
+  onNewElement: (callback: (element: HL7Element) => void) =>
+    ipcRenderer.on("hl7-element-received", callback),
+
+  onSessionComplete: (callback: (session: HL7Session) => void) =>
+    ipcRenderer.on("session-complete", callback),
 
   onCaptureStatus: (callback: (status: CaptureStatus) => void) =>
-    ipcRenderer.on('capture-status', callback),
+    ipcRenderer.on("capture-status", callback),
 
-  onError: (callback: (error: string) => void) =>
-    ipcRenderer.on('capture-error', callback),
-}
+  onError: (callback: (error: string) => void) => ipcRenderer.on("capture-error", callback),
+};
 ```
 
-### 4.4 Packet Parsing
+### 4.4 HL7 Protocol Parsing
 
 **Dependencies:**
 
-- Use `node-pcap` library to capture raw packets
+- Use `node-pcap` library to capture raw TCP packets
 - Use `pcap` module's built-in packet parser
-- Manual IP header parsing for source/dest extraction
+- Manual TCP payload extraction and HL7 marker detection
 
-**Parsing Logic:**
+**HL7 Parsing Logic:**
 
-1. Receive raw packet buffer from pcap
-2. Parse Ethernet frame (skip if not needed)
-3. Parse IP header (identify source, destination, protocol)
-4. Parse transport layer (TCP/UDP) if present
-5. Create CapturedPacket object
-6. Store in buffer
-7. Emit to renderer via IPC
+1. Receive raw TCP packet from pcap (filtered for configured IPs/ports)
+2. Parse TCP segment to extract payload
+3. Scan payload for HL7 marker bytes:
+   - 0x05: Device start transmission
+   - 0x06: PC acknowledgment
+   - 0x02...CR LF: HL7 message sequence
+   - 0x04: Device end transmission
+4. Create HL7Element for each marker/message found
+5. Group elements into HL7Session (from 0x05 to 0x04)
+6. Store session in buffer
+7. Emit elements and completed sessions to renderer via IPC
+
+**Marker Customization:**
+
+- Allow user to specify custom marker bytes via configuration
+- Default: 0x05 (start), 0x06 (ack), 0x04 (end)
+- Validate marker bytes are unique and single-byte values
+- Support protocols with different marker conventions
 
 ---
 
@@ -441,25 +517,35 @@ Reason: Actively maintained, supports cross-platform capture, good Node.js commu
 ### 6.2 Capture Implementation Flow
 
 ```typescript
-// 1. Initialize pcap session
-const session = pcap.createSession('eth0', {
+// 1. Initialize pcap session with TCP filter for configured IPs
+const bpfFilter = `tcp and (src ${deviceIP} and dst ${pcIP}) or (src ${pcIP} and dst ${deviceIP})`;
+const session = pcap.createSession("eth0", {
   bufferSize: 0,
-  filter: 'ip', // Capture only IP packets
+  filter: bpfFilter, // Capture only TCP between device and PC
   snaplen: 65535,
-})
+});
 
-// 2. Set up packet handler
-session.on('packet', (rawPacket) => {
-  const packet = parsePacket(rawPacket)
-  addToBuffer(packet)
-  notifyRenderer(packet) // Send via IPC
-})
+// 2. Set up packet handler with HL7 parsing
+session.on("packet", (rawPacket) => {
+  const tcpPayload = extractTCPPayload(rawPacket);
+  const hl7Elements = parseHL7Payload(tcpPayload, markerConfig);
+
+  hl7Elements.forEach((element) => {
+    addToSessionBuffer(element);
+    notifyRenderer(element); // Send via IPC
+
+    if (element.type === "end") {
+      completeSession(); // Finalize session when 0x04 received
+      notifyRenderer(session); // Send completed session
+    }
+  });
+});
 
 // 3. Start capture
-session.resume()
+session.resume();
 
 // 4. Stop capture
-session.close()
+session.close();
 ```
 
 ### 6.3 UI/UX Patterns
@@ -467,19 +553,34 @@ session.close()
 **Application Flow:**
 
 1. User launches app
-2. App loads and displays list of network interfaces
-3. User selects interface from dropdown
-4. User clicks "Start Capture"
-5. Packets stream into table in real-time
-6. User can pause/resume without losing packets
-7. User can clear table to reset
-8. Packet count displayed in status bar
+2. App displays configuration panel with interface selector
+3. User:
+   - Selects network interface
+   - Enters source IP (medical device)
+   - Enters destination IP (LIS PC)
+   - Reviews/modifies marker configuration (0x05, 0x06, 0x04)
+4. User clicks "Save Configuration" and "Start Capture"
+5. App begins capturing TCP traffic between configured IPs
+6. HL7 sessions stream into session view in real-time
+7. Each session shows:
+   - Timeline of device→PC→device exchanges
+   - Markers (start, ack, end)
+   - Individual HL7 messages
+8. User can click session to expand and view message details
+9. Message detail view shows:
+   - Hex representation
+   - Decoded HL7 message (if valid)
+   - Timestamp and direction
+10. User can pause/resume capture without losing data
+11. User can clear all sessions
+12. Session count displayed in status bar
 
 **UI States:**
 
-- **Idle:** Interface selector enabled, Start button active, Stop disabled
-- **Capturing:** Interface selector disabled, Start disabled, Stop/Pause active
-- **Paused:** All buttons active, show pause indicator
+- **Idle:** Config editable, Start button active, Stop disabled
+- **Capturing:** Config disabled, Start disabled, Stop/Pause active
+- **Paused:** Config disabled, all buttons active, show pause indicator
+- **Session Selected:** Message detail panel visible with hex/decoded views
 
 ---
 
@@ -512,10 +613,10 @@ export const PacketTable: React.FC<Props> = ({ packets }) => {
 
 ```typescript
 try {
-  const packets = await ipcRenderer.invoke('start-capture', interfaceName)
+  const packets = await ipcRenderer.invoke("start-capture", interfaceName);
 } catch (error) {
-  console.error('Capture failed:', error)
-  showUserNotification('Failed to start capture. Check permissions.')
+  console.error("Capture failed:", error);
+  showUserNotification("Failed to start capture. Check permissions.");
 }
 ```
 
@@ -523,13 +624,13 @@ try {
 
 ```typescript
 // Development
-console.debug('Packet parsed:', { sourceIP, destIP })
+console.debug("Packet parsed:", { sourceIP, destIP });
 
 // Important events
-console.log('Capture started on interface:', interfaceName)
+console.log("Capture started on interface:", interfaceName);
 
 // Errors
-console.error('Permission denied for interface:', error.message)
+console.error("Permission denied for interface:", error.message);
 ```
 
 ---
@@ -608,8 +709,8 @@ console.error('Permission denied for interface:', error.message)
 const config: ForgeConfig = {
   packagerConfig: {
     asar: true,
-    executableName: 'hl7-capture',
-    icon: './public/icon',
+    executableName: "hl7-capture",
+    icon: "./public/icon",
   },
   rebuildConfig: {},
   makers: [
@@ -621,13 +722,13 @@ const config: ForgeConfig = {
   plugins: [
     new VitePlugin({
       build: [
-        { entry: 'src/main/index.ts', config: 'vite.config.ts' },
-        { entry: 'src/preload/index.ts', config: 'vite.config.ts' },
-        { entry: 'src/renderer/index.tsx', config: 'vite.config.ts' },
+        { entry: "src/main/index.ts", config: "vite.config.ts" },
+        { entry: "src/preload/index.ts", config: "vite.config.ts" },
+        { entry: "src/renderer/index.tsx", config: "vite.config.ts" },
       ],
     }),
   ],
-}
+};
 ```
 
 ### 11.2 TypeScript Configuration (`tsconfig.json`)
@@ -757,49 +858,129 @@ npm run make
 3. Set up IPC listener structure (empty handlers)
 4. Test: Electron window launches
 
-**Phase 2: Packet Capture Logic** 5. Create `src/common/types.ts` - Define TypeScript interfaces 6. Install & verify pcap library 7. Implement network interface detection (`getNetworkInterfaces()`) 8. Implement packet capture start/stop (`startCapture()`, `stopCapture()`) 9. Implement packet parsing (`parsePacket()`) 10. Implement in-memory packet buffer management 11. Test: Manually verify capture works, packet parsing correct
+**Phase 2: HL7 Protocol & Capture Logic**
 
-**Phase 3: IPC Bridge** 12. Create `src/preload/index.ts` - IPC bridge with contextBridge 13. Expose window.electron API with all methods 14. Test: Console verify window.electron exists in DevTools
+5. Create `src/common/types.ts` - Define HL7 TypeScript interfaces (MarkerConfig, HL7Element, HL7Session)
+6. Install & verify pcap library
+7. Implement network interface detection (`getNetworkInterfaces()`)
+8. Implement marker configuration validation (`validateMarkerConfig()`)
+9. Implement TCP packet capture with IP/port filtering (`startCapture()`, `stopCapture()`)
+10. Implement HL7 payload parsing:
+    - Extract TCP payload from raw packet
+    - Scan for marker bytes (0x05, 0x06, 0x04)
+    - Extract HL7 messages (0x02...CR LF)
+    - Create HL7Element objects
+11. Implement HL7 session tracking:
+    - Group elements from 0x05 to 0x04
+    - Complete session when end marker received
+    - Store in session buffer (max 100 sessions)
+12. Test: Manually verify TCP capture works, HL7 parsing correct with sample medical device data
 
-**Phase 4: React UI (Renderer)** 15. Create React entry point (`src/renderer/index.tsx`) 16. Create `src/renderer/App.tsx` - Main app component 17. Create component structure: - `InterfaceSelector.tsx` - Dropdown for interfaces - `ControlPanel.tsx` - Buttons (Start, Stop, Pause, Clear) - `PacketTable.tsx` - Table display - `StatusBar.tsx` - Status information 18. Wire up state management (useState, useEffect) 19. Connect IPC calls to UI buttons 20. Test: UI renders, buttons interactive
+**Phase 3: IPC Bridge**
 
-**Phase 5: Real-Time Updates** 21. Implement `onNewPacket` IPC listener in renderer 22. Update table in real-time as packets arrive 23. Update packet count in status bar 24. Test: Packets display in real-time while capturing
+13. Create `src/preload/index.ts` - IPC bridge with contextBridge
+14. Expose window.electron API with all HL7-specific methods
+15. Test: Console verify window.electron exists in DevTools
 
-**Phase 6: Configuration & Build** 25. Create `forge.config.ts` - Electron Forge config 26. Create `vite.config.ts` - Vite build config 27. Configure build output and makers 28. Test: `npm run dev` launches dev environment
+**Phase 4: React UI - Configuration Panel (Renderer)**
 
-**Phase 7: Testing** 29. Create unit tests for packet parser 30. Create integration tests for capture flow 31. Configure Jest 32. Achieve 80%+ coverage on core logic 33. Test: `npm test` runs suite successfully
+16. Create React entry point (`src/renderer/index.tsx`)
+17. Create `src/renderer/App.tsx` - Main app component with tabs/sections
+18. Create `ConfigurationPanel.tsx`:
+    - Interface selector (dropdown)
+    - Source IP input (medical device)
+    - Destination IP input (LIS PC)
+    - Marker configuration inputs (hex byte inputs for 0x05, 0x06, 0x04)
+    - Save/Reset configuration buttons
+19. Add configuration validation and feedback
+20. Test: Configuration UI renders, inputs accept values
 
-**Phase 8: Documentation** 34. Create README.md with overview, installation, usage 35. Create docs/DEVELOPMENT.md with dev setup 36. Create docs/ARCHITECTURE.md (optional, reference) 37. Add inline code comments for complex logic
+**Phase 5: React UI - Capture Controls**
+
+21. Create `ControlPanel.tsx` - Start, Stop, Pause, Clear buttons
+22. Wire up state management (useState, useEffect)
+23. Connect IPC calls to UI buttons
+24. Implement button state logic (disable when inappropriate)
+25. Test: Buttons clickable, states change correctly
+
+**Phase 6: React UI - Session Display**
+
+26. Create `SessionList.tsx` - Display HL7 sessions
+27. Create `SessionTimeline.tsx` - Visual timeline of device/PC exchanges
+28. Create `MessageViewer.tsx` - Individual message detail viewer with:
+    - Hex representation
+    - Decoded HL7 message
+    - Direction and timestamp
+29. Wire up session selection and detail display
+30. Test: Sessions display, expandable, messages viewable
+
+**Phase 7: Real-Time Updates**
+
+31. Implement `onNewElement` IPC listener in renderer
+32. Update session list in real-time as elements arrive
+33. Update session timeline as elements arrive
+34. Implement `onSessionComplete` listener
+35. Update session count in status bar
+36. Test: Sessions stream in real-time during capture
+
+**Phase 8: Configuration & Build**
+
+37. Create `forge.config.ts` - Electron Forge config
+38. Create `vite.config.ts` - Vite build config
+39. Configure build output and makers
+40. Test: `npm run dev` launches dev environment
+
+**Phase 9: Testing**
+
+41. Create unit tests for HL7 marker detection
+42. Create unit tests for HL7 message parsing
+43. Create integration tests for full capture flow
+44. Create integration tests for marker customization
+45. Configure Jest
+46. Achieve 80%+ coverage on core logic
+47. Test: `npm test` runs suite successfully
+
+**Phase 10: Documentation**
+
+48. Create README.md with HL7 protocol overview, installation, usage
+49. Create docs/DEVELOPMENT.md with dev setup
+50. Create docs/HL7-PROTOCOL.md - HL7 marker specification details
+51. Add inline code comments for complex HL7 parsing logic
 
 ### 13.3 Testing Strategy
 
 **Unit Tests:**
 
-- Test packet parser: Verify IP/protocol extraction
+- Test HL7 marker detection: Verify 0x05, 0x06, 0x04 recognition
+- Test HL7 message parsing: Verify 0x02...CR LF extraction
+- Test marker configuration validation: Custom marker support
 - Test interface detection: Mock os.networkInterfaces()
-- Test buffer management: Add/clear operations
+- Test buffer management: Add/clear operations, max 100 sessions
 
 **Integration Tests:**
 
-- Test capture flow: Start → receive packet → update buffer
-- Test IPC communication: Renderer → Main → response
-- Test UI state updates: Button click → capture state change
+- Test full capture flow: Configure → Start → receive TCP → parse HL7 → update session
+- Test marker customization: Change markers, verify parsing with custom markers
+- Test session tracking: 0x05 to 0x04 grouping
+- Test IPC communication: Renderer → Main → HL7Element emission
+- Test UI state updates: Config save → enable buttons → capture starts
 
 **Manual Testing Checklist:**
 
-- [ ] Select interface, start capture, see packets
-- [ ] Pause capture, verify packets stop arriving
-- [ ] Resume capture, verify packets resume
-- [ ] Click "Clear", verify table clears
+- [ ] Configure source/dest IPs correctly
+- [ ] Start capture on actual medical device-to-LIS communication
+- [ ] Verify sessions capture entire device transmission (0x05 to 0x04)
+- [ ] Verify individual HL7 messages (0x02...CR LF) parsed correctly
+- [ ] Verify PC acknowledgments (0x06) shown for each message
+- [ ] Pause capture, verify HL7 elements stop arriving
+- [ ] Resume capture, verify elements resume
+- [ ] Click "Clear", verify all sessions cleared
 - [ ] Stop capture cleanly without errors
-- [ ] Multiple interfaces selectable
+- [ ] Marker customization: Change markers, re-capture, verify new markers detected
+- [ ] Multiple active sessions: Verify independent tracking
 - [ ] App runs on Windows/Mac/Linux
 
 **Performance Testing:**
-
-- [ ] Handle 1,000+ packets without lag
-- [ ] UI remains responsive during heavy capture
-- [ ] Memory doesn't grow unbounded
 
 ---
 
@@ -808,28 +989,24 @@ npm run make
 Specific, measurable criteria for "done":
 
 1. **Interface Detection (AC #1)**
-
    - Given: App launches
    - When: User clicks interface dropdown
    - Then: All network interfaces listed with names and IP addresses
    - Verified: Drop-down shows ≥2 interfaces (or all available interfaces)
 
 2. **Capture Start (AC #2)**
-
    - Given: Interface selected
    - When: User clicks "Start Capture"
    - Then: App begins capturing packets on selected interface
    - Verified: Packet count increases, packets visible in table
 
 3. **Packet Display (AC #3)**
-
    - Given: Capture active
    - When: Packets arrive on network
    - Then: Each packet displayed in table with: timestamp, source IP, dest IP, protocol, size
    - Verified: Table columns show correct data, matches actual network traffic
 
 4. **Pause/Resume (AC #4)**
-
    - Given: Capture active
    - When: User clicks "Pause"
    - Then: Packet capture pauses, table freezes, packet count stable
@@ -838,21 +1015,18 @@ Specific, measurable criteria for "done":
    - Verified: No packets lost, seamless transition
 
 5. **Clear Packets (AC #5)**
-
    - Given: Packets in table
    - When: User clicks "Clear"
    - Then: Table becomes empty, count resets to 0
    - Verified: All packets removed, UI updated
 
 6. **Stop Capture (AC #6)**
-
    - Given: Capture active
    - When: User clicks "Stop"
    - Then: Capture ends cleanly, interface selector re-enabled
    - Verified: No errors, app stable
 
 7. **UI Responsiveness (AC #7)**
-
    - Given: Heavy network traffic (100+ packets/sec)
    - When: Capture active
    - Then: UI remains responsive, buttons clickable

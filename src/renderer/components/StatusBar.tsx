@@ -1,24 +1,17 @@
-import React from "react";
+import React from 'react'
 
 interface Props {
   isCapturing: boolean;
-  isPaused: boolean;
   interface: string;
-  packetCount: number;
+  sessionCount: number;
 }
 
 export default function StatusBar({
   isCapturing,
-  isPaused,
   interface: interfaceName,
-  packetCount,
+  sessionCount,
 }: Readonly<Props>): JSX.Element {
-  let statusText: string;
-  if (isCapturing) {
-    statusText = isPaused ? "Paused" : "Capturing";
-  } else {
-    statusText = "Idle";
-  }
+  const statusText = isCapturing ? "Capturing" : "Idle";
 
   return (
     <footer className="status-bar">
@@ -31,8 +24,8 @@ export default function StatusBar({
         <span className="status-value">{interfaceName || "None"}</span>
       </div>
       <div className="status-item">
-        <span className="label">Packets:</span>
-        <span className="status-value">{packetCount}</span>
+        <span className="label">Sessions:</span>
+        <span className="status-value">{sessionCount}</span>
       </div>
     </footer>
   );

@@ -1,45 +1,69 @@
 import { contextBridge, ipcRenderer } from 'electron'
 
-import type { IpcMethods, CapturedPacket, CaptureStatus } from "@common/types";
+import type { MarkerConfig, HL7Element, HL7Session, NetworkInterface } from "../common/types";
 
 /**
- * Secure IPC API exposed to renderer process via contextBridge
+ * HL7 Capture IPC API
+ * Exposed to renderer process via contextBridge for secure IPC communication
  */
-const electronAPI: IpcMethods = {
-  getNetworkInterfaces: () => ipcRenderer.invoke("get-interfaces"),
+const electronAPI = {
+  // Network interface operations
+  getNetworkInterfaces: (): Promise<NetworkInterface[]> => ipcRenderer.invoke("get-interfaces"),
 
-  startCapture: (interfaceName: string) => ipcRenderer.invoke("start-capture", interfaceName),
+  // HL7 capture operations
+  startCapture: (interfaceName: string, config: MarkerConfig): Promise<void> =>
+    ipcRenderer.invoke("start-capture", interfaceName, config),
 
-  stopCapture: () => ipcRenderer.invoke("stop-capture"),
+  stopCapture: (): Promise<void> => ipcRenderer.invoke("stop-capture"),
 
-  pauseCapture: () => ipcRenderer.invoke("pause-capture"),
+  getSessions: (): Promise<HL7Session[]> => ipcRenderer.invoke("get-sessions"),
 
-  resumeCapture: () => ipcRenderer.invoke("resume-capture"),
+  clearSessions: (): Promise<void> => ipcRenderer.invoke("clear-sessions"),
 
-  getPackets: () => ipcRenderer.invoke("get-packets"),
+  saveMarkerConfig: (config: MarkerConfig): Promise<void> =>
+    ipcRenderer.invoke("save-marker-config", config),
 
-  clearPackets: () => ipcRenderer.invoke("clear-packets"),
+  validateMarkerConfig: (config: MarkerConfig): Promise<boolean> =>
+    ipcRenderer.invoke("validate-marker-config", config),
 
-  onNewPacket: (callback: (packet: CapturedPacket) => void) => {
-    ipcRenderer.on("packet-received", (_, packet: CapturedPacket) => {
-      callback(packet);
+  // Event listeners
+  onNewElement: (callback: (element: HL7Element) => void): void => {
+    ipcRenderer.on("hl7-element-received", (_event, element) => {
+      callback(element);
     });
   },
 
-  onCaptureStatus: (callback: (status: CaptureStatus) => void) => {
-    ipcRenderer.on("capture-status", (_, status: CaptureStatus) => {
+  onSessionComplete: (callback: (session: HL7Session) => void): void => {
+    ipcRenderer.on("session-complete", (_event, session) => {
+      callback(session);
+    });
+  },
+
+  onCaptureStatus: (
+    callback: (status: { isCapturing: boolean; sessionCount: number; elementCount: number }) => void
+  ): void => {
+    ipcRenderer.on("capture-status", (_event, status) => {
       callback(status);
     });
   },
 
-  onError: (callback: (error: string) => void) => {
-    ipcRenderer.on("capture-error", (_, error: string) => {
+  onError: (callback: (error: string) => void): void => {
+    ipcRenderer.on("capture-error", (_event, error) => {
       callback(error);
     });
   },
 };
 
 /**
- * Expose API to renderer process with contextIsolation
+ * Expose API to renderer process
  */
 contextBridge.exposeInMainWorld("electron", electronAPI);
+
+/**
+ * Declare window.electron for TypeScript
+ */
+declare global {
+  interface Window {
+    electron: typeof electronAPI;
+  }
+}

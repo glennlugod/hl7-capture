@@ -11,12 +11,12 @@
 # - {file-path}: File created/found (e.g., "docs/tech-spec.md")
 # - skipped: Optional/conditional workflow that was skipped
 
-generated: '2025-11-04'
-project: 'hl7-capture'
-project_type: 'software'
+generated: "2025-11-04"
+project: "hl7-capture"
+project_type: "software"
 project_level: 0
-field_type: 'greenfield'
-workflow_path: 'greenfield-level-0.yaml'
+field_type: "greenfield"
+workflow_path: "greenfield-level-0.yaml"
 
 workflow_status:
   # Phase 1: Analysis (Optional)
@@ -30,3 +30,9 @@ workflow_status:
 
   # Phase 4: Implementation (Tracked separately in sprint plan)
   sprint-planning: required
+
+# Level 0 Story Status (for single atomic change)
+stories:
+  hl7-device-capture: docs/stories/story-hl7-device-capture.md
+
+story_status: ready-for-dev
