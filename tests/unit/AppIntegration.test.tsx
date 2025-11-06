@@ -1,10 +1,10 @@
-import "@testing-library/jest-dom";
+import '@testing-library/jest-dom'
 
-import React from "react";
+import React from 'react'
 
-import { render, screen } from "@testing-library/react";
+import { render, screen } from '@testing-library/react'
 
-import App from "../../src/renderer/App";
+import App from '../../src/renderer/App'
 
 // Mock the electron API
 const mockElectronAPI = {
@@ -46,8 +46,7 @@ describe("App Integration - Layout and Components", () => {
 
       // Verify placeholder components are rendered
       expect(screen.getByText("ConfigurationPanel - Placeholder")).toBeInTheDocument();
-      expect(screen.getByText("SessionList - Placeholder")).toBeInTheDocument();
-      expect(screen.getByText("MessageDetailViewer - Placeholder")).toBeInTheDocument();
+      // The SessionList and MessageDetailViewer no longer have placeholder text
     });
 
     it("should render placeholder text for each component in the correct location", () => {
@@ -55,12 +54,8 @@ describe("App Integration - Layout and Components", () => {
 
       // Verify all three placeholders exist
       const configPlaceholder = screen.getByText("ConfigurationPanel - Placeholder");
-      const sessionPlaceholder = screen.getByText("SessionList - Placeholder");
-      const detailPlaceholder = screen.getByText("MessageDetailViewer - Placeholder");
 
       expect(configPlaceholder).toBeInTheDocument();
-      expect(sessionPlaceholder).toBeInTheDocument();
-      expect(detailPlaceholder).toBeInTheDocument();
     });
 
     it("should maintain three-panel layout structure", () => {

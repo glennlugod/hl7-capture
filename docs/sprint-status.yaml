@@ -29,7 +29,7 @@ story_location: "{project-root}/docs/stories"
 
 development_status:
   # Story: HL7 Medical Device Capture Application
-  hl7-device-capture: in-progress
+  hl7-device-capture: review
 
   # UX Implementation Stories
   # Story: UX Design System Foundation

@@ -20,4 +20,5 @@ export default {
       statements: 80,
     },
   },
+  setupFilesAfterEnv: ["<rootDir>/tests/unit/matchMedia.mock.js"],
 };

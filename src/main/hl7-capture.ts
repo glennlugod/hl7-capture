@@ -3,6 +3,7 @@
  * Handles TCP packet capture, HL7 marker detection, and session management
  */
 
+import { Cap, decoders } from 'cap'
 import { EventEmitter } from 'events'
 import * as os from 'os'
 
@@ -23,6 +24,8 @@ export class HL7CaptureManager extends EventEmitter {
   // Session tracking
   private activeSessionKey: string | null = null;
   private sessionBuffer: Buffer = Buffer.alloc(0);
+  private cap: Cap | null = null;
+  private buffer: Buffer = Buffer.alloc(65535);
 
   constructor() {
     super();
@@ -123,9 +126,37 @@ export class HL7CaptureManager extends EventEmitter {
       elementCount: 0,
     });
 
-    // TODO: Implement actual pcap capture
-    // For now, we'll simulate capture in development
-    this.simulateCapture();
+    this.cap = new Cap();
+    const device = this.currentInterface;
+    const filter = `tcp and host ${this.markerConfig.sourceIP} and host ${this.markerConfig.destinationIP}`;
+    const bufSize = 10 * 1024 * 1024;
+
+    const linkType = this.cap.open(device, filter, bufSize, this.buffer);
+
+    this.cap.on("packet", (nbytes: number, truncated: boolean) => {
+      // LINKTYPE_ETHERNET is 1
+      if (linkType === 1) {
+        const eth = decoders.Ethernet(this.buffer);
+
+        if (eth && eth.info.type === decoders.PROTOCOL.ETHERNET.IPV4) {
+          const ipv4 = decoders.IPV4(this.buffer, eth.offset);
+          if (ipv4) {
+            const sourceIP = ipv4.info.srcaddr;
+            const destIP = ipv4.info.dstaddr;
+
+            if (ipv4.info.protocol === decoders.PROTOCOL.IP.TCP) {
+              const tcp = decoders.TCP(this.buffer, ipv4.offset);
+              if (tcp) {
+                const data = this.buffer.slice(tcp.offset, nbytes);
+                if (data.length > 0) {
+                  this.processPacket(sourceIP, destIP, data);
+                }
+              }
+            }
+          }
+        }
+      }
+    });
   }
 
   /**
@@ -134,6 +165,11 @@ export class HL7CaptureManager extends EventEmitter {
   public async stopCapture(): Promise<void> {
     if (!this.isCapturing) {
       return;
+    }
+
+    if (this.cap) {
+      this.cap.close();
+      this.cap = null;
     }
 
     this.isCapturing = false;
@@ -349,37 +385,5 @@ export class HL7CaptureManager extends EventEmitter {
     // Clear active session
     this.activeSessionKey = null;
     this.sessionBuffer = Buffer.alloc(0);
-  }
-
-  /**
-   * Simulate HL7 capture for testing (development only)
-   */
-  private simulateCapture(): void {
-    // Simulate a complete HL7 session after 2 seconds
-    setTimeout(() => {
-      if (!this.isCapturing) return;
-
-      const sourceIP = this.markerConfig.sourceIP || "192.168.1.100";
-      const destIP = this.markerConfig.destinationIP || "192.168.1.200";
-
-      // Start marker
-      this.processPacket(sourceIP, destIP, Buffer.from([0x05]));
-
-      // Acknowledge
-      setTimeout(() => {
-        this.processPacket(destIP, sourceIP, Buffer.from([0x06]));
-
-        // HL7 Message
-        setTimeout(() => {
-          const hl7Message = "MSH|^~\\&|Device|Lab|LIS|Lab|20231105120000||ORU^R01|123|P|2.3\r\n";
-          this.processPacket(sourceIP, destIP, Buffer.from(hl7Message));
-
-          // End marker
-          setTimeout(() => {
-            this.processPacket(sourceIP, destIP, Buffer.from([0x04]));
-          }, 500);
-        }, 500);
-      }, 500);
-    }, 2000);
   }
 }
