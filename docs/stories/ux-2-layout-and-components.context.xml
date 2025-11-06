@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<story-context>
+  <story>
+    <title>Core Layout & Custom Components</title>
+    <as-a>developer</as-a>
+    <i-want>to implement the core three-panel application layout and create the initial custom components</i-want>
+    <so-that>the application has a functional structure for displaying real-time session data and detailed message information</so-that>
+  </story>
+  <acceptance-criteria>
+    <criterion id="AC #1">A three-panel layout is present, consisting of a collapsible top Configuration Panel, a left Session List Panel, and a right Message Detail Panel.</criterion>
+    <criterion id="AC #2">The width of the panels adjusts according to the user's input, adhering to the min/max widths defined in the UX spec.</criterion>
+    <criterion id="AC #3">The Configuration Panel can be expanded and collapsed, and the layout adjusts correctly.</criterion>
+    <criterion id="AC #4">Placeholder files for `SessionList.tsx`, `MessageDetailViewer.tsx`, and `ConfigurationPanel.tsx` are created within the `src/renderer/components` directory.</criterion>
+    <criterion id="AC #5">The placeholder components are rendered within their respective layout panels.</criterion>
+  </acceptance-criteria>
+  <tasks>
+    <task>Create a new `MainLayout.tsx` component to house the three-panel structure.</task>
+    <task>Use a library like `react-resizable-panels` to implement the resizable panel functionality.</task>
+    <task>Add the collapsible functionality to the top Configuration Panel.</task>
+    <task>Style the layout with basic colors and dividers from the design system.</task>
+    <task>Create `src/renderer/components/ConfigurationPanel.tsx` with a basic placeholder.</task>
+    <task>Create `src/renderer/components/SessionList.tsx` with a basic placeholder.</task>
+    <task>Create `src/renderer/components/MessageDetailViewer.tsx` with a basic placeholder.</task>
+    <task>Import and place the three new components into the `MainLayout.tsx`.</task>
+    <task>Render the `MainLayout` in the main `App.tsx`.</task>
+  </tasks>
+  <artifacts>
+    <docs>
+      <doc>
+        <path>docs/ux-design-specification.md</path>
+        <title>hl7-capture UX Design Specification</title>
+        <section>4.1 Chosen Design Approach</section>
+        <snippet>For hl7-capture's desktop application, a classic three-panel layout provides the optimal balance of real-time monitoring, quick navigation, and detailed inspection.</snippet>
+      </doc>
+    </docs>
+    <dependencies>
+      <dependency ecosystem="npm">react: ^18.2.0</dependency>
+      <dependency ecosystem="npm">react-dom: ^18.2.0</dependency>
+      <dependency ecosystem="npm">@electron-forge/cli: ^6.2.1</dependency>
+      <dependency ecosystem="npm">electron: ^27.0.0</dependency>
+    </dependencies>
+  </artifacts>
+  <constraints>
+    <constraint>All styling should be accomplished via Tailwind CSS utility classes.</constraint>
+    <constraint>New components should be created in the `src/renderer/components` directory.</constraint>
+  </constraints>
+  <tests>
+    <standards>Testing will be conducted using Jest and React Testing Library, following the patterns established in the existing test suite.</standards>
+    <locations>
+      <location>tests/unit/</location>
+    </locations>
+    <ideas>
+      <idea for="AC #1">Verify that the three main panel components are rendered.</idea>
+      <idea for="AC #2">Simulate a drag event on the panel divider and assert that the panel's style reflects the new width.</idea>
+      <idea for="AC #3">Simulate a click on the collapse button and verify the panel's visibility or height changes.</idea>
+    </ideas>
+  </tests>
+</story-context>

@@ -1,0 +1,269 @@
+<story-context id="bmad/bmm/workflows/4-implementation/story-context/template" v="1.0">
+  <metadata>
+    <epicId>ux</epicId>
+    <storyId>3</storyId>
+    <title>Real-time Updates &amp; Accessibility Polish</title>
+    <status>drafted</status>
+    <generatedAt>2025-11-06</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/stories/ux-3-realtime-and-accessibility.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>medical device engineer</asA>
+    <iWant>real-time session updates with complete accessibility support</iWant>
+    <soThat>I can monitor live HL7 communication efficiently and all users can access the application regardless of ability</soThat>
+    <tasks>
+      <phase name="Phase 1: Real-time Update Implementation">
+        <task id="1.1" ac="1">Implement smooth session insertion animation (300ms fade-in, CSS containment)</task>
+        <task id="1.2" ac="2">Add auto-scroll functionality with toggle control and localStorage persistence</task>
+        <task id="1.3" ac="3">Maintain selection during updates (track selected session ID)</task>
+      </phase>
+      <phase name="Phase 2: Keyboard Navigation &amp; Focus Management">
+        <task id="2.1" ac="4">Implement keyboard shortcuts (↑/↓, ←/→, Tab, Ctrl+S, Ctrl+K, Esc)</task>
+        <task id="2.2" ac="5">Style focus indicators (2px teal outline)</task>
+        <task id="2.3">Implement focus management (trap focus, return focus)</task>
+      </phase>
+      <phase name="Phase 3: Screen Reader &amp; ARIA Support">
+        <task id="3.1" ac="6">Add ARIA labels and roles to all components</task>
+        <task id="3.2" ac="6">Test with screen readers (NVDA, JAWS, VoiceOver)</task>
+      </phase>
+      <phase name="Phase 4: Accessibility Compliance">
+        <task id="4.1" ac="7">Verify color contrast (4.5:1 normal, 3:1 large text)</task>
+        <task id="4.2" ac="8">Implement reduced motion support with CSS media query</task>
+        <task id="4.3" ac="9">Verify touch target sizing (44x44px minimum)</task>
+      </phase>
+      <phase name="Phase 5: Performance Optimization">
+        <task id="5.1" ac="10">Implement virtual scrolling with react-window or react-virtual</task>
+        <task id="5.2" ac="10">Performance testing with 500+ sessions</task>
+      </phase>
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    <criterion id="1">
+      <title>Real-time Session Updates</title>
+      <given>Capture is active and HL7 traffic is flowing</given>
+      <when>A new session is detected</when>
+      <then>The session appears in the Session List with a smooth fade-in animation (300ms)</then>
+      <verified>Sessions append to the list without jarring insertions or layout shifts</verified>
+    </criterion>
+    <criterion id="2">
+      <title>Auto-scroll Behavior</title>
+      <given>Auto-scroll is enabled in preferences</given>
+      <when>A new session arrives while user is at or near the bottom of the Session List</when>
+      <then>The list automatically scrolls to show the newest session</then>
+      <verified>User can disable auto-scroll and maintain their current scroll position</verified>
+    </criterion>
+    <criterion id="3">
+      <title>Selection Persistence During Updates</title>
+      <given>User has selected a session for inspection</given>
+      <when>New sessions arrive and are added to the list</when>
+      <then>The currently selected session remains selected and visible</then>
+      <verified>Real-time updates do not disrupt the user's current focus</verified>
+    </criterion>
+    <criterion id="4">
+      <title>Keyboard Navigation</title>
+      <given>The application is focused</given>
+      <when>User presses keyboard shortcuts</when>
+      <then>Navigation works: ↑/↓ (sessions), ←/→ (timeline messages), Tab (Hex/Decoded), Ctrl+S (Start/Stop), Ctrl+K (Clear), Esc (close modals)</then>
+      <verified>All keyboard shortcuts function correctly across all panels</verified>
+    </criterion>
+    <criterion id="5">
+      <title>Focus Indicators</title>
+      <given>User is navigating with keyboard</given>
+      <when>Focus moves to any interactive element</when>
+      <then>A clear 2px teal outline appears around the focused element</then>
+      <verified>Focus indicators are visible against all backgrounds and meet 3:1 contrast ratio</verified>
+    </criterion>
+    <criterion id="6">
+      <title>Screen Reader Support</title>
+      <given>A screen reader is active (NVDA, JAWS, VoiceOver)</given>
+      <when>User navigates the interface</when>
+      <then>All interactive elements have descriptive ARIA labels, new sessions trigger live region announcements, session selection announces details, form validation errors are announced</then>
+      <verified>Screen reader can navigate and understand all interface elements</verified>
+    </criterion>
+    <criterion id="7">
+      <title>Color Contrast Compliance</title>
+      <given>The application UI is rendered</given>
+      <when>Contrast is measured between text and backgrounds</when>
+      <then>Normal text: Minimum 4.5:1 contrast ratio (WCAG AA), Large text (18px+): Minimum 3:1 contrast ratio, Interactive elements: 3:1 contrast with adjacent colors</then>
+      <verified>All color combinations pass WCAG 2.1 Level AA contrast requirements</verified>
+    </criterion>
+    <criterion id="8">
+      <title>Reduced Motion Support</title>
+      <given>User has enabled "prefers-reduced-motion" system setting</given>
+      <when>The application performs animations</when>
+      <then>All non-essential animations are disabled or reduced significantly</then>
+      <verified>Users with motion sensitivity can use the app comfortably</verified>
+    </criterion>
+    <criterion id="9">
+      <title>Touch Target Sizing</title>
+      <given>The application UI is rendered</given>
+      <when>Interactive elements are measured</when>
+      <then>All buttons, clickable elements have minimum 44x44px touch target size</then>
+      <verified>Elements meet minimum size requirements with 8px spacing between adjacent targets</verified>
+    </criterion>
+    <criterion id="10">
+      <title>Performance Optimization</title>
+      <given>More than 100 sessions are captured</given>
+      <when>User scrolls through the Session List</when>
+      <then>Virtual scrolling is implemented to maintain smooth performance</then>
+      <verified>List scrolling remains smooth (60fps) even with hundreds of sessions</verified>
+    </criterion>
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc>
+        <path>docs/ux-design-specification.md</path>
+        <title>UX Design Specification</title>
+        <section>Section 8: Responsive Design &amp; Accessibility</section>
+        <snippet>Defines WCAG 2.1 Level AA compliance requirements including keyboard navigation, screen reader support, color contrast (4.5:1 ratio), focus indicators (2px outline), and touch target sizing (44x44px minimum)</snippet>
+      </doc>
+      <doc>
+        <path>docs/ux-design-specification.md</path>
+        <title>UX Design Specification</title>
+        <section>Section 7.1: Consistency Rules - Real-time Update Patterns</section>
+        <snippet>Real-time updates: Smooth animations (fade-in 300ms), no jarring insertions. Auto-scroll: Optional, toggleable, scrolls to newest session. Selection persistence: Selected session stays selected during updates. Performance: Virtual scrolling if &gt; 100 sessions</snippet>
+      </doc>
+      <doc>
+        <path>docs/ux-design-specification.md</path>
+        <title>UX Design Specification</title>
+        <section>Section 3.1: Color System</section>
+        <snippet>Brand Teal (#00bcd4) for interactive elements, 2px focus outline for keyboard navigation. All text/background combinations must meet WCAG AA contrast ratios (4.5:1 for normal text, 3:1 for large text)</snippet>
+      </doc>
+      <doc>
+        <path>docs/stories/ux-2-layout-and-components.md</path>
+        <title>Previous Story: Core Layout &amp; Custom Components</title>
+        <section>Dev Notes</section>
+        <snippet>Layout structure ready with three-panel resizable layout. Placeholder components (SessionList.tsx, MessageDetailViewer.tsx, ConfigurationPanel.tsx) created. shadcn/ui and Tailwind CSS design system available. Components in src/renderer/components directory</snippet>
+      </doc>
+    </docs>
+    <code>
+      <artifact>
+        <path>src/renderer/components/SessionList.tsx</path>
+        <kind>component</kind>
+        <symbol>SessionList</symbol>
+        <lines>1-65</lines>
+        <reason>Primary target for real-time updates, animations, virtual scrolling, and ARIA labels. Currently renders session list items with click handlers. Needs: fade-in animations, auto-scroll, virtual scrolling, aria-live regions, keyboard navigation</reason>
+      </artifact>
+      <artifact>
+        <path>src/renderer/App.tsx</path>
+        <kind>component</kind>
+        <symbol>App</symbol>
+        <lines>1-154</lines>
+        <reason>Main application component with session state management. Needs: global keyboard event handlers (Ctrl+S, Ctrl+K), focus management, prefers-reduced-motion detection. Already has session update listeners via window.electron.onSessionComplete</reason>
+      </artifact>
+      <artifact>
+        <path>src/renderer/components/MessageViewer.tsx</path>
+        <kind>component</kind>
+        <symbol>MessageViewer</symbol>
+        <lines>unknown</lines>
+        <reason>Detail panel for message inspection. Needs: keyboard navigation for Hex/Decoded tabs (Tab key), ARIA tab roles, focus management</reason>
+      </artifact>
+      <artifact>
+        <path>src/renderer/components/ControlPanel.tsx</path>
+        <kind>component</kind>
+        <symbol>ControlPanel</symbol>
+        <lines>unknown</lines>
+        <reason>Contains Start/Stop/Clear buttons. Needs: ARIA labels, keyboard shortcuts (Ctrl+S for Start/Stop, Ctrl+K for Clear), 44x44px touch targets</reason>
+      </artifact>
+      <artifact>
+        <path>src/common/types.ts</path>
+        <kind>types</kind>
+        <symbol>HL7Session, NetworkInterface, CaptureStatus, MarkerConfig</symbol>
+        <lines>unknown</lines>
+        <reason>Type definitions for session data structure. Reference for understanding session properties when implementing real-time updates and selection persistence</reason>
+      </artifact>
+    </code>
+    <dependencies>
+      <ecosystem name="npm">
+        <package name="react" version="^18.2.0">Core UI framework</package>
+        <package name="react-dom" version="^18.2.0">React rendering</package>
+        <package name="electron" version="^27.0.0">Desktop application framework</package>
+        <package name="@testing-library/react" version="^14.1.0">Testing utilities for accessibility testing</package>
+        <package name="jest" version="^29.7.0">Test framework</package>
+        <package name="typescript" version="^5.3.3">Type safety</package>
+      </ecosystem>
+      <newDependencies>
+        <package name="react-window" or="react-virtual">Virtual scrolling library for performance optimization (AC #10). Choose based on compatibility with React 18</package>
+      </newDependencies>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint type="architecture">All styling must use Tailwind CSS utility classes from the established design system. Avoid custom CSS files</constraint>
+    <constraint type="architecture">Components are in src/renderer/components directory. Follow existing pattern for component structure</constraint>
+    <constraint type="accessibility">Must meet WCAG 2.1 Level AA compliance: 4.5:1 contrast for normal text, 3:1 for large text and interactive elements</constraint>
+    <constraint type="accessibility">All interactive elements must be keyboard accessible with visible focus indicators (2px teal outline)</constraint>
+    <constraint type="accessibility">All ARIA labels must be descriptive and accurate for screen reader users</constraint>
+    <constraint type="performance">Virtual scrolling required when session list exceeds 100 items to maintain 60fps scrolling</constraint>
+    <constraint type="performance">Use React.memo to prevent unnecessary re-renders during real-time updates</constraint>
+    <constraint type="animation">All animations must respect prefers-reduced-motion CSS media query</constraint>
+    <constraint type="design">Focus indicators: 2px teal (#00bcd4) outline, clearly visible on all backgrounds</constraint>
+    <constraint type="design">Touch targets: Minimum 44x44px for all interactive elements, 8px spacing between adjacent targets</constraint>
+    <constraint type="testing">Test with multiple screen readers: NVDA (Windows), VoiceOver (macOS)</constraint>
+    <constraint type="testing">Verify color contrast using WebAIM Contrast Checker tool</constraint>
+  </constraints>
+
+  <interfaces>
+    <interface>
+      <name>window.electron.onSessionComplete</name>
+      <kind>IPC listener</kind>
+      <signature>window.electron.onSessionComplete((session: HL7Session) =&gt; void)</signature>
+      <path>src/renderer/App.tsx</path>
+      <usage>Already implemented in App.tsx. This is the entry point for new session data that triggers real-time updates. When a session arrives, update state and trigger smooth fade-in animation</usage>
+    </interface>
+    <interface>
+      <name>SessionList.onSelectSession</name>
+      <kind>callback prop</kind>
+      <signature>(session: HL7Session) =&gt; void</signature>
+      <path>src/renderer/components/SessionList.tsx</path>
+      <usage>Callback when user selects a session. Must maintain selection persistence during real-time updates (AC #3)</usage>
+    </interface>
+    <interface>
+      <name>React.useEffect</name>
+      <kind>React hook</kind>
+      <signature>useEffect(() =&gt; cleanup, dependencies)</signature>
+      <path>React</path>
+      <usage>Use for setting up keyboard event listeners, IntersectionObserver for auto-scroll, and cleanup on unmount</usage>
+    </interface>
+    <interface>
+      <name>window.matchMedia</name>
+      <kind>browser API</kind>
+      <signature>window.matchMedia('(prefers-reduced-motion: reduce)')</signature>
+      <path>Browser API</path>
+      <usage>Detect user's motion preference to disable/reduce animations (AC #8)</usage>
+    </interface>
+    <interface>
+      <name>IntersectionObserver</name>
+      <kind>browser API</kind>
+      <signature>new IntersectionObserver(callback, options)</signature>
+      <path>Browser API</path>
+      <usage>Detect when user is at bottom of session list for auto-scroll behavior (AC #2)</usage>
+    </interface>
+  </interfaces>
+
+  <tests>
+    <standards>
+      Jest is configured as the test framework with @testing-library/react for component testing. Tests should be placed in tests/ directory following the existing structure. Accessibility testing should use @testing-library/react's accessibility queries (getByRole, getByLabelText). Screen reader testing must be done manually with NVDA (Windows) and VoiceOver (macOS). Color contrast verification should use automated tools like WebAIM Contrast Checker in addition to unit tests.
+    </standards>
+    <locations>
+      <location>tests/unit/*.test.ts</location>
+      <location>tests/integration/*.test.ts</location>
+    </locations>
+    <ideas>
+      <idea ac="1">Test smooth session insertion: Mock window.electron.onSessionComplete, verify new session appears with fade-in class, verify no layout shift</idea>
+      <idea ac="2">Test auto-scroll toggle: Verify localStorage persistence, verify scroll behavior when enabled/disabled, verify auto-scroll only triggers when user is at bottom</idea>
+      <idea ac="3">Test selection persistence: Add new session during selection, verify selected session ID remains unchanged, verify selected session stays highlighted</idea>
+      <idea ac="4">Test keyboard shortcuts: Simulate keyboard events (↑/↓/←/→/Tab/Ctrl+S/Ctrl+K/Esc), verify correct navigation behavior, verify focus moves correctly</idea>
+      <idea ac="5">Test focus indicators: Verify 2px teal outline applied on focus, verify contrast ratio &gt;= 3:1 with backgrounds</idea>
+      <idea ac="6">Test ARIA attributes: Verify aria-label on all interactive elements, verify role attributes (listbox, tab), verify aria-live regions for announcements. Manual testing with NVDA/VoiceOver required</idea>
+      <idea ac="7">Test color contrast: Extract all text/background color combinations, verify 4.5:1 ratio for normal text, verify 3:1 for large text</idea>
+      <idea ac="8">Test reduced motion: Mock prefers-reduced-motion: reduce, verify animations disabled, verify smooth experience without motion</idea>
+      <idea ac="9">Test touch target sizing: Query all interactive elements, measure computed dimensions, verify &gt;= 44x44px, verify 8px spacing</idea>
+      <idea ac="10">Test virtual scrolling: Generate 200+ mock sessions, verify list renders only visible items, measure scroll performance (should maintain 60fps)</idea>
+    </ideas>
+  </tests>
+</story-context>

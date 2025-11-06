@@ -1,16 +1,25 @@
-import './App.css'
+import "./App.css";
 
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState } from "react";
 
-import ControlPanel from './components/ControlPanel'
-import InterfaceSelector from './components/InterfaceSelector'
-import MessageViewer from './components/MessageViewer'
-import SessionList from './components/SessionList'
-import StatusBar from './components/StatusBar'
+import ControlPanel from "./components/ControlPanel";
+import { DesignSystemTestPage } from "./components/DesignSystemTestPage";
+import InterfaceSelector from "./components/InterfaceSelector";
+import MessageViewer from "./components/MessageViewer";
+import SessionList from "./components/SessionList";
+import StatusBar from "./components/StatusBar";
 
 import type { NetworkInterface, HL7Session, CaptureStatus, MarkerConfig } from "../common/types";
 
+// Set to true to view design system test page
+const SHOW_DESIGN_SYSTEM_TEST = true;
+
 export default function App(): JSX.Element {
+  // Show design system test page for verification
+  if (SHOW_DESIGN_SYSTEM_TEST) {
+    return <DesignSystemTestPage />;
+  }
+
   const [interfaces, setInterfaces] = useState<NetworkInterface[]>([]);
   const [selectedInterface, setSelectedInterface] = useState<string>("");
   const [markerConfig, setMarkerConfig] = useState<MarkerConfig>({

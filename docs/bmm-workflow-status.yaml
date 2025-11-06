@@ -29,7 +29,7 @@ workflow_status:
   # Phase 3: Solutioning (Skip for Level 0)
 
   # Phase 4: Implementation (Tracked separately in sprint plan)
-  sprint-planning: required
+  sprint-planning: docs/sprint-status.yaml
 
 # Level 0 Story Status (for single atomic change)
 stories:

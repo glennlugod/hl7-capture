@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<story-context>
+  <story>
+    <title>UX Design System Foundation</title>
+    <as-a>developer</as-a>
+    <i-want>to establish the visual foundation of the application using the shadcn/ui design system</i-want>
+    <so-that>all subsequent UI components are built with a consistent, professional, and accessible aesthetic that promotes a calm and focused user experience</so-that>
+  </story>
+  <acceptance-criteria>
+    <criterion id="AC #1">shadcn/ui Integration: Given the project is set up with React and Tailwind CSS, when the developer runs the shadcn/ui initialization command, then all necessary configuration files are created and correctly configured, and the Button component can be added and rendered successfully.</criterion>
+    <criterion id="AC #2">Theme and Color System Implementation: Given the ux-design-specification.md defines the color palette, when the developer configures the Tailwind CSS theme, then all colors are available as CSS variables and utility classes, verified by a test page.</criterion>
+    <criterion id="AC #3">Typography System Setup: Given the ux-design-specification.md defines the fonts and type scale, when the developer configures the Tailwind CSS theme, then the correct fonts and type scale classes are available, verified by a test page.</criterion>
+    <criterion id="AC #4">Spacing, Shadows, and Border Radius Configuration: Given the ux-design-specification.md defines the spacing, shadow, and border radius systems, when the developer configures the Tailwind CSS theme, then these systems are available as utility classes, verified by a test page.</criterion>
+    <criterion id="AC #5">Base Component Styling: Given shadcn/ui is initialized and the theme is configured, when the developer adds base components, then they automatically adopt the custom theme without manual overrides, verified by checking a Button, Card, and Input component.</criterion>
+  </acceptance-criteria>
+  <tasks>
+    <task phase="Setup and Initialization">Install and initialize Tailwind CSS and shadcn/ui.</task>
+    <task phase="Theme Configuration">Configure the full color, typography, and spacing systems in tailwind.config.js.</task>
+    <task phase="Component Verification">Add and visually verify Button, Input, Card, and Badge components on a test page.</task>
+    <task phase="Documentation">Create DESIGN_SYSTEM.md to document the theme and component usage.</task>
+  </tasks>
+  <artifacts>
+    <docs>
+      <doc>
+        <path>docs/ux-design-specification.md</path>
+        <title>hl7-capture UX Design Specification</title>
+        <section>1. Design System Foundation</section>
+        <snippet>Chosen System: shadcn/ui. Provides the ideal balance for hl7-capture between professional quality and complete customization control. Components are copied directly into your project, giving you full ownership.</snippet>
+      </doc>
+      <doc>
+        <path>docs/tech-spec.md</path>
+        <title>Technical Specification: HL7-Capture</title>
+        <section>1.4 Established Conventions (Greenfield)</section>
+        <snippet>Establishes the foundational tech stack and conventions for the project, including TypeScript strict mode, 2-space indentation, and the file organization structure.</snippet>
+      </doc>
+    </docs>
+    <code>
+      <code>
+        <path>src/renderer/App.tsx</path>
+        <kind>component</kind>
+        <symbol>App</symbol>
+        <reason>The root React component where the design system will be applied.</reason>
+      </code>
+      <code>
+        <path>src/renderer/App.css</path>
+        <kind>styling</kind>
+        <reason>The existing global stylesheet. The new Tailwind CSS utility classes will supersede the styles in this file for new components.</reason>
+      </code>
+    </code>
+    <dependencies>
+      <dependency ecosystem="Node">
+        <package name="react" version="^18.2.0" />
+        <package name="react-dom" version="^18.2.0" />
+        <package name="electron" version="^27.0.0" dev="true" />
+        <package name="vite" version="^5.0.0" dev="true" />
+        <package name="typescript" version="^5.3.3" dev="true" />
+      </dependency>
+    </dependencies>
+  </artifacts>
+  <interfaces></interfaces>
+  <constraints>
+    <constraint>Follow the file organization pattern defined in the tech-spec (e.g., `src/renderer/components`).</constraint>
+    <constraint>Use TypeScript strict mode and adhere to the established code style (2-space indentation, double quotes).</constraint>
+    <constraint>New components should be created using the shadcn/ui CLI to ensure they are correctly added to the project.</constraint>
+  </constraints>
+  <tests>
+    <standards>Use Jest and @testing-library/react for component testing. Tests should be co-located with the source files in a `__tests__` directory or with a `.test.ts` extension. Aim for 80%+ test coverage on business logic.</standards>
+    <locations>
+      <location>tests/unit/</location>
+      <location>tests/integration/</location>
+    </locations>
+    <ideas>
+      <idea for="AC #1">Write a test to ensure the `Button` component from shadcn/ui can be rendered without errors after initialization.</idea>
+      <idea for="AC #2">Create a test that renders a component with a themed background color and asserts that the computed style matches the correct hex code from the design system.</idea>
+      <idea for="AC #5">Write a snapshot test for the `DesignSystemTestPage.tsx` component to ensure all base components render correctly with the applied theme.</idea>
+    </ideas>
+  </tests>
+</story-context>
