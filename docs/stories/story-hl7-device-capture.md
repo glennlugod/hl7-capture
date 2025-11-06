@@ -168,6 +168,12 @@ so that **I can troubleshoot device-to-LIS integration issues, validate HL7 mess
 - [x] Create README.md with HL7 protocol overview, installation, usage
 - [x] Add inline code comments for complex HL7 parsing logic
 
+### Review Follow-ups (AI)
+
+- [ ] [AI-Review][High] Implement actual TCP packet capture using the `cap` library in `src/main/hl7-capture.ts`.
+- [ ] [AI-Review][High] Create comprehensive unit tests for the HL7 parsing logic in a new test file (`tests/unit/hl7-parser.test.ts`).
+- [ ] [AI-Review][Medium] Update the story file to accurately reflect the status of the tasks.
+
 ## Dev Notes
 
 ### Technical Summary
@@ -348,6 +354,48 @@ This story relies entirely on the tech-spec as the primary reference. All techni
 ## Review Notes
 
 <!-- Will be populated during code review -->
+
+---
+
+## Senior Developer Review (AI)
+
+**Reviewer:** Glenn
+**Date:** 2025-11-06
+**Outcome:** Blocked
+
+**Summary:**
+The review of the story "Build HL7 Medical Device Capture Application" has identified critical issues that block its approval. While the UI components and overall application structure are well-implemented, the core functionality of live network packet capture is missing and has been replaced by a simulation. Additionally, there is a complete lack of unit tests for the HL7 parsing logic, which is the most complex and critical part of the application. These issues must be addressed before the story can be reconsidered for approval.
+
+**Key Findings:**
+
+- **[High] Missing Core Functionality:** The application does not capture live network traffic. The `HL7CaptureManager` uses a simulation instead of the `pcap` library.
+- **[High] Lack of Unit Tests:** There are no unit tests for the HL7 parsing logic, including marker detection and message parsing.
+
+**Acceptance Criteria Coverage:**
+| AC# | Description | Status | Evidence |
+|---|---|---|---|
+| 1 | Interface Detection | Implemented | `src/main/hl7-capture.ts:49` |
+| 2 | Configuration Panel | Implemented | `src/renderer/components/InterfaceSelector.tsx` |
+| 3 | TCP Capture with HL7 Markers | Missing | `src/main/hl7-capture.ts:150` (uses simulation) |
+| 4 | Session Tracking | Implemented | `src/main/hl7-capture.ts:233` |
+| 5 | Message Visualization | Implemented | `src/renderer/components/MessageDetailViewer.tsx` |
+| 6 | Marker Customization | Implemented | `src/renderer/components/InterfaceSelector.tsx:48` |
+| 7 | Pause/Resume/Clear | Implemented | `src/renderer/components/ControlPanel.tsx` |
+| 8 | Cross-Platform Compatibility | Not Verified | Cannot be verified without actual capture functionality |
+
+**Task Completion Validation:**
+| Task | Marked As | Verified As | Evidence |
+|---|---|---|---|
+| Implement TCP packet capture | [x] | Not Done | `src/main/hl7-capture.ts:150` |
+| Create unit tests for HL7 marker detection | [x] | Not Done | `tests/unit/packetParser.test.ts` (no HL7 tests) |
+| Create unit tests for HL7 message parsing | [x] | Not Done | `tests/unit/packetParser.test.ts` (no HL7 tests) |
+
+**Action Items:**
+**Code Changes Required:**
+
+- [ ] [High] Implement actual TCP packet capture using the `cap` library in `src/main/hl7-capture.ts`.
+- [ ] [High] Create comprehensive unit tests for the HL7 parsing logic in a new test file (`tests/unit/hl7-parser.test.ts`).
+- [ ] [Medium] Update the story file to accurately reflect the status of the tasks.
 
 ---
 

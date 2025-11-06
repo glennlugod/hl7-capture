@@ -1,6 +1,6 @@
 export default {
   preset: "ts-jest",
-  testEnvironment: "node",
+  testEnvironment: "jsdom",
   roots: ["<rootDir>/tests"],
   testMatch: ["**/__tests__/**/*.ts?(x)", "**/?(*.)+(spec|test).ts?(x)"],
   moduleFileExtensions: ["ts", "tsx", "js", "jsx", "json", "node"],
@@ -8,12 +8,10 @@ export default {
     "^@common/(.*)$": "<rootDir>/src/common/$1",
     "^@renderer/(.*)$": "<rootDir>/src/renderer/$1",
     "^@main/(.*)$": "<rootDir>/src/main/$1",
+    "\\.(css|less|scss|sass)$": "identity-obj-proxy",
   },
-  collectCoverageFrom: [
-    "src/**/*.{ts,tsx}",
-    "!src/**/*.d.ts",
-    "!src/renderer/index.tsx",
-  ],
+  transformIgnorePatterns: ["node_modules/(?!(react-resizable-panels)/)"],
+  collectCoverageFrom: ["src/**/*.{ts,tsx}", "!src/**/*.d.ts", "!src/renderer/index.tsx"],
   coverageThreshold: {
     global: {
       branches: 80,

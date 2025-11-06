@@ -2,17 +2,16 @@ import "./App.css";
 
 import React, { useEffect, useState } from "react";
 
-import ControlPanel from "./components/ControlPanel";
+import ConfigurationPanel from "./components/ConfigurationPanel";
 import { DesignSystemTestPage } from "./components/DesignSystemTestPage";
-import InterfaceSelector from "./components/InterfaceSelector";
-import MessageViewer from "./components/MessageViewer";
+import MainLayout from "./components/MainLayout";
+import MessageDetailViewer from "./components/MessageDetailViewer";
 import SessionList from "./components/SessionList";
-import StatusBar from "./components/StatusBar";
 
 import type { NetworkInterface, HL7Session, CaptureStatus, MarkerConfig } from "../common/types";
 
 // Set to true to view design system test page
-const SHOW_DESIGN_SYSTEM_TEST = true;
+const SHOW_DESIGN_SYSTEM_TEST = false;
 
 export default function App(): JSX.Element {
   // Show design system test page for verification
@@ -35,6 +34,10 @@ export default function App(): JSX.Element {
   const [sessionCount, setSessionCount] = useState(0);
   const [error, setError] = useState<string>("");
   const [selectedSession, setSelectedSession] = useState<HL7Session | null>(null);
+  const [autoScroll, setAutoScroll] = useState(() => {
+    const saved = localStorage.getItem("hl7-capture-auto-scroll");
+    return saved !== null ? JSON.parse(saved) : true;
+  });
 
   // Load interfaces on mount
   useEffect(() => {
@@ -122,41 +125,81 @@ export default function App(): JSX.Element {
     setMarkerConfig((prev) => ({ ...prev, ...updates }));
   };
 
+  const handleToggleAutoScroll = () => {
+    setAutoScroll((prev: boolean) => {
+      const newValue = !prev;
+      localStorage.setItem("hl7-capture-auto-scroll", JSON.stringify(newValue));
+      return newValue;
+    });
+  };
+
+  const handleSelectSession = (session: HL7Session) => {
+    setSelectedSession(session);
+  };
+
+  // Keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ctrl/Cmd + S: Toggle Start/Stop capture
+      if ((e.ctrlKey || e.metaKey) && e.key === "s") {
+        e.preventDefault();
+        if (isCapturing) {
+          handleStopCapture();
+        } else {
+          handleStartCapture();
+        }
+        return;
+      }
+
+      // Ctrl/Cmd + K: Clear sessions
+      if ((e.ctrlKey || e.metaKey) && e.key === "k") {
+        e.preventDefault();
+        if (sessions.length > 0) {
+          if (window.confirm("Clear all captured sessions?")) {
+            handleClearSessions();
+          }
+        }
+        return;
+      }
+
+      // Arrow Up/Down: Navigate sessions
+      if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+        if (sessions.length === 0) return;
+
+        e.preventDefault();
+        const currentIndex = selectedSession
+          ? sessions.findIndex((s) => s.id === selectedSession.id)
+          : -1;
+
+        let newIndex: number;
+        if (e.key === "ArrowUp") {
+          newIndex = currentIndex <= 0 ? sessions.length - 1 : currentIndex - 1;
+        } else {
+          newIndex = currentIndex >= sessions.length - 1 ? 0 : currentIndex + 1;
+        }
+
+        setSelectedSession(sessions[newIndex]);
+        return;
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [sessions, selectedSession, isCapturing]);
+
   return (
-    <div className="app">
-      <header className="app-header">
-        <h1>hl7-capture - HL7 Medical Device Communication Analyzer</h1>
-      </header>
-
-      {error && <div className="error-banner">{error}</div>}
-
-      <div className="main-content">
-        <InterfaceSelector
-          interfaces={interfaces}
-          selectedInterface={selectedInterface}
-          onSelectInterface={setSelectedInterface}
-          isCapturing={isCapturing}
-          markerConfig={markerConfig}
-          onUpdateConfig={updateMarkerConfig}
+    <MainLayout
+      configPanel={<ConfigurationPanel />}
+      sessionList={
+        <SessionList
+          sessions={sessions}
+          selectedSession={selectedSession}
+          onSelectSession={handleSelectSession}
+          autoScroll={autoScroll}
+          onToggleAutoScroll={handleToggleAutoScroll}
         />
-
-        <ControlPanel
-          isCapturing={isCapturing}
-          onStartCapture={handleStartCapture}
-          onStopCapture={handleStopCapture}
-          onClearSessions={handleClearSessions}
-        />
-
-        <SessionList sessions={sessions} onSelectSession={setSelectedSession} />
-      </div>
-
-      <MessageViewer session={selectedSession} onClose={() => setSelectedSession(null)} />
-
-      <StatusBar
-        isCapturing={isCapturing}
-        interface={selectedInterface}
-        sessionCount={sessionCount}
-      />
-    </div>
+      }
+      messageDetail={<MessageDetailViewer session={selectedSession} />}
+    />
   );
 }
