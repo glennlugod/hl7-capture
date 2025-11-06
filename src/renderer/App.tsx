@@ -36,9 +36,10 @@ export default function App(): JSX.Element {
   const [error, setError] = useState<string>("");
   const [selectedSession, setSelectedSession] = useState<HL7Session | null>(null);
   const [autoScroll, setAutoScroll] = useState(() => {
-    const saved = localStorage.getItem("hl7-capture-auto-scroll");
+    const saved = localStorage.getItem("hl7-capture-autoscroll");
     return saved !== null ? JSON.parse(saved) : true;
   });
+  const [selectedMessageIndex, setSelectedMessageIndex] = useState<number>(0);
 
   // Load interfaces on mount
   useEffect(() => {
@@ -212,8 +213,21 @@ export default function App(): JSX.Element {
   return (
     <MainLayout
       configPanel={<ConfigurationPanel />}
-      sessionList={<SessionList />}
-      messageDetail={<MessageDetailViewer />}
+      sessionList={
+        <SessionList
+          sessions={sessions}
+          selectedSession={selectedSession}
+          onSelectSession={handleSelectSession}
+          autoScroll={autoScroll}
+          onAutoScrollChange={setAutoScroll}
+        />
+      }
+      messageDetail={
+        <MessageDetailViewer
+          session={selectedSession}
+          onNavigateMessage={setSelectedMessageIndex}
+        />
+      }
       isCapturing={isCapturing}
       isPaused={isPaused}
       onStartCapture={handleStartCapture}

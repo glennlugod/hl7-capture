@@ -18,32 +18,48 @@ describe("Placeholder Components", () => {
     });
 
     describe("SessionList", () => {
-      it("should render placeholder without errors", () => {
-        const { getByText } = render(<SessionList />);
-        expect(getByText("Session List Placeholder")).toBeInTheDocument();
+      it("should render without errors with required props", () => {
+        const { container } = render(
+          <SessionList
+            sessions={[]}
+            selectedSession={null}
+            onSelectSession={jest.fn()}
+            autoScroll={false}
+            onAutoScrollChange={jest.fn()}
+          />
+        );
+        expect(container.querySelector('[role="listbox"]')).toBeInTheDocument();
       });
     });
 
     describe("MessageDetailViewer", () => {
-      it("should render placeholder without errors", () => {
-        const { getByText } = render(<MessageDetailViewer />);
-        expect(getByText("Message Detail Viewer Placeholder")).toBeInTheDocument();
+      it("should render without errors with required props", () => {
+        const { container } = render(
+          <MessageDetailViewer session={null} onNavigateMessage={jest.fn()} />
+        );
+        expect(container).toBeInTheDocument();
       });
     });
   });
 
   describe("AC #5: Component Integration into Layout", () => {
-    it("should render all placeholder components", () => {
-      const { getByText } = render(
+    it("should render all components together", () => {
+      const { container, getByText } = render(
         <div>
           <ConfigurationPanel />
-          <SessionList />
-          <MessageDetailViewer />
+          <SessionList
+            sessions={[]}
+            selectedSession={null}
+            onSelectSession={jest.fn()}
+            autoScroll={false}
+            onAutoScrollChange={jest.fn()}
+          />
+          <MessageDetailViewer session={null} onNavigateMessage={jest.fn()} />
         </div>
       );
       expect(getByText("Configuration Panel Placeholder")).toBeInTheDocument();
-      expect(getByText("Session List Placeholder")).toBeInTheDocument();
-      expect(getByText("Message Detail Viewer Placeholder")).toBeInTheDocument();
+      expect(container.querySelector('[role="listbox"]')).toBeInTheDocument();
+      expect(container).toBeInTheDocument();
     });
   });
 });

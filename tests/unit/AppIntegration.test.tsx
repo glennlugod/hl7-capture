@@ -36,22 +36,22 @@ describe("App Integration - Layout and Components", () => {
   });
 
   describe("AC #5: Component Integration into Layout", () => {
-    it("should render MainLayout with all three placeholder components", () => {
-      render(<App />);
+    it("should render MainLayout with all three components", () => {
+      const { container } = render(<App />);
 
-      // Verify all placeholder components are rendered
+      // Verify components are rendered
       expect(screen.getByText("Configuration Panel Placeholder")).toBeInTheDocument();
-      expect(screen.getByText("Session List Placeholder")).toBeInTheDocument();
-      expect(screen.getByText("Message Detail Viewer Placeholder")).toBeInTheDocument();
+      expect(container.querySelector('[role="listbox"]')).toBeInTheDocument();
+      expect(screen.getByText("Select a session to view details")).toBeInTheDocument();
     });
 
-    it("should render placeholder components in correct layout structure", () => {
-      render(<App />);
+    it("should render components in correct layout structure", () => {
+      const { container } = render(<App />);
 
-      // Verify all three placeholders exist in the rendered tree
+      // Verify all components exist in the rendered tree
       expect(screen.getByText("Configuration Panel Placeholder")).toBeInTheDocument();
-      expect(screen.getByText("Session List Placeholder")).toBeInTheDocument();
-      expect(screen.getByText("Message Detail Viewer Placeholder")).toBeInTheDocument();
+      expect(container.querySelector('[role="listbox"]')).toBeInTheDocument();
+      expect(screen.getByText("Sessions")).toBeInTheDocument();
     });
 
     it("should not show design system test page when flag is false", () => {
@@ -60,7 +60,7 @@ describe("App Integration - Layout and Components", () => {
       // Should not see design system test page content
       expect(screen.queryByText(/Design System Test/i)).not.toBeInTheDocument();
 
-      // Should see the placeholder components instead
+      // Should see the actual components instead
       expect(screen.getByText("Configuration Panel Placeholder")).toBeInTheDocument();
     });
   });
