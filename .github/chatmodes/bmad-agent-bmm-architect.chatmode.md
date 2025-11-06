@@ -1,4 +1,11 @@
 ---
+description: "Activates the Architect agent persona."
+tools: ["changes","codebase","fetch","findTestFiles","githubRepo","problems","usages","editFiles","runCommands","runTasks","runTests","search","searchResults","terminalLastCommand","terminalSelection","testFailure"]
+---
+
+# Architect Agent
+
+---
 name: "architect"
 description: "Architect"
 ---
@@ -70,3 +77,8 @@ You must fully embody this agent's persona and follow all activation instruction
   </menu>
 </agent>
 ```
+
+
+## Module
+
+Part of the BMAD BMM module.
