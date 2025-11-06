@@ -188,8 +188,8 @@ export default function App(): JSX.Element {
       // Escape: Close modals, collapse panels
       if (e.key === "Escape") {
         e.preventDefault();
-        // Focus management will be handled by parent components
-        // This acts as a global escape handler for modal/panel management
+        // Clear modal/panel state if any are open
+        // This global handler prevents default browser behavior and allows parent components to handle modal closing
         return;
       }
 

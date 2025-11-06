@@ -10,6 +10,49 @@ interface SessionListProps {
   onAutoScrollChange: (enabled: boolean) => void;
 }
 
+// Performance optimization: memoized session item to prevent unnecessary re-renders
+const SessionItem = React.memo(
+  ({
+    session,
+    isSelected,
+    index,
+    onSelectSession,
+    setFocusedIndex,
+  }: {
+    session: HL7Session;
+    isSelected: boolean;
+    index: number;
+    onSelectSession: (session: HL7Session) => void;
+    setFocusedIndex: (index: number) => void;
+  }) => (
+    <button
+      onClick={() => {
+        onSelectSession(session);
+        setFocusedIndex(index);
+      }}
+      onFocus={() => setFocusedIndex(index)}
+      className={`w-full px-4 py-3 text-left transition-colors animate-fade-in ${
+        isSelected ? "bg-teal-50 outline-2 outline-teal-500" : "bg-white hover:bg-gray-50"
+      } focus:outline-2 focus:outline-teal-500 focus:outline-offset-0`}
+      aria-selected={isSelected}
+      role="option"
+      aria-label={`Session ${session.sessionId} - ${new Date(session.startTime).toLocaleTimeString()}`}
+    >
+      <div className="flex flex-col gap-1">
+        <div className="flex items-center justify-between">
+          <span className="font-semibold text-gray-900">Session {session.sessionId}</span>
+          <span className="text-xs text-gray-500">
+            {new Date(session.startTime).toLocaleTimeString()}
+          </span>
+        </div>
+        <div className="text-xs text-gray-600">{session.messages.length} messages</div>
+      </div>
+    </button>
+  )
+);
+
+SessionItem.displayName = "SessionItem";
+
 export default function SessionList({
   sessions,
   selectedSession,
@@ -89,7 +132,7 @@ export default function SessionList({
       onSelectSession(sessions[newIndex]);
 
       // Scroll focused item into view
-      const item = listRef.current?.children[newIndex] as HTMLElement;
+      const item = listRef.current?.children[newIndex + 1] as HTMLElement; // +1 for header
       if (item) {
         item.scrollIntoView({ behavior: "smooth", block: "nearest" });
       }
@@ -100,7 +143,7 @@ export default function SessionList({
   return (
     <div
       ref={listRef}
-      className="flex h-full flex-col overflow-y-auto bg-white"
+      className="flex h-full flex-col overflow-hidden bg-white"
       role="listbox"
       aria-label="Captured HL7 sessions"
       onKeyDown={handleKeyDown}
@@ -113,55 +156,37 @@ export default function SessionList({
             type="checkbox"
             checked={autoScroll}
             onChange={(e) => handleAutoScrollChange(e.target.checked)}
-            className="h-5 w-5 rounded border-gray-300 text-teal-500 focus:outline-2 focus:outline-teal-500"
+            className="h-11 w-11 rounded border-gray-300 text-teal-500 focus:outline-2 focus:outline-teal-500 cursor-pointer"
             aria-label="Enable auto-scroll to new sessions"
           />
           <span className="text-sm font-medium text-gray-700">Auto-scroll</span>
         </label>
       </div>
 
-      {/* Session list */}
-      <div
-        className="flex-1 divide-y divide-gray-200"
-        role="presentation"
-        aria-live="polite"
-        aria-label="Session list content"
-      >
-        {sessions.length === 0 ? (
-          <div className="flex h-full items-center justify-center">
-            <p className="text-sm text-gray-500">No sessions captured</p>
-          </div>
-        ) : (
-          sessions.map((session, index) => (
-            <button
+      {/* Session list with performance optimization via React.memo */}
+      {sessions.length === 0 ? (
+        <div className="flex h-full items-center justify-center">
+          <p className="text-sm text-gray-500">No sessions captured</p>
+        </div>
+      ) : (
+        <div
+          className="flex-1 divide-y divide-gray-200 overflow-y-auto"
+          role="presentation"
+          aria-live="polite"
+          aria-label="Session list content"
+        >
+          {sessions.map((session, index) => (
+            <SessionItem
               key={session.id}
-              onClick={() => {
-                onSelectSession(session);
-                setFocusedIndex(index);
-              }}
-              onFocus={() => setFocusedIndex(index)}
-              className={`w-full px-4 py-3 text-left transition-colors animate-fade-in ${
-                selectedSession?.id === session.id
-                  ? "bg-teal-50 outline-2 outline-teal-500"
-                  : "bg-white hover:bg-gray-50"
-              } focus:outline-2 focus:outline-teal-500 focus:outline-offset-0`}
-              aria-selected={selectedSession?.id === session.id}
-              role="option"
-              aria-label={`Session ${session.sessionId} - ${new Date(session.startTime).toLocaleTimeString()}`}
-            >
-              <div className="flex flex-col gap-1">
-                <div className="flex items-center justify-between">
-                  <span className="font-semibold text-gray-900">Session {session.sessionId}</span>
-                  <span className="text-xs text-gray-500">
-                    {new Date(session.startTime).toLocaleTimeString()}
-                  </span>
-                </div>
-                <div className="text-xs text-gray-600">{session.messages.length} messages</div>
-              </div>
-            </button>
-          ))
-        )}
-      </div>
+              session={session}
+              isSelected={selectedSession?.id === session.id}
+              index={index}
+              onSelectSession={onSelectSession}
+              setFocusedIndex={setFocusedIndex}
+            />
+          ))}
+        </div>
+      )}
 
       {/* Sentinel for auto-scroll detection */}
       <div ref={sentinelRef} className="h-1" aria-hidden="true" />

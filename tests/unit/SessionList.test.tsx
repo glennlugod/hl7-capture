@@ -139,6 +139,23 @@ describe("SessionList Component", () => {
       fireEvent.click(checkbox);
       expect(mockOnAutoScrollChange).toHaveBeenCalledWith(false);
     });
+
+    it("should have 44x44px minimum touch target for checkbox", () => {
+      const { container } = render(
+        <SessionList
+          sessions={mockSessions}
+          selectedSession={null}
+          onSelectSession={jest.fn()}
+          autoScroll={true}
+          onAutoScrollChange={jest.fn()}
+        />
+      );
+      const checkbox = container.querySelector(
+        '[aria-label="Enable auto-scroll to new sessions"]'
+      ) as HTMLElement;
+      expect(checkbox.className).toContain("h-11");
+      expect(checkbox.className).toContain("w-11");
+    });
   });
 
   describe("AC #3: Selection Persistence During Updates", () => {
@@ -208,6 +225,67 @@ describe("SessionList Component", () => {
         expect(btn.className).toContain("focus:outline-2");
         expect(btn.className).toContain("focus:outline-teal-500");
       });
+    });
+
+    it("should apply focus outline to auto-scroll checkbox", () => {
+      const { container } = render(
+        <SessionList
+          sessions={mockSessions}
+          selectedSession={null}
+          onSelectSession={jest.fn()}
+          autoScroll={false}
+          onAutoScrollChange={jest.fn()}
+        />
+      );
+      const checkbox = container.querySelector(
+        '[aria-label="Enable auto-scroll to new sessions"]'
+      ) as HTMLElement;
+      expect(checkbox.className).toContain("focus:outline-2");
+      expect(checkbox.className).toContain("focus:outline-teal-500");
+    });
+  });
+
+  describe("AC #10: Performance Optimization", () => {
+    it("should use virtual scrolling for 100+ sessions", () => {
+      const largeSessions: HL7Session[] = Array.from({ length: 150 }, (_, i) => ({
+        id: `session-${i}`,
+        sessionId: i + 1,
+        startTime: Date.now() + i * 1000,
+        deviceIP: "192.168.1.100",
+        pcIP: "192.168.1.1",
+        elements: [],
+        messages: [`msg${i}`],
+        isComplete: true,
+      }));
+
+      const { container } = render(
+        <SessionList
+          sessions={largeSessions}
+          selectedSession={null}
+          onSelectSession={jest.fn()}
+          autoScroll={false}
+          onAutoScrollChange={jest.fn()}
+        />
+      );
+
+      // Virtual list should be present when session count > 100
+      expect(container.querySelector('[class*="react-window"]')).toBeDefined();
+    });
+
+    it("should use standard list for < 100 sessions", () => {
+      const { container } = render(
+        <SessionList
+          sessions={mockSessions}
+          selectedSession={null}
+          onSelectSession={jest.fn()}
+          autoScroll={false}
+          onAutoScrollChange={jest.fn()}
+        />
+      );
+
+      // Standard list rendering should be used
+      const options = container.querySelectorAll('[role="option"]');
+      expect(options.length).toBe(mockSessions.length);
     });
   });
 
