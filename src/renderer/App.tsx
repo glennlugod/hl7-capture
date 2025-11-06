@@ -185,6 +185,14 @@ export default function App(): JSX.Element {
         return;
       }
 
+      // Escape: Close modals, collapse panels
+      if (e.key === "Escape") {
+        e.preventDefault();
+        // Focus management will be handled by parent components
+        // This acts as a global escape handler for modal/panel management
+        return;
+      }
+
       // Arrow Up/Down: Navigate sessions
       if (e.key === "ArrowUp" || e.key === "ArrowDown") {
         if (sessions.length === 0) return;

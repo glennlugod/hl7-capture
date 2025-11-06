@@ -113,7 +113,7 @@ export default function SessionList({
             type="checkbox"
             checked={autoScroll}
             onChange={(e) => handleAutoScrollChange(e.target.checked)}
-            className="h-4 w-4 rounded border-gray-300 text-teal-500 focus:ring-2 focus:ring-teal-500"
+            className="h-5 w-5 rounded border-gray-300 text-teal-500 focus:outline-2 focus:outline-teal-500"
             aria-label="Enable auto-scroll to new sessions"
           />
           <span className="text-sm font-medium text-gray-700">Auto-scroll</span>
@@ -142,9 +142,9 @@ export default function SessionList({
               onFocus={() => setFocusedIndex(index)}
               className={`w-full px-4 py-3 text-left transition-colors animate-fade-in ${
                 selectedSession?.id === session.id
-                  ? "bg-teal-50 ring-2 ring-teal-500"
+                  ? "bg-teal-50 outline-2 outline-teal-500"
                   : "bg-white hover:bg-gray-50"
-              } focus:ring-2 focus:ring-teal-500 focus:ring-offset-0`}
+              } focus:outline-2 focus:outline-teal-500 focus:outline-offset-0`}
               aria-selected={selectedSession?.id === session.id}
               role="option"
               aria-label={`Session ${session.sessionId} - ${new Date(session.startTime).toLocaleTimeString()}`}

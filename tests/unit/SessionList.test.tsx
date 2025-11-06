@@ -153,7 +153,8 @@ describe("SessionList Component", () => {
         />
       );
       const options = container.querySelectorAll('[role="option"]');
-      expect(options[0].className).toContain("ring-teal-500");
+      expect(options[0].className).toContain("outline-2");
+      expect(options[0].className).toContain("outline-teal-500");
     });
 
     it("should call onSelectSession when clicked", () => {
@@ -192,7 +193,7 @@ describe("SessionList Component", () => {
   });
 
   describe("AC #5: Focus Indicators", () => {
-    it("should apply focus ring to session buttons", () => {
+    it("should apply focus outline to session buttons", () => {
       const { container } = render(
         <SessionList
           sessions={mockSessions}
@@ -204,7 +205,8 @@ describe("SessionList Component", () => {
       );
       const buttons = container.querySelectorAll('[role="option"]');
       buttons.forEach((btn) => {
-        expect(btn.className).toContain("focus:ring-teal-500");
+        expect(btn.className).toContain("focus:outline-2");
+        expect(btn.className).toContain("focus:outline-teal-500");
       });
     });
   });

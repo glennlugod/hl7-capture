@@ -119,7 +119,7 @@ export default function MessageDetailViewer({
               activeTab === "hex"
                 ? "border-b-2 border-teal-500 text-teal-600"
                 : "border-b-2 border-transparent text-gray-600 hover:text-gray-900"
-            } focus:ring-2 focus:ring-teal-500 focus:ring-offset-0`}
+            } focus:outline-2 focus:outline-teal-500 focus:outline-offset-0`}
             role="tab"
             aria-selected={activeTab === "hex"}
             aria-controls="hex-panel"
@@ -134,7 +134,7 @@ export default function MessageDetailViewer({
               activeTab === "decoded"
                 ? "border-b-2 border-teal-500 text-teal-600"
                 : "border-b-2 border-transparent text-gray-600 hover:text-gray-900"
-            } focus:ring-2 focus:ring-teal-500 focus:ring-offset-0`}
+            } focus:outline-2 focus:outline-teal-500 focus:outline-offset-0`}
             role="tab"
             aria-selected={activeTab === "decoded"}
             aria-controls="decoded-panel"

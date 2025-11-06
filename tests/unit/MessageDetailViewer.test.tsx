@@ -80,14 +80,15 @@ describe("MessageDetailViewer Component", () => {
   });
 
   describe("AC #5: Focus Indicators", () => {
-    it("should apply focus ring to tab buttons", () => {
+    it("should apply focus outline to tab buttons", () => {
       const { container } = render(
         <MessageDetailViewer session={mockSession} onNavigateMessage={jest.fn()} />
       );
 
       const tabs = container.querySelectorAll('[role="tab"]');
       tabs.forEach((tab) => {
-        expect(tab.className).toContain("focus:ring-teal-500");
+        expect(tab.className).toContain("focus:outline-2");
+        expect(tab.className).toContain("focus:outline-teal-500");
       });
     });
   });
