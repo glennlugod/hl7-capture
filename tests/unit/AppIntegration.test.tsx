@@ -39,39 +39,19 @@ describe("App Integration - Layout and Components", () => {
     it("should render MainLayout with all three placeholder components", () => {
       render(<App />);
 
-      // Verify MainLayout panel headers are present
-      expect(screen.getByText("Configuration")).toBeInTheDocument();
-      expect(screen.getByText("Sessions")).toBeInTheDocument();
-      expect(screen.getByText("Message Details")).toBeInTheDocument();
-
-      // Verify placeholder components are rendered
-      expect(screen.getByText("ConfigurationPanel - Placeholder")).toBeInTheDocument();
-      // The SessionList and MessageDetailViewer no longer have placeholder text
+      // Verify all placeholder components are rendered
+      expect(screen.getByText("Configuration Panel Placeholder")).toBeInTheDocument();
+      expect(screen.getByText("Session List Placeholder")).toBeInTheDocument();
+      expect(screen.getByText("Message Detail Viewer Placeholder")).toBeInTheDocument();
     });
 
-    it("should render placeholder text for each component in the correct location", () => {
-      const { container } = render(<App />);
-
-      // Verify all three placeholders exist
-      const configPlaceholder = screen.getByText("ConfigurationPanel - Placeholder");
-
-      expect(configPlaceholder).toBeInTheDocument();
-    });
-
-    it("should maintain three-panel layout structure", () => {
+    it("should render placeholder components in correct layout structure", () => {
       render(<App />);
 
-      // Configuration Panel header at top
-      const configHeader = screen.getByText("Configuration");
-      expect(configHeader).toBeInTheDocument();
-
-      // Session List on left side
-      const sessionHeader = screen.getByText("Sessions");
-      expect(sessionHeader).toBeInTheDocument();
-
-      // Message Detail on right side
-      const detailHeader = screen.getByText("Message Details");
-      expect(detailHeader).toBeInTheDocument();
+      // Verify all three placeholders exist in the rendered tree
+      expect(screen.getByText("Configuration Panel Placeholder")).toBeInTheDocument();
+      expect(screen.getByText("Session List Placeholder")).toBeInTheDocument();
+      expect(screen.getByText("Message Detail Viewer Placeholder")).toBeInTheDocument();
     });
 
     it("should not show design system test page when flag is false", () => {
@@ -80,8 +60,8 @@ describe("App Integration - Layout and Components", () => {
       // Should not see design system test page content
       expect(screen.queryByText(/Design System Test/i)).not.toBeInTheDocument();
 
-      // Should see the MainLayout instead
-      expect(screen.getByText("Configuration")).toBeInTheDocument();
+      // Should see the placeholder components instead
+      expect(screen.getByText("Configuration Panel Placeholder")).toBeInTheDocument();
     });
   });
 

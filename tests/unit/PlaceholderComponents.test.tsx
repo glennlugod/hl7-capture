@@ -9,43 +9,41 @@ import MessageDetailViewer from '../../src/renderer/components/MessageDetailView
 import SessionList from '../../src/renderer/components/SessionList'
 
 describe("Placeholder Components", () => {
-  // Mock props for components that require them
-  const sessionListProps = {
-    sessions: [],
-    selectedSession: null,
-    onSelectSession: jest.fn(),
-  };
-
-  const messageDetailViewerProps = {
-    session: null,
-  };
-
   describe("AC #4: Placeholder Custom Component Creation", () => {
     describe("ConfigurationPanel", () => {
-      it("should render without errors", () => {
-        render(<ConfigurationPanel />);
+      it("should render placeholder without errors", () => {
+        const { getByText } = render(<ConfigurationPanel />);
+        expect(getByText("Configuration Panel Placeholder")).toBeInTheDocument();
       });
     });
 
     describe("SessionList", () => {
-      it("should render without errors", () => {
-        render(<SessionList {...sessionListProps} />);
+      it("should render placeholder without errors", () => {
+        const { getByText } = render(<SessionList />);
+        expect(getByText("Session List Placeholder")).toBeInTheDocument();
       });
     });
 
     describe("MessageDetailViewer", () => {
-      it("should render without errors", () => {
-        render(<MessageDetailViewer {...messageDetailViewerProps} />);
+      it("should render placeholder without errors", () => {
+        const { getByText } = render(<MessageDetailViewer />);
+        expect(getByText("Message Detail Viewer Placeholder")).toBeInTheDocument();
       });
     });
   });
 
   describe("AC #5: Component Integration into Layout", () => {
-    it("should render placeholder components without errors", () => {
-      // Test that all components render successfully
-      const { rerender } = render(<ConfigurationPanel />);
-      rerender(<SessionList {...sessionListProps} />);
-      rerender(<MessageDetailViewer {...messageDetailViewerProps} />);
+    it("should render all placeholder components", () => {
+      const { getByText } = render(
+        <div>
+          <ConfigurationPanel />
+          <SessionList />
+          <MessageDetailViewer />
+        </div>
+      );
+      expect(getByText("Configuration Panel Placeholder")).toBeInTheDocument();
+      expect(getByText("Session List Placeholder")).toBeInTheDocument();
+      expect(getByText("Message Detail Viewer Placeholder")).toBeInTheDocument();
     });
   });
 });

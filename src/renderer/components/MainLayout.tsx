@@ -74,9 +74,9 @@ export default function MainLayout({
         <PanelGroup direction="horizontal">
           {/* Session List Panel */}
           <Panel
-            defaultSize={30}
-            minSize={20}
-            maxSize={50}
+            defaultSize={400}
+            minSize={300}
+            maxSize={600}
             className="flex flex-col border-r border-gray-300 bg-white"
           >
             <div className="flex h-12 items-center border-b border-gray-200 px-4">

@@ -212,16 +212,8 @@ export default function App(): JSX.Element {
   return (
     <MainLayout
       configPanel={<ConfigurationPanel />}
-      sessionList={
-        <SessionList
-          sessions={sessions}
-          selectedSession={selectedSession}
-          onSelectSession={handleSelectSession}
-          autoScroll={autoScroll}
-          onToggleAutoScroll={handleToggleAutoScroll}
-        />
-      }
-      messageDetail={<MessageDetailViewer session={selectedSession} />}
+      sessionList={<SessionList />}
+      messageDetail={<MessageDetailViewer />}
       isCapturing={isCapturing}
       isPaused={isPaused}
       onStartCapture={handleStartCapture}

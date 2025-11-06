@@ -156,4 +156,17 @@ describe("MainLayout Component", () => {
     );
     expect(container).toBeInTheDocument();
   });
+
+  it("AC #2: should render panel resize handle for resizable panels", () => {
+    const { container } = render(
+      <MainLayout
+        configPanel={<div>Config</div>}
+        sessionList={<div>Sessions</div>}
+        messageDetail={<div>Message</div>}
+        {...defaultProps}
+      />
+    );
+    const resizeHandle = container.querySelector(".w-1.bg-gray-200");
+    expect(resizeHandle).toBeInTheDocument();
+  });
 });
