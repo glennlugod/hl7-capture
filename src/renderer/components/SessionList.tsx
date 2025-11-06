@@ -31,21 +31,65 @@ const SessionItem = React.memo(
         setFocusedIndex(index);
       }}
       onFocus={() => setFocusedIndex(index)}
-      className={`w-full px-4 py-3 text-left transition-colors animate-fade-in ${
-        isSelected ? "bg-teal-50 outline-2 outline-teal-500" : "bg-white hover:bg-gray-50"
+      className={`group relative w-full px-5 py-4 text-left transition-all duration-200 animate-fade-in ${
+        isSelected
+          ? "bg-gradient-to-r from-teal-50 via-cyan-50 to-blue-50 shadow-md shadow-teal-500/20 border-l-4 border-teal-500"
+          : "bg-white hover:bg-gradient-to-r hover:from-slate-50 hover:via-blue-50/30 hover:to-slate-50 hover:shadow-sm border-l-4 border-transparent"
       } focus:outline-2 focus:outline-teal-500 focus:outline-offset-0`}
       aria-selected={isSelected}
       role="option"
       aria-label={`Session ${session.sessionId} - ${new Date(session.startTime).toLocaleTimeString()}`}
     >
-      <div className="flex flex-col gap-1">
+      <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
-          <span className="font-semibold text-gray-900">Session {session.sessionId}</span>
-          <span className="text-xs text-gray-500">
+          <div className="flex items-center gap-2">
+            <div
+              className={`h-2 w-2 rounded-full transition-all duration-200 ${
+                isSelected
+                  ? "bg-teal-500 shadow-lg shadow-teal-500/50"
+                  : "bg-slate-300 group-hover:bg-slate-400"
+              }`}
+            />
+            <span
+              className={`font-semibold tracking-tight transition-colors ${
+                isSelected ? "text-teal-900" : "text-slate-900"
+              }`}
+            >
+              Session {session.sessionId}
+            </span>
+          </div>
+          <span
+            className={`text-xs font-medium transition-colors ${
+              isSelected ? "text-teal-700" : "text-slate-500"
+            }`}
+          >
             {new Date(session.startTime).toLocaleTimeString()}
           </span>
         </div>
-        <div className="text-xs text-gray-600">{session.messages.length} messages</div>
+        <div className="flex items-center gap-2">
+          <svg
+            className={`w-4 h-4 transition-colors ${
+              isSelected ? "text-teal-600" : "text-slate-400"
+            }`}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"
+            />
+          </svg>
+          <span
+            className={`text-xs font-medium transition-colors ${
+              isSelected ? "text-teal-700" : "text-slate-600"
+            }`}
+          >
+            {session.messages.length} message{session.messages.length !== 1 ? "s" : ""}
+          </span>
+        </div>
       </div>
     </button>
   )
@@ -149,17 +193,40 @@ export default function SessionList({
       onKeyDown={handleKeyDown}
       tabIndex={0}
     >
-      {/* Auto-scroll toggle */}
-      <div className="border-b border-gray-200 bg-gray-50 p-3">
-        <label className="flex items-center gap-2">
-          <input
-            type="checkbox"
-            checked={autoScroll}
-            onChange={(e) => handleAutoScrollChange(e.target.checked)}
-            className="h-11 w-11 rounded border-gray-300 text-teal-500 focus:outline-2 focus:outline-teal-500 cursor-pointer"
-            aria-label="Enable auto-scroll to new sessions"
-          />
-          <span className="text-sm font-medium text-gray-700">Auto-scroll</span>
+      {/* Auto-scroll toggle - Modern switch style */}
+      <div className="border-b border-slate-200/50 bg-gradient-to-r from-slate-50 to-blue-50/30 px-4 py-3 shadow-sm">
+        <label className="flex items-center gap-3 cursor-pointer group">
+          <div className="relative">
+            <input
+              type="checkbox"
+              checked={autoScroll}
+              onChange={(e) => handleAutoScrollChange(e.target.checked)}
+              className="sr-only peer"
+              aria-label="Enable auto-scroll to new sessions"
+            />
+            <div className="w-11 h-6 bg-slate-300 rounded-full peer-focus:ring-2 peer-focus:ring-teal-500 peer-focus:ring-offset-2 peer-checked:bg-gradient-to-r peer-checked:from-teal-500 peer-checked:to-cyan-500 transition-all duration-200 shadow-inner"></div>
+            <div className="absolute left-1 top-1 w-4 h-4 bg-white rounded-full transition-transform duration-200 peer-checked:translate-x-5 shadow-md"></div>
+          </div>
+          <div className="flex items-center gap-2">
+            <svg
+              className={`w-4 h-4 transition-colors ${autoScroll ? "text-teal-600" : "text-slate-500"}`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M19 14l-7 7m0 0l-7-7m7 7V3"
+              />
+            </svg>
+            <span
+              className={`text-sm font-medium transition-colors ${autoScroll ? "text-teal-900" : "text-slate-700"}`}
+            >
+              Auto-scroll
+            </span>
+          </div>
         </label>
       </div>
 
