@@ -16,6 +16,10 @@ const electronAPI = {
 
   stopCapture: (): Promise<void> => ipcRenderer.invoke("stop-capture"),
 
+  pauseCapture: (): Promise<void> => ipcRenderer.invoke("pause-capture"),
+
+  resumeCapture: (): Promise<void> => ipcRenderer.invoke("resume-capture"),
+
   getSessions: (): Promise<HL7Session[]> => ipcRenderer.invoke("get-sessions"),
 
   clearSessions: (): Promise<void> => ipcRenderer.invoke("clear-sessions"),
@@ -40,7 +44,12 @@ const electronAPI = {
   },
 
   onCaptureStatus: (
-    callback: (status: { isCapturing: boolean; sessionCount: number; elementCount: number }) => void
+    callback: (status: {
+      isCapturing: boolean;
+      isPaused?: boolean;
+      sessionCount: number;
+      elementCount: number;
+    }) => void
   ): void => {
     ipcRenderer.on("capture-status", (_event, status) => {
       callback(status);

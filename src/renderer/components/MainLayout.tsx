@@ -1,21 +1,50 @@
-import React, { useState } from "react";
-import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
+import React, { useState } from 'react'
+import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
+
+import ControlPanel from './ControlPanel'
 
 interface MainLayoutProps {
   configPanel: React.ReactNode;
   sessionList: React.ReactNode;
   messageDetail: React.ReactNode;
+  isCapturing: boolean;
+  isPaused: boolean;
+  onStartCapture: () => void;
+  onStopCapture: () => void;
+  onPauseCapture: () => void;
+  onResumeCapture: () => void;
+  onClearSessions: () => void;
 }
 
 export default function MainLayout({
   configPanel,
   sessionList,
   messageDetail,
+  isCapturing,
+  isPaused,
+  onStartCapture,
+  onStopCapture,
+  onPauseCapture,
+  onResumeCapture,
+  onClearSessions,
 }: MainLayoutProps): JSX.Element {
   const [isConfigCollapsed, setIsConfigCollapsed] = useState(false);
 
   return (
     <div className="flex h-screen w-screen flex-col bg-white">
+      {/* Control Panel - Capture buttons */}
+      <div className="border-b border-gray-300 bg-gray-50 px-4 py-3">
+        <ControlPanel
+          isCapturing={isCapturing}
+          isPaused={isPaused}
+          onStartCapture={onStartCapture}
+          onStopCapture={onStopCapture}
+          onPauseCapture={onPauseCapture}
+          onResumeCapture={onResumeCapture}
+          onClearSessions={onClearSessions}
+        />
+      </div>
+
       {/* Configuration Panel - Collapsible */}
       <div
         className={`border-b border-gray-300 bg-white transition-all duration-300 ${

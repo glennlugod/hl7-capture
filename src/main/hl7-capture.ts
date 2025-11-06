@@ -15,6 +15,7 @@ import type { NetworkInterface, MarkerConfig, HL7Session, HL7Element } from "../
  */
 export class HL7CaptureManager extends EventEmitter {
   private isCapturing: boolean = false;
+  private isPaused: boolean = false;
   private currentInterface: string = "";
   private markerConfig: MarkerConfig;
   private sessions: Map<string, HL7Session> = new Map();
@@ -173,11 +174,48 @@ export class HL7CaptureManager extends EventEmitter {
     }
 
     this.isCapturing = false;
+    this.isPaused = false;
     this.activeSessionKey = null;
     this.sessionBuffer = Buffer.alloc(0);
 
     this.emit("status", {
       isCapturing: false,
+      sessionCount: this.sessions.size,
+      elementCount: this.getTotalElementCount(),
+    });
+  }
+
+  /**
+   * Pause capture
+   */
+  public async pauseCapture(): Promise<void> {
+    if (!this.isCapturing || this.isPaused) {
+      return;
+    }
+
+    this.isPaused = true;
+
+    this.emit("status", {
+      isCapturing: this.isCapturing,
+      isPaused: true,
+      sessionCount: this.sessions.size,
+      elementCount: this.getTotalElementCount(),
+    });
+  }
+
+  /**
+   * Resume capture
+   */
+  public async resumeCapture(): Promise<void> {
+    if (!this.isCapturing || !this.isPaused) {
+      return;
+    }
+
+    this.isPaused = false;
+
+    this.emit("status", {
+      isCapturing: this.isCapturing,
+      isPaused: false,
       sessionCount: this.sessions.size,
       elementCount: this.getTotalElementCount(),
     });

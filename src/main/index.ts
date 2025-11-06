@@ -124,6 +124,22 @@ ipcMain.handle("stop-capture", async () => {
   }
 });
 
+ipcMain.handle("pause-capture", async () => {
+  try {
+    await captureManager.pauseCapture();
+  } catch (error) {
+    throw new Error(`Failed to pause capture: ${error}`);
+  }
+});
+
+ipcMain.handle("resume-capture", async () => {
+  try {
+    await captureManager.resumeCapture();
+  } catch (error) {
+    throw new Error(`Failed to resume capture: ${error}`);
+  }
+});
+
 // Session management
 ipcMain.handle("get-sessions", async () => {
   return captureManager.getSessions();

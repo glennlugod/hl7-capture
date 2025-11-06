@@ -1,12 +1,12 @@
-import "./App.css";
+import './App.css'
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState } from 'react'
 
-import ConfigurationPanel from "./components/ConfigurationPanel";
-import { DesignSystemTestPage } from "./components/DesignSystemTestPage";
-import MainLayout from "./components/MainLayout";
-import MessageDetailViewer from "./components/MessageDetailViewer";
-import SessionList from "./components/SessionList";
+import ConfigurationPanel from './components/ConfigurationPanel'
+import { DesignSystemTestPage } from './components/DesignSystemTestPage'
+import MainLayout from './components/MainLayout'
+import MessageDetailViewer from './components/MessageDetailViewer'
+import SessionList from './components/SessionList'
 
 import type { NetworkInterface, HL7Session, CaptureStatus, MarkerConfig } from "../common/types";
 
@@ -30,6 +30,7 @@ export default function App(): JSX.Element {
   });
 
   const [isCapturing, setIsCapturing] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
   const [sessions, setSessions] = useState<HL7Session[]>([]);
   const [sessionCount, setSessionCount] = useState(0);
   const [error, setError] = useState<string>("");
@@ -69,6 +70,7 @@ export default function App(): JSX.Element {
     // Listen for capture status updates
     window.electron.onCaptureStatus((status) => {
       setIsCapturing(status.isCapturing);
+      setIsPaused(status.isPaused || false);
       setSessionCount(status.sessionCount);
     });
 
@@ -77,6 +79,26 @@ export default function App(): JSX.Element {
       setError(errorMsg);
     });
   }, []);
+
+  const handlePauseCapture = async () => {
+    try {
+      setError("");
+      await window.electron.pauseCapture();
+      setIsPaused(true);
+    } catch (err) {
+      setError(`Failed to pause capture: ${err}`);
+    }
+  };
+
+  const handleResumeCapture = async () => {
+    try {
+      setError("");
+      await window.electron.resumeCapture();
+      setIsPaused(false);
+    } catch (err) {
+      setError(`Failed to resume capture: ${err}`);
+    }
+  };
 
   const handleStartCapture = async () => {
     try {
@@ -200,6 +222,13 @@ export default function App(): JSX.Element {
         />
       }
       messageDetail={<MessageDetailViewer session={selectedSession} />}
+      isCapturing={isCapturing}
+      isPaused={isPaused}
+      onStartCapture={handleStartCapture}
+      onStopCapture={handleStopCapture}
+      onPauseCapture={handlePauseCapture}
+      onResumeCapture={handleResumeCapture}
+      onClearSessions={handleClearSessions}
     />
   );
 }
