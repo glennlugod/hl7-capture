@@ -36,7 +36,12 @@ export default function InterfaceSelector({
             aria-label="Network Interface"
           >
             {interfaces.map((iface) => (
-              <option key={iface.name} value={iface.name}>
+              <option
+                key={iface.name}
+                value={iface.name}
+                disabled={iface.status === "down"}
+                title={iface.status === "down" ? "Interface is offline or unsupported" : undefined}
+              >
                 {getDisplayName(iface)}
               </option>
             ))}

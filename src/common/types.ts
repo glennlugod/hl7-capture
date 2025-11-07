@@ -11,6 +11,7 @@ export interface NetworkInterface {
   address: string;
   ip: string;
   mac: string;
+  status?: "up" | "down" | "unknown";
 }
 
 /**

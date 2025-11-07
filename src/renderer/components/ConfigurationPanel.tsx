@@ -15,16 +15,19 @@ export default function ConfigurationPanel(): JSX.Element {
     destinationIP: "",
   });
   const [status, setStatus] = useState<string>("");
+  const [loadError, setLoadError] = useState<boolean>(false);
 
   const loadInterfaces = async () => {
     try {
       const ifaces = await (globalThis as any).electron.getNetworkInterfaces();
+      setLoadError(false);
       setInterfaces(ifaces);
       if (ifaces.length > 0) setSelectedInterface(ifaces[0].name);
       return ifaces;
     } catch (e) {
       // eslint-disable-next-line no-console
       console.error("Failed loading interfaces", e);
+      setLoadError(true);
       return [] as NetworkInterface[];
     }
   };
@@ -73,6 +76,11 @@ export default function ConfigurationPanel(): JSX.Element {
       <h3 className="text-lg font-semibold text-slate-900 mb-2">Configuration Panel</h3>
 
       <div className="space-y-4">
+        {loadError && (
+          <div role="alert" className="text-red-600">
+            Failed to load network interfaces. Please ensure pcap is installed.
+          </div>
+        )}
         <InterfaceSelector
           interfaces={interfaces}
           selected={selectedInterface}

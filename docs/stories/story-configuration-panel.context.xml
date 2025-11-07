@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<story-context>
+  <story>
+    <title>Configuration Panel</title>
+    <as-a>Integrations engineer or medical device technician</as-a>
+    <i-want>to create a fully-functional Configuration Panel in the main app view that allows selecting the capture interface, configuring source/destination IP filters, customizing HL7 markers, adjusting advanced options, saving/loading named presets, validating inputs, and starting capture</i-want>
+    <so-that>users can safely configure and start packet capture sessions focused on HL7 traffic</so-that>
+  </story>
+  <acceptance-criteria>
+    <criterion id="AC #1">The Configuration Panel is visible in the primary app view (left pane) and matches the layout described in the tech-spec.</criterion>
+    <criterion id="AC #2">Users can select an interface, enter source/destination IPv4 addresses, edit marker bytes, open advanced options, save/load presets, and start capture.</criterion>
+    <criterion id="AC #3">Start Capture is disabled while validation errors exist; an explicit override modal allows starting an unfiltered capture.</criterion>
+    <criterion id="AC #4">All controls are keyboard accessible and have ARIA labels.</criterion>
+  </acceptance-criteria>
+  <tasks>
+    <task phase="Implementation">Implement <code>ConfigurationPanel</code> component and styles under <code>src/renderer/components</code>.
+    </task>
+    <task phase="Implementation">Compose <code>InterfaceSelector</code> and <code>MarkerConfigForm</code> subcomponents.</task>
+    <task phase="Implementation">Add UI for Advanced options and Presets list.</task>
+    <task phase="Integration">Wire IPC calls for <code>getNetworkInterfaces</code>,      <code>validateMarkerConfig</code>, presets save/load, and <code>startCapture</code>.
+    </task>
+    <task phase="Utilities">Implement normalization and validation helpers in <code>lib/utils</code>.
+    </task>
+    <task phase="Testing">Add unit tests for validation and normalization.</task>
+    <task phase="Testing">Add integration tests: fill a valid config and trigger the <code>startCapture</code> IPC call.</task>
+  </tasks>
+  <interfaces>
+    <interface name="ConfigurationPanel">
+      <prop name="initialConfig?" type="MarkerConfig"/>
+      <prop name="onApply" type="(cfg: MarkerConfig) => void"/>
+      <prop name="onStartCapture" type="() => void"/>
+      <events>emits <code>apply</code> and <code>start</code> with the normalized configuration object</events>
+    </interface>
+  </interfaces>
+  <artifacts>
+    <docs>
+      <doc>
+        <path>docs/tech-spec.md</path>
+        <section>UI Configuration Panel layout</section>
+      </doc>
+    </docs>
+    <code>
+      <code>
+        <path>src/renderer/components/ConfigurationPanel.tsx</path>
+        <kind>component</kind>
+      </code>
+      <code>
+        <path>src/renderer/components/ConfigurationPanel.css</path>
+        <kind>styles</kind>
+      </code>
+    </code>
+  </artifacts>
+  <constraints>
+    <constraint>Component must live under <code>src/renderer/components</code> following existing file conventions.</constraint>
+    <constraint>Use TypeScript strict mode, 2-space indentation, and double quotes.</constraint>
+    <constraint>All controls must be keyboard-accessible and include ARIA labels.</constraint>
+  </constraints>
+  <tests>
+    <standards>Use Jest &amp; @testing-library/react. Co-locate tests in `__tests__` or `.test.tsx`.</standards>
+    <locations>
+      <location>tests/unit/</location>
+      <location>tests/integration/</location>
+    </locations>
+    <ideas>
+      <idea for="AC #1">Render test: panel mounts and shows all subcomponents and buttons.</idea>
+      <idea for="AC #2">Validation test: entering duplicate markers shows an error and disables Start.</idea>
+      <idea for="AC #3">Override modal test: forcing start when errors exist.</idea>
+      <idea for="AC #4">Accessibility test: tab order and ARIA labels present.</idea>
+    </ideas>
+  </tests>
+</story-context>
