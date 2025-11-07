@@ -1052,6 +1052,202 @@ Specific, measurable criteria for "done":
 - `/package.json` - Dependencies and scripts
 - `/.env.example` - Environment template
 
+## 16. Configuration Panel — Detailed UI Specification
+
+Goal: Replace the current placeholder with a fully-specified Configuration Panel that lets users pick a network interface, specify capture filters (source/destination IPs), configure HL7 protocol markers, save/load named configurations, and validate inputs prior to starting capture.
+
+16.1 Layout and High-Level Behavior
+
+- Location: Primary app view, left-hand pane of the main window (ConfigPanel region in `App`).
+- Sections (top → bottom):
+  1. Interface Selector (dropdown + refresh)
+  2. Capture Targets
+     - Source IP (medical device)
+     - Destination IP (LIS/PC)
+  3. Marker Configuration
+     - Start marker (hex byte) - default 0x05
+     - Acknowledge marker (hex byte) - default 0x06
+     - End marker (hex byte) - default 0x04
+  4. Advanced Options (collapsible)
+     - Snaplen (packet length limit)
+     - BPF filter override (free-form, optional)
+     - Session buffer size (default 100)
+  5. Save / Load Configuration (named presets)
+  6. Validation feedback and Save Configuration button
+
+  16.2 Controls & Interactions
+
+- Interface Selector
+  - Reads options from `window.electron.getNetworkInterfaces()` and shows each interface name + primary IPv4 address (or label "no-ip" when none).
+  - Has a Refresh button to re-query interfaces.
+  - Selecting an interface updates `selectedInterface` state and triggers a small sample-check (non-blocking) to ensure permissions are adequate.
+
+- Capture Targets
+  - Source IP and Destination IP are free-text inputs with IP address validation (IPv4 required for V1). Inputs suggest auto-complete based on detected addresses for convenience.
+  - If left empty, capture will default to the selected interface without IP filtering (warning shown).
+
+- Marker Configuration
+  - Each marker input accepts 1-2 hex characters (examples: `05`, `0x05`, or `5` accepted but normalized to `0x05`).
+  - Validate uniqueness: start, ack and end must be distinct single-byte values.
+  - Show inline validation errors and brief examples of common HL7 marker bytes.
+
+- Advanced Options
+  - Snaplen: numeric input (min 256, max 65535), default 65535.
+  - BPF override: a single-line text input that, when provided, takes precedence over generated BPF filter. Show a warning: "Custom BPF overrides generated filters — use carefully." Validate basic characters to avoid injection.
+  - Session buffer size: numeric input (min 10, max 5000), default 100.
+
+- Save / Load Configuration
+  - Allow user to save current configuration as a named preset (persisted to `output_folder` e.g., `docs/config-presets/*.json`).
+  - Provide quick apply list and a Delete preset option.
+
+- Primary Actions
+  - Save Configuration (persists preset and applies it to in-memory `markerConfig`)
+  - Start Capture (disabled until validation passes)
+  - Reset to Defaults
+
+  16.3 Accessibility & Keyboard
+
+- All controls must be keyboard accessible and labeled for screen readers.
+- Provide clear focus order: Interface → Source IP → Destination IP → Markers → Advanced → Actions.
+
+  16.4 Visual/UX Notes
+
+- Use tight vertical layout for quick scanning. Validation messages in light red; success inline checks in green.
+- Tooltips for advanced options explaining risks (e.g., custom BPF may capture unrelated traffic).
+
+  16.5 Component Contracts (props / events)
+
+- InterfaceSelector props:
+  - interfaces: NetworkInterface[]
+  - value: string | null
+  - onChange(interfaceName: string): void
+  - onRefresh(): Promise<void>
+
+- MarkerConfigForm props:
+  - value: MarkerConfig
+  - onChange(cfg: MarkerConfig): void
+  - validate(): ValidationResult
+
+- ConfigPanel props:
+  - initialConfig?: MarkerConfig
+  - onApply(cfg: MarkerConfig): void
+  - onStartCapture(): void
+
+  16.6 IPC Mapping
+
+- `getNetworkInterfaces()` → populates InterfaceSelector on mount and on Refresh.
+- `validateMarkerConfig` → used for client-side validation before enabling Start.
+- `saveMarkerConfig(config)` → persists a named preset and returns success/failure.
+
+## 17. User Stories (Configuration + Capture)
+
+As an engineer troubleshooting HL7 devices, I want to quickly select the interface and capture only device↔PC traffic so I can focus on HL7 messages.
+
+17.1 Stories (priority order)
+
+1. Story: Interface Selection (P0)
+   - As a user, I can choose which network interface the app uses to capture packets.
+   - Acceptance:
+     - Interface list shows human-friendly name and IPv4 address (if available).
+     - Refresh updates list.
+     - Selecting an interface sets the selection in state.
+
+2. Story: Simple Capture Config (P0)
+   - As a user, I can enter source and destination IPs and start a capture that filters to those IPs.
+   - Acceptance:
+     - Inputs validate IPv4 format.
+     - Start Capture is disabled until validation passes or user confirms a no-IP-capture warning.
+
+3. Story: Marker Customization (P0)
+   - As a user, I can change start/ack/end markers and save them as part of a preset.
+   - Acceptance:
+     - Marker inputs accept hex and normalize to `0xNN`.
+     - Validation prevents duplicate markers.
+
+4. Story: Named Presets (P1)
+   - As a user, I can save/load/delete named capture configurations.
+   - Acceptance:
+     - Presets list persists across restarts (stored under `docs/config-presets/`).
+
+5. Story: Advanced Override (P2)
+   - As an advanced user, I can provide a custom BPF string that overrides generated filters.
+   - Acceptance:
+     - App warns that BPF overrides the generated filter.
+     - BPF string is passed to the capture session when starting.
+
+6. Story: Quick Validation & Start (P0)
+   - As a user, I can validate the configuration quickly and start capture; validation errors are shown inline.
+
+## 18. Implementation Tasks (Config Panel)
+
+Breakdown with estimated complexity (S/M/L):
+
+1. Create `src/renderer/components/InterfaceSelector.tsx` (S)
+   - Query `getNetworkInterfaces()` on mount, render list, implement Refresh button.
+
+2. Create `src/renderer/components/MarkerConfigForm.tsx` (S)
+   - Inputs for start/ack/end markers with normalization/validation functions.
+
+3. Update `src/renderer/components/ConfigurationPanel.tsx` (M)
+   - Compose InterfaceSelector + inputs + advanced options + presets UI.
+   - Wire up `onApply` and `onStartCapture` actions to IPC.
+
+4. Presets persistence helpers (M)
+   - Implement helper in `src/renderer/utils/presets.ts` for read/write JSON files via IPC to main process (main implements file access safely; renderer requests via `ipc.invoke('presets:save', preset)`).
+
+5. Main process handlers (M):
+   - `ipcMain.handle('presets:save', ...)` and `presets:list`, `presets:delete` that store presets in `path.join(output_folder, 'config-presets')`.
+
+6. Connect validation flow (S):
+   - Use `validateMarkerConfig` IPC method for format checks; also run local checks for UI responsiveness.
+
+7. Unit tests (M):
+   - `tests/unit/markerConfig.test.ts` validate normalization and duplicate detection.
+   - `tests/unit/interfaceSelector.test.tsx` component renders given mock interfaces.
+
+8. Integration test (M):
+   - `tests/integration/configPanel.integration.test.tsx` - simulate user filling config and starting capture (mock main IPC handlers).
+
+9. E2E / Manual checklist (S):
+   - Verify presets persist across app restarts; start capture with/without IPs; BPF override respected.
+
+## 19. Acceptance Criteria — Configuration Panel (detailed)
+
+AC-C1: Interface selector lists detected network interfaces and updates on Refresh. (See Story 1 acceptance)
+
+AC-C2: Marker inputs normalize and validate hex bytes; duplicate detection prevents saving. (See Story 3 acceptance)
+
+AC-C3: Named presets persist across restarts and can be applied quickly. (See Story 4 acceptance)
+
+AC-C4: Start Capture is disabled when validation fails; user can override with an explicit confirmation modal to start an unfiltered capture.
+
+AC-C5: Custom BPF when provided is used verbatim as the capture filter; the app shows a warning about overrides.
+
+AC-C6: All new components have unit tests with coverage ≥ 80% for core logic (normalization, validation).
+
+## 20. Tests & QA Notes
+
+- Unit tests:
+  - Marker normalization; accepts `05`, `0x05`, `5` → returns `0x05`.
+  - Duplicate detection rejects same byte values.
+  - InterfaceSelector renders IPv4 addresses and reacts to refresh.
+
+- Integration tests:
+  - ConfigPanel integration using mocked IPC: ensure `startCapture` invoked with expected config object.
+
+- Manual tests:
+  - Install npcap on Windows, start app, select interface, enter IPs and markers, Start Capture, verify packets appear.
+
+## 21. Backwards Compatibility & Migration
+
+- Existing placeholder `ConfigurationPanel` component should be replaced or extended; maintain the `ConfigPanel` prop contract used by `App` to avoid refactoring `App.tsx`.
+
+## 22. Next Steps (after implementing UI)
+
+1. Wire the real capture pipeline end-to-end with the UI: ensure `startCapture` receives correct BPF/snapshot/snapshot options.
+2. Implement presets file watcher so external edits to `docs/config-presets/*.json` appear in the app without restart (optional).
+3. Add telemetry hooks for capture errors (ensure privacy; only send anonymized metrics if enabled).
+
 **Main Process:**
 
 - `/src/main/index.ts` - Electron app + packet capture logic
