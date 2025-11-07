@@ -13,7 +13,7 @@ describe("Placeholder Components", () => {
     describe("ConfigurationPanel", () => {
       it("should render placeholder without errors", () => {
         const { getByText } = render(<ConfigurationPanel />);
-        expect(getByText("Configuration Panel Placeholder")).toBeInTheDocument();
+        expect(getByText("Configuration Panel")).toBeTruthy();
       });
     });
 
@@ -57,7 +57,7 @@ describe("Placeholder Components", () => {
           <MessageDetailViewer session={null} onNavigateMessage={jest.fn()} />
         </div>
       );
-      expect(getByText("Configuration Panel Placeholder")).toBeInTheDocument();
+      expect(getByText("Configuration Panel")).toBeTruthy();
       expect(container.querySelector('[role="listbox"]')).toBeInTheDocument();
       expect(container).toBeInTheDocument();
     });

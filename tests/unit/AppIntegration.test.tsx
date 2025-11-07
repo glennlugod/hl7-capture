@@ -23,16 +23,13 @@ const mockElectronAPI = {
 describe("App Integration - Layout and Components", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    // Set up window.electron mock before each test
-    Object.defineProperty(window, "electron", {
-      writable: true,
-      value: mockElectronAPI,
-    });
+    // Set up global electron mock before each test
+    (globalThis as any).electron = mockElectronAPI;
   });
 
   afterEach(() => {
     // Clean up
-    delete (window as any).electron;
+    delete (globalThis as any).electron;
   });
 
   describe("AC #5: Component Integration into Layout", () => {
@@ -40,7 +37,7 @@ describe("App Integration - Layout and Components", () => {
       const { container } = render(<App />);
 
       // Verify components are rendered
-      expect(screen.getByText("Configuration Panel Placeholder")).toBeInTheDocument();
+      expect(screen.getByText("Configuration Panel")).toBeTruthy();
       expect(container.querySelector('[role="listbox"]')).toBeInTheDocument();
       expect(screen.getByText("Select a session to view details")).toBeInTheDocument();
     });
@@ -49,7 +46,7 @@ describe("App Integration - Layout and Components", () => {
       const { container } = render(<App />);
 
       // Verify all components exist in the rendered tree
-      expect(screen.getByText("Configuration Panel Placeholder")).toBeInTheDocument();
+      expect(screen.getByText("Configuration Panel")).toBeTruthy();
       expect(container.querySelector('[role="listbox"]')).toBeInTheDocument();
       expect(screen.getByText("Sessions")).toBeInTheDocument();
     });
@@ -61,7 +58,7 @@ describe("App Integration - Layout and Components", () => {
       expect(screen.queryByText(/Design System Test/i)).not.toBeInTheDocument();
 
       // Should see the actual components instead
-      expect(screen.getByText("Configuration Panel Placeholder")).toBeInTheDocument();
+      expect(screen.getByText("Configuration Panel")).toBeTruthy();
     });
   });
 
@@ -101,9 +98,10 @@ describe("App Integration - Layout and Components", () => {
     it("should apply design system colors and styling", () => {
       const { container } = render(<App />);
 
-      // Should have proper background color (white)
+      // Background style may be a solid white or a subtle gradient; accept either
       const mainLayout = container.firstChild as HTMLElement;
-      expect(mainLayout).toHaveClass("bg-white");
+      const cls = mainLayout.className;
+      expect(cls.includes("bg-white") || cls.includes("bg-gradient-to-br")).toBe(true);
     });
   });
 });

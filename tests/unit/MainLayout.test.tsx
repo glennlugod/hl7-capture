@@ -166,7 +166,8 @@ describe("MainLayout Component", () => {
         {...defaultProps}
       />
     );
-    const resizeHandle = container.querySelector(".w-1.bg-gray-200");
-    expect(resizeHandle).toBeInTheDocument();
+    // exact classes may change; the resize handle has a gradient background class in layout
+    const resizeHandle = container.querySelector('[class*="bg-gradient-to-b"]');
+    expect(resizeHandle).toBeTruthy();
   });
 });

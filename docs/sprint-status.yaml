@@ -43,7 +43,7 @@ development_status:
 
   # New UI Stories added (Configuration Panel feature)
   ui-configuration-panel:
-    status: ready-for-dev
+    status: in-progress
     story_file: docs/stories/story-configuration-panel.md
     owner: TBD
     ready_date: 2025-11-07
