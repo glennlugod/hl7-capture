@@ -3,26 +3,37 @@ import React, { useEffect, useState } from 'react'
 import InterfaceSelector from './InterfaceSelector'
 import MarkerConfigForm from './MarkerConfigForm'
 
-import type { NetworkInterface } from "../../common/types";
+import type { NetworkInterface, MarkerConfig } from "../../common/types";
 export default function ConfigurationPanel(): JSX.Element {
-  const [interfaces, setInterfaces] = useState<Array<{ name: string }>>([]);
+  const [interfaces, setInterfaces] = useState<NetworkInterface[]>([]);
   const [selectedInterface, setSelectedInterface] = useState<string | null>(null);
-  const [markerConfig, setMarkerConfig] = useState<string>("");
+  const [markerConfig, setMarkerConfig] = useState<MarkerConfig>({
+    startMarker: 5,
+    acknowledgeMarker: 6,
+    endMarker: 4,
+    sourceIP: "",
+    destinationIP: "",
+  });
   const [status, setStatus] = useState<string>("");
+
+  const loadInterfaces = async () => {
+    try {
+      const ifaces = await (globalThis as any).electron.getNetworkInterfaces();
+      setInterfaces(ifaces);
+      if (ifaces.length > 0) setSelectedInterface(ifaces[0].name);
+      return ifaces;
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.error("Failed loading interfaces", e);
+      return [] as NetworkInterface[];
+    }
+  };
 
   useEffect(() => {
     let mounted = true;
     (async () => {
-      try {
-        const ifaces = await (globalThis as any).electron.getNetworkInterfaces();
-        if (!mounted) return;
-        setInterfaces(ifaces);
-        if (ifaces.length > 0) setSelectedInterface(ifaces[0].name);
-      } catch (e) {
-        // log but do not crash tests
-        // eslint-disable-next-line no-console
-        console.error("Failed loading interfaces", e);
-      }
+      if (!mounted) return;
+      await loadInterfaces();
     })();
     return () => {
       mounted = false;
@@ -63,21 +74,21 @@ export default function ConfigurationPanel(): JSX.Element {
 
       <div className="space-y-4">
         <InterfaceSelector
-          interfaces={interfaces as NetworkInterface[]}
-          selectedInterface={selectedInterface ?? ""}
-          onSelectInterface={(v: string) => setSelectedInterface(v)}
-          isCapturing={false}
-          markerConfig={{
-            startMarker: 5,
-            acknowledgeMarker: 6,
-            endMarker: 4,
-            sourceIP: "",
-            destinationIP: "",
-          }}
-          onUpdateConfig={() => {}}
+          interfaces={interfaces}
+          selected={selectedInterface}
+          onSelect={(v) => setSelectedInterface(Array.isArray(v) ? v[0] : v)}
+          onRefresh={loadInterfaces}
+          disabled={false}
         />
 
-        <MarkerConfigForm initial="" onChange={(v) => setMarkerConfig(v)} />
+        <MarkerConfigForm
+          initial=""
+          onChange={(v) => {
+            // MarkerConfigForm currently returns a string; keep it for now
+            // If the form produces structured data, convert here
+            setMarkerConfig((prev) => ({ ...prev, sourceIP: v }));
+          }}
+        />
 
         <div className="flex items-center gap-2 mt-2">
           <button

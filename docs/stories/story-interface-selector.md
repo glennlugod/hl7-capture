@@ -2,12 +2,12 @@
 
 ## Summary
 
-Provide a small, accessible UI component that lists available network interfaces and allows the user to choose which interface(s) to capture from. This component is used inside the Configuration Panel and must work on Windows (Npcap) and other platforms.
+Provide a small, accessible UI component that lists available network interfaces and allows the user to choose which single interface to capture from. This component is used inside the Configuration Panel and must work on Windows (Npcap) and other platforms.
 
 ## Acceptance Criteria
 
 1. Shows a list of detected network interfaces (name, description, IPs) returned by the preload API.
-2. Allows selecting a single interface (default) or multiple interfaces if the capture engine supports it.
+2. Allows selecting a single interface to capture from. The product will capture traffic on one interface at a time.
 3. Provides a Refresh button that re-queries available interfaces.
 4. Displays offline/unsupported interfaces with a clear disabled state and tooltip explaining why.
 5. Keyboard navigable and screen-reader friendly (labels, role=listbox or table as appropriate).
@@ -20,8 +20,8 @@ Component: InterfaceSelector
 
 - interfaces: NetworkInterface[]
 - selected: string | null
-- multiSelect?: boolean
-- onSelect(id: string | string[]): void
+- onSelect(id: string | string): void
+  (Note: multi-select support removed; the component captures only a single interface.)
 - onRefresh (optional): function that returns a Promise (used to refresh interfaces)
 - disabled?: boolean
 

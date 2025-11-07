@@ -87,11 +87,11 @@ npm run lint          # Check for linting errors
 npm run format        # Format code with Prettier
 ```
 
-## Usage
+### Usage
 
 ### 1. Select Network Interface
 
-Choose the network interface where medical device traffic will be captured. The interface should be on the same network segment as the device and LIS.
+Choose the single network interface where medical device traffic will be captured. The interface should be on the same network segment as the device and LIS.
 
 ### 2. Configure HL7 Markers
 
@@ -319,7 +319,6 @@ For issues, questions, or contributions:
 - [ ] PCAP file import/export
 - [ ] Multiple capture profiles
 - [ ] Advanced HL7 message parsing
-- [ ] Network capture on multiple interfaces
 
 ## Version History
 

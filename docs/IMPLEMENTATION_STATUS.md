@@ -281,7 +281,7 @@ Test coverage for:
 - Packet detail drill-down
 - Advanced filtering by protocol, IP, port
 - Export captured traffic
-- Multi-interface simultaneous capture
+- (Removed) Multi-interface simultaneous capture
 - Packet statistics dashboard
 - Integration with HL7 protocol analysis
 

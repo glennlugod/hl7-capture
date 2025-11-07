@@ -50,7 +50,7 @@ development_status:
     points: 5
 
   ui-interface-selector:
-    status: ready-for-dev
+    status: in-progress
     story_file: docs/stories/story-interface-selector.md
     owner: TBD
     ready_date: 2025-11-07

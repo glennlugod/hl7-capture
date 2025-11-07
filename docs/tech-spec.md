@@ -190,7 +190,7 @@ Build **hl7-capture**: A specialized Electron desktop application for capturing 
 - ❌ HL7 message validation against HL7 standards (v2.x)
 - ❌ Export to HL7 files, PCAP, JSON, or CSV
 - ❌ Traffic statistics or performance graphs
-- ❌ Multi-interface simultaneous capture
+  -- ❌ Multi-interface simultaneous capture (product will capture on a single interface at a time)
 - ❌ Persistent database storage of captures
 - ❌ HL7 message editing or modification
 - ❌ Integration with actual LIS systems for live testing
@@ -1075,7 +1075,7 @@ Goal: Replace the current placeholder with a fully-specified Configuration Panel
   5. Save / Load Configuration (named presets)
   6. Validation feedback and Save Configuration button
 
-  16.2 Controls & Interactions
+     16.2 Controls & Interactions
 
 - Interface Selector
   - Reads options from `window.electron.getNetworkInterfaces()` and shows each interface name + primary IPv4 address (or label "no-ip" when none).
@@ -1105,7 +1105,7 @@ Goal: Replace the current placeholder with a fully-specified Configuration Panel
   - Start Capture (disabled until validation passes)
   - Reset to Defaults
 
-  16.3 Accessibility & Keyboard
+    16.3 Accessibility & Keyboard
 
 - All controls must be keyboard accessible and labeled for screen readers.
 - Provide clear focus order: Interface → Source IP → Destination IP → Markers → Advanced → Actions.
@@ -1133,7 +1133,7 @@ Goal: Replace the current placeholder with a fully-specified Configuration Panel
   - onApply(cfg: MarkerConfig): void
   - onStartCapture(): void
 
-  16.6 IPC Mapping
+    16.6 IPC Mapping
 
 - `getNetworkInterfaces()` → populates InterfaceSelector on mount and on Refresh.
 - `validateMarkerConfig` → used for client-side validation before enabling Start.
