@@ -1,5 +1,7 @@
 # Story: Interface Selector
 
+Status: done
+
 ## Summary
 
 Provide a small, accessible UI component that lists available network interfaces and allows the user to choose which single interface to capture from. This component is used inside the Configuration Panel and must work on Windows (Npcap) and other platforms.

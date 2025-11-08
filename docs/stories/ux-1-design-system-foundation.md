@@ -1,6 +1,6 @@
 # Story: UX Design System Foundation
 
-Status: review
+Status: done
 
 ## Story
 

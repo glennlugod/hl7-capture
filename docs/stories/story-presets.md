@@ -1,5 +1,7 @@
 # Story: Capture Presets
 
+Status: done
+
 ## Summary
 
 Presets are named configurations that bundle interface selection, markers, capture filters, and other settings. This feature allows users to save and re-load commonly used capture configurations.
