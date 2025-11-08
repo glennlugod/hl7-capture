@@ -108,12 +108,12 @@ IPC / Renderer: no changes required beyond selecting backend; existing IPC event
 
 ## Tasks (short checklist)
 
-1. [ ] Implement `src/main/dumpcap-adapter.ts`
-2. [ ] Refactor `src/main/hl7-capture.ts` to accept EventEmitter sources
-3. [ ] Add unit tests for adapter
-4. [ ] Add integration test for HL7 end-to-end using fixture or simulated stream
-5. [ ] Update README and tech-spec docs
-6. [ ] Run test suite and fix issues
+1. [x] Implement `src/main/dumpcap-adapter.ts`
+2. [x] Refactor `src/main/hl7-capture.ts` to accept EventEmitter sources
+3. [x] Add unit tests for adapter
+4. [x] Add integration test for HL7 end-to-end using fixture or simulated stream
+5. [x] Update README and tech-spec docs
+6. [x] Run test suite and fix issues
 
 ---
 
@@ -123,23 +123,31 @@ IPC / Renderer: no changes required beyond selecting backend; existing IPC event
 
 - 2025-11-08T: Verified repository already contained `src/main/dumpcap-adapter.ts` and `src/main/hl7-capture.ts` with EventEmitter attachment APIs.
 - 2025-11-08T: Added unit test `tests/unit/dumpcap-adapter.test.ts` to validate adapter packet emission using a mocked `pcap-parser` and mocked child process spawn.
-- 2025-11-08T: Added integration test `tests/integration/hl7-capture.integration.test.ts` verifying `HL7CaptureManager` accepts external packet sources and emits `start/message/end` elements.
+- 2025-11-08T: Added integration test `tests/integration/hl7-capture.integration.test.ts` verifying `HL7CaptureManager` accepts external packet sources and emits `start/message/end` elements (note: this integration test uses a mocked external source, not the live DumpcapAdapter process).
 - 2025-11-08T: Ran test suite locally: all tests passed (15 suites, 98 tests).
 
 ### Completion Notes (partial)
 
-- Implemented and verified adapter plumbing and integration tests only. The adapter binary resolution already existed; no code changes were required to add basic dumpcap support.
-- Normalization of parsed pcap frames into the exact packet shape `{ sourceIP, destIP, data: Buffer, ts }` remains as a follow-up (low-risk) and will be implemented next if desired.
+- Implemented and verified adapter plumbing and integration tests. The repository already included a working `DumpcapAdapter` and `HL7CaptureManager` with `attachPacketSource`/`detachPacketSource`.
+- Remaining work (Acceptance Criteria not fully satisfied):
+  1.  Adapter currently emits parsed frames as `{ header, data }` (the external `pcap-parser` shape). The story AC requires normalized packets `{ sourceIP, destIP, data, ts }`. Mapping/parsing IP/TCP headers to produce `sourceIP`/`destIP` is not implemented and is required for AC #1 and #2.
+  2.  No runtime fallback implemented from `dumpcap` → `cap` backend. If `dumpcap` is missing, current behavior throws (adapter emits an error). Implementing auto-fallback or a user-selectable backend is required for AC #3.
+  3.  Documentation (README/tech-spec) updates for dumpcap / Npcap installation have been added in this session (AC #6 partial). The helper script `scripts/run-dumpcap-dev.ps1` was added to assist local development.
+
+These items are medium/low risk but needed before marking the story complete.
 
 ### File List (changes made in this session)
 
 - tests/unit/dumpcap-adapter.test.ts — unit test to validate DumpcapAdapter packet parsing (new)
 - tests/integration/hl7-capture.integration.test.ts — integration test for HL7CaptureManager with external packet source (new)
 - docs/stories/story-dumpcap-integration.md — updated Status, Dev Agent Record, File List, and Change Log (modified)
+- README.md — updated with Dumpcap/Npcap developer notes (modified)
+- docs/tech-spec.md — added Dumpcap/Npcap developer notes referencing helper script (modified)
+- scripts/run-dumpcap-dev.ps1 — PowerShell helper to run dumpcap and stream pcap to stdout (new)
 
 ## Change Log
 
-- 2025-11-08: Added adapter & integration tests; updated story status to in-progress and recorded debug notes. (Author: Dev Agent)
+- 2025-11-08: Added adapter & integration tests; updated story progress and recorded debug notes. Noted remaining AC items: packet normalization, runtime fallback, and docs. (Author: Dev Agent)
 
 ---
 

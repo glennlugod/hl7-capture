@@ -218,6 +218,17 @@ Note: Using `-w -` writes binary pcap to stdout which the adapter can parse dire
 - `README.md` — add dumpcap setup and run instructions
 - `docs/tech-spec.md` — (this file)
 
+### Dumpcap / Npcap Developer Notes
+
+- For Windows development, install Npcap (https://npcap.com/) and ensure `dumpcap.exe` is available on PATH or note the installation folder.
+- Use the provided helper script to run dumpcap safely from PowerShell during development:
+
+```powershell
+.\scripts\run-dumpcap-dev.ps1 -Interface 1 -Filter "tcp"
+```
+
+- The helper locates `dumpcap.exe` on PATH or common Wireshark install locations and streams binary pcap data to stdout for local adapters to consume.
+
 ---
 
 ## UX/UI Considerations
