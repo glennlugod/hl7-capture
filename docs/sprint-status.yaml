@@ -53,15 +53,17 @@ development_status:
     points: 5
 
   ui-interface-selector:
-    status: ready-for-dev
+    status: done
     story_file: docs/stories/story-interface-selector.md
     owner: TBD
     ready_date: 2025-11-08
     points: 2
 
   ui-marker-config-form:
-    status: ready-for-dev
+    status: removed
     story_file: docs/stories/story-marker-config-form.md
     owner: TBD
     ready_date: 2025-11-08
+    removed_date: 2025-11-08
+    reason: "Removed from scope — marker configuration UI deprecated in tech-spec"
     points: 3

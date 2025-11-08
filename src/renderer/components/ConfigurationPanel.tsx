@@ -1,25 +1,20 @@
 import React, { useEffect, useState } from "react";
 
 import AdvancedOptions from "./Configuration/AdvancedOptions";
-import HL7MarkerConfig from "./Configuration/HL7MarkerConfig";
 import InterfaceSelector from "./InterfaceSelector";
 
-import type { NetworkInterface, MarkerConfig } from "../../common/types";
+import type { NetworkInterface } from "../../common/types";
 
 interface ConfigurationPanelProps {
   selectedInterface: string;
-  markerConfig: MarkerConfig;
   onInterfaceChange: (name: string) => void;
-  onConfigChange: (config: MarkerConfig) => void;
   onStartCapture: () => Promise<void>;
   isCapturing?: boolean;
 }
 
 export default function ConfigurationPanel({
   selectedInterface,
-  markerConfig,
   onInterfaceChange,
-  onConfigChange,
   onStartCapture,
   isCapturing = false,
 }: Readonly<ConfigurationPanelProps>): JSX.Element {
@@ -27,7 +22,6 @@ export default function ConfigurationPanel({
   const [loadError, setLoadError] = useState<boolean>(false);
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState<string>("");
-  const [showOverrideModal, setShowOverrideModal] = useState<boolean>(false);
 
   const [advancedConfig, setAdvancedConfig] = useState({
     snaplen: 65535,
@@ -61,34 +55,7 @@ export default function ConfigurationPanel({
     setStatus("loading");
     setErrorMessage("");
     try {
-      // Validate configuration before starting
-      const isValid = await window.electron.validateMarkerConfig(markerConfig);
-      if (!isValid) {
-        setStatus("error");
-        setErrorMessage("Invalid marker configuration. Please review errors above.");
-        // Show explicit override modal to allow starting unfiltered if user confirms
-        setShowOverrideModal(true);
-        return;
-      }
-
-      // Save configuration
-      await window.electron.saveMarkerConfig(markerConfig);
-
-      // Start capture
-      await onStartCapture();
-      setStatus("success");
-    } catch (e: any) {
-      setStatus("error");
-      setErrorMessage(`Failed to start capture: ${e?.message || String(e)}`);
-      console.error("Start capture failed", e);
-    }
-  };
-
-  const performStartCapture = async (): Promise<void> => {
-    setStatus("loading");
-    setErrorMessage("");
-    try {
-      await window.electron.saveMarkerConfig(markerConfig);
+      // Start capture directly; marker customization is out of scope per spec
       await onStartCapture();
       setStatus("success");
     } catch (e: any) {
@@ -99,14 +66,7 @@ export default function ConfigurationPanel({
   };
 
   const handleReset = () => {
-    const defaultConfig: MarkerConfig = {
-      startMarker: 0x05,
-      acknowledgeMarker: 0x06,
-      endMarker: 0x04,
-      sourceIP: "",
-      destinationIP: "",
-    };
-    onConfigChange(defaultConfig);
+    // Reset only advanced options; marker customization removed from UI
     setAdvancedConfig({
       snaplen: 65535,
       bpfOverride: "",
@@ -147,8 +107,7 @@ export default function ConfigurationPanel({
         disabled={isDisabled}
       />
 
-      {/* HL7 Marker Configuration */}
-      <HL7MarkerConfig value={markerConfig} onChange={onConfigChange} disabled={isDisabled} />
+      {/* Marker customization removed from UI per tech-spec */}
 
       {/* Advanced Options */}
       <AdvancedOptions value={advancedConfig} onChange={setAdvancedConfig} disabled={isDisabled} />
@@ -174,41 +133,7 @@ export default function ConfigurationPanel({
         </button>
       </div>
 
-      {/* Override Modal */}
-      {showOverrideModal && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          className="fixed inset-0 z-50 flex items-center justify-center"
-        >
-          <div className="bg-white border rounded p-6 max-w-lg w-full shadow-lg">
-            <h3 className="text-lg font-semibold mb-2">Start unfiltered capture?</h3>
-            <p className="text-sm text-slate-700 mb-4">
-              Marker validation failed. Starting an unfiltered capture may capture large amounts of
-              unrelated traffic. Are you sure you want to proceed?
-            </p>
-            <div className="flex gap-2 justify-end">
-              <button
-                onClick={() => setShowOverrideModal(false)}
-                className="px-3 py-2 bg-slate-200 rounded"
-                aria-label="Cancel start unfiltered"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={async () => {
-                  setShowOverrideModal(false);
-                  await performStartCapture();
-                }}
-                className="px-3 py-2 bg-rose-600 text-white rounded"
-                aria-label="Start unfiltered"
-              >
-                Start unfiltered
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Marker validation and unfiltered override removed (no marker UI) */}
 
       {!selectedInterface && (
         <p className="text-xs text-slate-600 italic">Select an interface to enable Start Capture</p>

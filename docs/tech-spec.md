@@ -184,7 +184,8 @@ Build **hl7-capture**: A specialized Electron desktop application for capturing 
 - ✅ Pause/resume capture
 - ✅ Clear captured sessions
 - ✅ Single persistent configuration (no presets, one configuration per session)
-- ✅ Marker configuration UI (allow custom start/ack/end markers)
+- ✅ Marker configuration UI (removed from scope)
+  - NOTE: Marker configuration and MarkerConfigForm component removed from planned scope per product decision.
 
 ### 2.4 Scope: OUT (Future)
 
@@ -1114,24 +1115,19 @@ Goal: Replace the current placeholder with a fully-specified Configuration Panel
 - Tooltips for advanced options explaining risks (e.g., custom BPF may capture unrelated traffic).
 
   16.5 Component Contracts (props / events)
+  - InterfaceSelector props:
+    - interfaces: NetworkInterface[]
+    - value: string | null
+    - onChange(interfaceName: string): void
+    - onRefresh(): Promise<void>
 
-- InterfaceSelector props:
-  - interfaces: NetworkInterface[]
-  - value: string | null
-  - onChange(interfaceName: string): void
-  - onRefresh(): Promise<void>
+  <!-- MarkerConfigForm component and props removed from spec -->
+  - ConfigPanel props:
+    - initialConfig?: MarkerConfig
+    - onApply(cfg: MarkerConfig): void
+    - onStartCapture(): void
 
-- MarkerConfigForm props:
-  - value: MarkerConfig
-  - onChange(cfg: MarkerConfig): void
-  - validate(): ValidationResult
-
-- ConfigPanel props:
-  - initialConfig?: MarkerConfig
-  - onApply(cfg: MarkerConfig): void
-  - onStartCapture(): void
-
-    16.6 IPC Mapping
+      16.6 IPC Mapping
 
 - `getNetworkInterfaces()` → populates InterfaceSelector on mount and on Refresh.
 - `validateMarkerConfig` → used for client-side validation before enabling Start.
@@ -1156,11 +1152,9 @@ As an engineer troubleshooting HL7 devices, I want to quickly select the interfa
      - Inputs validate IPv4 format.
      - Start Capture is disabled until validation passes or user confirms a no-IP-capture warning.
 
-3. Story: Marker Customization (P0)
-   - As a user, I can change start/ack/end markers and save them as part of a preset.
-   - Acceptance:
-     - Marker inputs accept hex and normalize to `0xNN`.
-     - Validation prevents duplicate markers.
+3. Story: Marker Customization (REMOVED)
+
+- This story has been removed from the backlog — marker customization is out of scope.
 
 4. Story: Named Presets (P1)
    - As a user, I can save/load/delete named capture configurations.
@@ -1183,8 +1177,7 @@ Breakdown with estimated complexity (S/M/L):
 1. Create `src/renderer/components/InterfaceSelector.tsx` (S)
    - Query `getNetworkInterfaces()` on mount, render list, implement Refresh button.
 
-2. Create `src/renderer/components/MarkerConfigForm.tsx` (S)
-   - Inputs for start/ack/end markers with normalization/validation functions.
+2. (Removed) MarkerConfigForm component task has been deleted from the implementation backlog.
 
 3. Update `src/renderer/components/ConfigurationPanel.tsx` (M)
    - Compose InterfaceSelector + inputs + advanced options + presets UI.
@@ -1213,7 +1206,7 @@ Breakdown with estimated complexity (S/M/L):
 
 AC-C1: Interface selector lists detected network interfaces and updates on Refresh. (See Story 1 acceptance)
 
-AC-C2: Marker inputs normalize and validate hex bytes; duplicate detection prevents saving. (See Story 3 acceptance)
+AC-C2: (removed) Marker-specific acceptance criteria removed following scope change.
 
 AC-C3: Named presets persist across restarts and can be applied quickly. (See Story 4 acceptance)
 

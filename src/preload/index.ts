@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer } from 'electron'
+import { contextBridge, ipcRenderer } from "electron";
 
 import type { MarkerConfig, HL7Element, HL7Session, NetworkInterface } from "../common/types";
 
@@ -23,12 +23,6 @@ const electronAPI = {
   getSessions: (): Promise<HL7Session[]> => ipcRenderer.invoke("get-sessions"),
 
   clearSessions: (): Promise<void> => ipcRenderer.invoke("clear-sessions"),
-
-  saveMarkerConfig: (config: MarkerConfig): Promise<void> =>
-    ipcRenderer.invoke("save-marker-config", config),
-
-  validateMarkerConfig: (config: MarkerConfig): Promise<boolean> =>
-    ipcRenderer.invoke("validate-marker-config", config),
 
   // Event listeners
   onNewElement: (callback: (element: HL7Element) => void): void => {

@@ -1,10 +1,10 @@
-import '@testing-library/jest-dom'
+import "@testing-library/jest-dom";
 
-import React from 'react'
+import React from "react";
 
-import { act, render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from "@testing-library/react";
 
-import App from '../../src/renderer/App'
+import App from "../../src/renderer/App";
 
 // Mock the electron API
 const mockElectronAPI = {
@@ -13,8 +13,6 @@ const mockElectronAPI = {
   onSessionComplete: jest.fn(),
   onCaptureStatus: jest.fn(),
   onError: jest.fn(),
-  validateMarkerConfig: jest.fn(),
-  saveMarkerConfig: jest.fn(),
   startCapture: jest.fn(),
   stopCapture: jest.fn(),
   clearSessions: jest.fn(),

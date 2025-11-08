@@ -36,7 +36,7 @@ stories:
   hl7-device-capture: docs/stories/story-hl7-device-capture.md
   interface-selector: docs/stories/story-interface-selector.md
   configuration-panel: docs/stories/story-configuration-panel.md
-  marker-config-form: docs/stories/story-marker-config-form.md
+  marker-config-form: removed # see docs/sprint-status.yaml (removed 2025-11-08)
   presets: docs/stories/story-presets.md
   ux-design-system-foundation: docs/stories/ux-1-design-system-foundation.md
   ux-layout-and-components: docs/stories/ux-2-layout-and-components.md

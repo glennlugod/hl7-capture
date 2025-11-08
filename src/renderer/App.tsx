@@ -1,14 +1,14 @@
-import './App.css'
+import "./App.css";
 
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState } from "react";
 
-import ConfigurationPanel from './components/ConfigurationPanel'
-import { DesignSystemTestPage } from './components/DesignSystemTestPage'
-import MainLayout from './components/MainLayout'
-import MessageDetailViewer from './components/MessageDetailViewer'
-import SessionList from './components/SessionList'
+import ConfigurationPanel from "./components/ConfigurationPanel";
+import { DesignSystemTestPage } from "./components/DesignSystemTestPage";
+import MainLayout from "./components/MainLayout";
+import MessageDetailViewer from "./components/MessageDetailViewer";
+import SessionList from "./components/SessionList";
 
-import type { NetworkInterface, HL7Session, CaptureStatus, MarkerConfig } from "../common/types";
+import type { NetworkInterface, HL7Session, CaptureStatus } from "../common/types";
 
 // Set to true to view design system test page
 const SHOW_DESIGN_SYSTEM_TEST = false;
@@ -21,13 +21,7 @@ export default function App(): JSX.Element {
 
   const [interfaces, setInterfaces] = useState<NetworkInterface[]>([]);
   const [selectedInterface, setSelectedInterface] = useState<string>("");
-  const [markerConfig, setMarkerConfig] = useState<MarkerConfig>({
-    startMarker: 0x05,
-    acknowledgeMarker: 0x06,
-    endMarker: 0x04,
-    sourceIP: "",
-    destinationIP: "",
-  });
+  // Marker customization removed from scope; configuration handled in main process
 
   const [isCapturing, setIsCapturing] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
@@ -105,16 +99,8 @@ export default function App(): JSX.Element {
     try {
       setError("");
 
-      // Validate configuration
-      const isValid = await window.electron.validateMarkerConfig(markerConfig);
-      if (!isValid) {
-        setError("Invalid marker configuration");
-        return;
-      }
-
-      // Save configuration and start capture
-      await window.electron.saveMarkerConfig(markerConfig);
-      await window.electron.startCapture(selectedInterface, markerConfig);
+      // Start capture (marker customization removed from UI; main will use defaults)
+      await window.electron.startCapture(selectedInterface, {} as any);
       setIsCapturing(true);
       setSessions([]);
       setSessionCount(0);
@@ -144,9 +130,7 @@ export default function App(): JSX.Element {
     }
   };
 
-  const updateMarkerConfig = (updates: Partial<MarkerConfig>) => {
-    setMarkerConfig((prev) => ({ ...prev, ...updates }));
-  };
+  // Marker customization removed — no marker config updates from renderer
 
   const handleToggleAutoScroll = () => {
     setAutoScroll((prev: boolean) => {
@@ -223,9 +207,7 @@ export default function App(): JSX.Element {
       configPanel={
         <ConfigurationPanel
           selectedInterface={selectedInterface}
-          markerConfig={markerConfig}
           onInterfaceChange={setSelectedInterface}
-          onConfigChange={updateMarkerConfig}
           onStartCapture={handleStartCapture}
           isCapturing={isCapturing}
         />

@@ -1,7 +1,7 @@
-import { app, BrowserWindow, ipcMain } from 'electron'
-import path from 'path'
+import { app, BrowserWindow, ipcMain } from "electron";
+import path from "path";
 
-import { HL7CaptureManager } from './hl7-capture'
+import { HL7CaptureManager } from "./hl7-capture";
 
 let mainWindow: BrowserWindow | null;
 let captureManager: HL7CaptureManager;
@@ -72,7 +72,7 @@ function initializeCaptureManager(): void {
   // Listen for new HL7 elements
   captureManager.on("element", (element) => {
     if (mainWindow) {
-      mainWindow.webContents.send("new-element", element);
+      mainWindow.webContents.send("hl7-element-received", element);
     }
   });
 
@@ -147,12 +147,4 @@ ipcMain.handle("get-sessions", async () => {
 
 ipcMain.handle("clear-sessions", async () => {
   captureManager.clearSessions();
-});
-
-ipcMain.handle("save-marker-config", async (_event, config) => {
-  captureManager.saveMarkerConfig(config);
-});
-
-ipcMain.handle("validate-marker-config", async (_event, config) => {
-  return captureManager.validateMarkerConfig(config);
 });

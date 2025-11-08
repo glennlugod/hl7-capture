@@ -1,12 +1,12 @@
-import '@testing-library/jest-dom'
+import "@testing-library/jest-dom";
 
-import React from 'react'
+import React from "react";
 
-import { render } from '@testing-library/react'
+import { render } from "@testing-library/react";
 
-import ConfigurationPanel from '../../src/renderer/components/ConfigurationPanel'
-import MessageDetailViewer from '../../src/renderer/components/MessageDetailViewer'
-import SessionList from '../../src/renderer/components/SessionList'
+import ConfigurationPanel from "../../src/renderer/components/ConfigurationPanel";
+import MessageDetailViewer from "../../src/renderer/components/MessageDetailViewer";
+import SessionList from "../../src/renderer/components/SessionList";
 
 describe("Placeholder Components", () => {
   describe("AC #4: Placeholder Custom Component Creation", () => {
@@ -15,15 +15,7 @@ describe("Placeholder Components", () => {
         const { getByText } = render(
           <ConfigurationPanel
             selectedInterface="eth0"
-            markerConfig={{
-              startMarker: 0x05,
-              acknowledgeMarker: 0x06,
-              endMarker: 0x04,
-              sourceIP: "",
-              destinationIP: "",
-            }}
             onInterfaceChange={jest.fn()}
-            onConfigChange={jest.fn()}
             onStartCapture={jest.fn()}
           />
         );
@@ -62,15 +54,7 @@ describe("Placeholder Components", () => {
         <div>
           <ConfigurationPanel
             selectedInterface="eth0"
-            markerConfig={{
-              startMarker: 0x05,
-              acknowledgeMarker: 0x06,
-              endMarker: 0x04,
-              sourceIP: "",
-              destinationIP: "",
-            }}
             onInterfaceChange={jest.fn()}
-            onConfigChange={jest.fn()}
             onStartCapture={jest.fn()}
           />
           <SessionList
