@@ -1,6 +1,6 @@
 # Story 1.1: Integrate dumpcap for reliable network capture
 
-Status: in-progress
+Status: ready-for-review
 
 ---
 
@@ -77,6 +77,20 @@ IPC / Renderer: no changes required beyond selecting backend; existing IPC event
 4. Docs and scripts:
    - Update `docs/tech-spec.md` (already updated) and `README.md` with a Dumpcap install and Windows Npcap guidance.
    - Add a dev helper script `scripts/run-dumpcap-dev.ps1` that starts dumpcap with safe args for local testing (documented in README). This script is optional and for dev convenience only.
+
+---
+
+## Code review checklist
+
+- [x] Confirm `DumpcapAdapter` exists and exposes start/stop/isRunning and emits `packet` events (shape: {sourceIP,destIP,data,ts}).
+- [x] Verify `HL7CaptureManager` supports `attachPacketSource`/`detachPacketSource` and processes incoming normalized packet events.
+- [x] Ensure tests added: unit for adapter parsing, integration verifying elements from external packet source.
+- [x] Confirm `cap` native module is not required at runtime and documentation reflects that (`cap` deprecated).
+- [ ] Verify packet normalization logic correctly extracts IPv4/TCP payloads from pcap frames (reviewer: confirm parsing for corner cases).
+- [ ] Review error handling when `dumpcap` is not available (UI should show clear instruction to install dumpcap/Npcap).
+- [ ] Lint and typecheck: ensure no new TypeScript or ESLint issues remain.
+
+When these items are accepted, set Status → `code-review-complete` and update sprint status.
 
 5. Add a small feature flag/setting persisted in memory or a config file so users can force `cap` backend if desired.
 
