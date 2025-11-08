@@ -114,7 +114,54 @@ export class DumpcapAdapter extends EventEmitter {
             const inclLen =
               hdr.capturedLength ?? hdr.inclLen ?? hdr.capLen ?? (p.data ? p.data.length : 0);
             const origLen = hdr.originalLength ?? hdr.origLen ?? inclLen;
-            this.emit("packet", { header: { tsSec, tsUsec, inclLen, origLen }, data: p.data });
+
+            // Attempt to decode Ethernet -> IPv4 -> TCP and emit normalized packet shape.
+            // Expected normalized shape: { sourceIP, destIP, data: Buffer, ts: number }
+            const raw = p.data as Buffer | undefined;
+            let normalized: any = null;
+            if (raw && Buffer.isBuffer(raw)) {
+              // Minimum lengths: Ethernet (14) + IPv4 (20) + TCP (20)
+              try {
+                if (raw.length >= 14 + 20 + 20) {
+                  const ethType = raw.readUInt16BE(12);
+                  // IPv4
+                  if (ethType === 0x0800) {
+                    const ipOffset = 14;
+                    const verIhl = raw.readUInt8(ipOffset);
+                    const ihl = (verIhl & 0x0f) * 4;
+                    const protocol = raw.readUInt8(ipOffset + 9);
+                    const srcIP = `${raw.readUInt8(ipOffset + 12)}.${raw.readUInt8(
+                      ipOffset + 13
+                    )}.${raw.readUInt8(ipOffset + 14)}.${raw.readUInt8(ipOffset + 15)}`;
+                    const dstIP = `${raw.readUInt8(ipOffset + 16)}.${raw.readUInt8(
+                      ipOffset + 17
+                    )}.${raw.readUInt8(ipOffset + 18)}.${raw.readUInt8(ipOffset + 19)}`;
+
+                    // TCP
+                    if (protocol === 6) {
+                      const tcpOffset = ipOffset + ihl;
+                      const dataOffsetByte = raw.readUInt8(tcpOffset + 12);
+                      const tcpHeaderLen = ((dataOffsetByte & 0xf0) >> 4) * 4;
+                      const payloadStart = tcpOffset + tcpHeaderLen;
+                      const payload =
+                        payloadStart < raw.length ? raw.slice(payloadStart) : Buffer.alloc(0);
+                      const ts = tsSec * 1000 + Math.floor(tsUsec / 1000);
+                      normalized = { sourceIP: srcIP, destIP: dstIP, data: payload, ts };
+                    }
+                  }
+                }
+              } catch (parseErr) {
+                // If parsing fails, fall back to non-normalized emit below
+                console.debug("Packet header parsing failed:", parseErr);
+              }
+            }
+
+            if (normalized) {
+              this.emit("packet", normalized);
+            } else {
+              // Fallback: emit original parser shape with header and data
+              this.emit("packet", { header: { tsSec, tsUsec, inclLen, origLen }, data: p.data });
+            }
           } catch (err) {
             this.emit("error", err as Error);
           }
