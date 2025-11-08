@@ -85,8 +85,6 @@ describe("HL7CaptureManager integration (mocked cap)", () => {
 
     // Ensure packet handler was registered
     expect(packetHandler).not.toBeNull();
-    // quick debug
-    console.log("packetHandler set:", !!packetHandler);
 
     // Simulate receiving a single-byte start marker packet by writing into the manager's internal buffer
     const startBuf = Buffer.from([markers.startMarker]);
@@ -94,25 +92,12 @@ describe("HL7CaptureManager integration (mocked cap)", () => {
     const writeOffset = 54; // matches offsets returned by our mock decoders (14 + 20 + 20)
     startBuf.copy(internalBuffer, writeOffset);
     packetHandler!(writeOffset + startBuf.length, false);
-    // debug: check whether manager created sessions or elements
-    console.log(
-      "after start - sessions:",
-      manager.getSessions().length,
-      "elements:",
-      elements.length
-    );
 
     // Now simulate a message payload followed by CRLF
     const message = Buffer.from("MSH|^~\\&|ABC|DEF|GHI|JKL|20251108||ADT^A01|123|P|2.5\r\n");
     const msgOffset = writeOffset + 1;
     message.copy(internalBuffer, msgOffset);
     packetHandler!(msgOffset + message.length, false);
-    console.log(
-      "after message - sessions:",
-      manager.getSessions().length,
-      "elements:",
-      elements.length
-    );
 
     // Simulate end marker as its own single-byte TCP payload so it's detected as marker
     const endBuf = Buffer.from([markers.endMarker]);
@@ -120,12 +105,6 @@ describe("HL7CaptureManager integration (mocked cap)", () => {
     endBuf.copy(internalBuffer, endWriteOffset);
     // Call packet handler with nbytes such that data slice tcp.offset..nbytes is exactly 1 byte
     packetHandler!(endWriteOffset + endBuf.length, false);
-    console.log(
-      "after end - sessions:",
-      manager.getSessions().length,
-      "elements:",
-      elements.length
-    );
 
     // Give the event loop a tick for handlers to run
     await new Promise((r) => setTimeout(r, 0));
