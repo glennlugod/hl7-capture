@@ -14,8 +14,10 @@
 
 ### Available Documents
 
-- Existing project repository and workflows
-- Current capture implementation: `src/main/hl7-capture.ts` using the `cap` npm module
+-- Existing project repository and workflows
+
+> Note: Earlier versions used the `cap` native module for live capture. That integration is deprecated
+> in favor of the `dumpcap` external capture backend. The references in this file are historical.
 
 ### Project Stack
 
@@ -78,7 +80,7 @@ Out of scope:
    - `attachPacketSource(source: EventEmitter)` — listen for `packet` events {sourceIP, destIP, data}
    - `detachPacketSource()` — stop listening
 
-3. Provide a fallback where, if dumpcap is not available, the existing `cap` usage remains usable behind a feature flag or runtime choice. This allows debugging and environments where dumpcap can't be installed.
+3. Do not rely on the native `cap` module at runtime. The recommended approach is to use `dumpcap` as the single supported capture backend. If `dumpcap` is not available on a host, use recorded pcap files for analysis or install `dumpcap`/Npcap where possible. Historical references to `cap` in this repository are deprecated.
 
 4. Secure spawn and argument handling to avoid shell injection; use direct argument arrays and validate interface names.
 

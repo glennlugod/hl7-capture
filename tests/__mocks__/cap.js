@@ -1,22 +1,2 @@
-module.exports = {
-  Cap: jest.fn().mockImplementation(() => {
-    return {
-      open: jest.fn(),
-      on: jest.fn(),
-      close: jest.fn(),
-    };
-  }),
-  decoders: {
-    PROTOCOL: {
-      ETHERNET: {
-        IPV4: 2048,
-      },
-      IP: {
-        TCP: 6,
-      },
-    },
-    Ethernet: jest.fn(),
-    IPV4: jest.fn(),
-    TCP: jest.fn(),
-  },
-};
+// cap mock removed — project no longer uses the `cap` native module.
+// This file is left intentionally empty to avoid legacy mock behavior.

@@ -8,7 +8,7 @@ Status: in-progress
 
 As a developer, I want the application to use `dumpcap` (Wireshark) as an alternative capture backend so that HL7 messages are captured reliably across platforms (especially Windows) and existing HL7 parsing and session reconstruction work unchanged.
 
-This story implements a safe, event-driven adapter that spawns `dumpcap`, parses pcap/pcapng streams, extracts TCP payloads, and forwards packet payloads to the existing `HL7CaptureManager` via an EventEmitter API. A runtime fallback to the existing `cap` backend will be preserved.
+This story implements a safe, event-driven adapter that spawns `dumpcap`, parses pcap/pcapng streams, extracts TCP payloads, and forwards packet payloads to the existing `HL7CaptureManager` via an EventEmitter API. The legacy `cap` native module is deprecated; the app uses `dumpcap` as the supported runtime capture backend.
 
 ---
 
@@ -18,7 +18,7 @@ This story implements a safe, event-driven adapter that spawns `dumpcap`, parses
 
 2. Given a running capture, HL7 elements (start, message, ack, end) are emitted by `HL7CaptureManager` for messages generated from dumpcap-sourced packets, and the renderer receives the same IPC events as with the `cap` backend.
 
-3. If `dumpcap` is not available (not found or spawn fails), the app falls back to the existing `cap` backend automatically or when the user explicitly chooses `cap` in settings. A clear error message is logged and shown to the user indicating the fallback.
+3. If `dumpcap` is not available (not found or spawn fails), the app does not automatically fall back to a native capture module. In that case the UI should show a clear error instructing the user to install `dumpcap`/Npcap or to provide recorded pcap files for analysis.
 
 4. The adapter provides start/stop APIs and cleanly shuts down `dumpcap` when capture stops (terminates child process and releases resources). No orphaned dumpcap processes after stop or app quit.
 
@@ -94,7 +94,7 @@ IPC / Renderer: no changes required beyond selecting backend; existing IPC event
 ## Definition of Done
 
 1. `DumpcapAdapter` implemented with tests passing.
-2. `HL7CaptureManager` accepts adapter packet events and emits HL7 elements identical to existing `cap` backend behavior.
+2. `HL7CaptureManager` accepts adapter packet events and emits HL7 elements identical to the previous native capture behavior.
 3. Documentation updated with installation and permission guidance.
 4. No new lint/type errors; unit and integration tests added and passing locally.
 

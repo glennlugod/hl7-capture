@@ -80,7 +80,7 @@ so that **I can troubleshoot device-to-LIS integration issues, validate HL7 mess
 ### Phase 2: HL7 Protocol & TCP Capture
 
 - [x] Create `src/common/types.ts` - Define HL7 TypeScript interfaces (MarkerConfig, HL7Element, HL7Session)
-- [x] Install and verify cap library (`npm install cap`)
+- [x] Verify capture tooling available (historical: `cap` was used; current recommendation: use `dumpcap`)
 - [x] Implement network interface detection (`getNetworkInterfaces()`)
 - [x] Implement marker configuration validation (`validateMarkerConfig()`)
 - [x] Implement TCP packet capture with IP/port filtering (`startCapture()`, `stopCapture()`)

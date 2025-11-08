@@ -1,15 +1,14 @@
-# Migration from pcap to cap Library
+# Migration note: historical cap integration (deprecated)
 
 ## Summary
 
-Successfully replaced the `pcap` library with the `cap` library in the HL7 Capture application.
+This document described a previous migration to the `cap` library. The project has since
+deprecated the `cap` runtime integration in favor of a single, supported external
+capture backend: `dumpcap` (Wireshark). The historical notes remain for reference only.
 
 ## Changes Made
 
-### 1. Package Installation
-
-- Installed `cap` package via npm
-- Added to project dependencies
+Note: the `cap` package is no longer required or used by the application.
 
 ### 2. Type Definitions (`src/types/cap.d.ts`)
 
@@ -63,12 +62,11 @@ captureSession.setMinBytes(0);
 - Used structured packet decoders for Ethernet, IP, TCP, and UDP layers
 - Improved error handling and packet data extraction
 
-## Key Improvements
+## Recommendation
 
-1. **Better API Design**: The cap library provides a cleaner, more structured API with dedicated decoders
-2. **IPv6 Support**: Native support for both IPv4 and IPv6 packets
-3. **Type Safety**: Comprehensive TypeScript definitions for better IDE support and type checking
-4. **Cleaner Code**: Structured packet parsing using dedicated decoder functions instead of manual buffer manipulation
+Use `dumpcap` as the single supported capture backend. It produces pcap/pcapng output which the
+application parses via a streaming parser. This avoids native bindings and driver packaging issues
+on Windows.
 
 ## Testing Recommendations
 

@@ -15,7 +15,7 @@ export default defineConfig({
       fileName: () => "main.js",
     },
     rollupOptions: {
-      external: ["electron", "cap"],
+      external: ["electron"],
     },
     emptyOutDir: false,
   },

@@ -1,6 +1,4 @@
-import { HL7CaptureManager } from '../../src/main/hl7-capture'
-
-jest.mock("cap");
+import { HL7CaptureManager } from "../../src/main/hl7-capture";
 
 describe("HL7 Parser", () => {
   let captureManager: HL7CaptureManager;

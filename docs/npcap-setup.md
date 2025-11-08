@@ -2,7 +2,7 @@
 
 ## Overview
 
-This application uses the `cap` npm package for network packet capture, which requires Npcap (or WinPcap) to be installed on Windows systems.
+This project uses `dumpcap` (part of Wireshark) as the supported capture backend. On Windows, install Npcap so dumpcap can capture on interfaces without elevated privileges.
 
 ## Prerequisites
 
@@ -14,57 +14,35 @@ Npcap must be installed on your system before running this application. Download
 
 ### Important Installation Options
 
-When installing Npcap, make sure to:
-
-- ✅ Enable **"Install Npcap in WinPcap API-compatible Mode"**
-- This ensures compatibility with the `cap` npm package
+When installing Npcap, consider enabling non-admin capture options so `dumpcap` can be used without elevation.
 
 ## Automatic Setup
 
-The project includes an automated setup script that runs after `npm install`:
-
-```bash
-npm install
-```
-
-This will:
-
-1. Rebuild native modules for Electron using `electron-rebuild`
-2. Copy required Npcap DLLs (`wpcap.dll` and `Packet.dll`) from `C:\Windows\System32\Npcap` to the `cap` module's build directory
+There is no native `cap` module dependency anymore; the project does not copy Npcap DLLs into node_modules. After installing Npcap and ensuring `dumpcap.exe` is on PATH, the application can start `dumpcap` directly.
 
 ## Manual Setup
 
-If you encounter issues with the automatic setup, you can manually copy the DLLs:
-
-```powershell
-Copy-Item "C:\Windows\System32\Npcap\*.dll" -Destination "node_modules\cap\build\Release\" -Force
-```
+If you encounter issues, verify `dumpcap.exe` is on PATH or available in a common Wireshark installation folder (e.g., "C:\Program Files\Wireshark").
 
 ## Troubleshooting
 
 ### Error: "The specified module could not be found"
 
-This error occurs when the Npcap DLLs are not accessible to the cap module. Solutions:
+If dumpcap cannot start due to missing Npcap, steps:
 
-1. **Verify Npcap is installed:**
+1. Verify Npcap is installed:
 
-   ```powershell
-   Test-Path "C:\Windows\System32\Npcap"
-   ```
+```powershell
+Test-Path "C:\Windows\System32\Npcap"
+```
 
-2. **Check for DLL files:**
+2. Check for dumpcap.exe (common location):
 
-   ```powershell
-   Get-ChildItem "C:\Windows\System32\Npcap" -Filter "*.dll"
-   ```
+```powershell
+Test-Path "C:\Program Files\Wireshark\dumpcap.exe"
+```
 
-3. **Run the setup script manually:**
-
-   ```bash
-   node scripts/setup-npcap.js
-   ```
-
-4. **Reinstall Npcap** with WinPcap API-compatible mode enabled
+3. Reinstall Npcap from https://npcap.com/#download and enable non-admin capture when possible.
 
 ### Error: "Npcap DLLs not found"
 
@@ -76,7 +54,8 @@ If the setup script reports that Npcap DLLs are not found:
 
 ## Platform Notes
 
-- **Windows:** Requires Npcap installation (covered in this guide)
+-- **Windows:** Requires Npcap installation (covered in this guide)
+
 - **macOS:** Uses built-in packet capture capabilities
 - **Linux:** Requires libpcap to be installed (`sudo apt-get install libpcap-dev`)
 
