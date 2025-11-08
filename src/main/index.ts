@@ -1,7 +1,7 @@
-import { app, BrowserWindow, ipcMain } from 'electron'
-import path from 'path'
+import { app, BrowserWindow, ipcMain } from "electron";
+import path from "node:path";
 
-import { HL7CaptureManager } from './hl7-capture'
+import { HL7CaptureManager } from "./hl7-capture";
 
 let mainWindow: BrowserWindow | null;
 let captureManager: HL7CaptureManager;

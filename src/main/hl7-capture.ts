@@ -104,8 +104,8 @@ export class HL7CaptureManager extends EventEmitter {
       if (!addrs) continue;
 
       for (const addr of addrs) {
-        // Only include IPv4 non-internal interfaces
-        if (addr.family === "IPv4" && !addr.internal) {
+        // Only include IPv4 interfaces
+        if (addr.family === "IPv4") {
           interfaces.push({
             name: name,
             address: `${name} - ${addr.address}`,
@@ -194,9 +194,13 @@ export class HL7CaptureManager extends EventEmitter {
       hostClauses.push(`host ${this.markerConfig.destinationIP}`);
     const filter = `tcp${hostClauses.length ? " and " + hostClauses.join(" and ") : ""}`;
 
-    let linkType: number;
+    let linkType: string;
     try {
       linkType = this.cap.open(device, filter, bufSize, this.buffer);
+      console.log(
+        `Capture started on device: ${device} with filter: ${filter}. Link type: ${linkType}`
+      );
+      this.cap.setMinBytes(0);
     } catch (err: any) {
       // Clean up state on failure
       this.cap = null;
@@ -208,15 +212,21 @@ export class HL7CaptureManager extends EventEmitter {
     }
 
     this.cap.on("packet", (nbytes: number, truncated: boolean) => {
-      // LINKTYPE_ETHERNET is 1
-      if (linkType === 1) {
+      // linkType can be "NULL" (loopback), "ETHERNET", "IEEE802_11_RADIO", "LINKTYPE_LINUX_SLL", "RAW"
+      if (linkType === "ETHERNET" || linkType === "NULL") {
         const eth = decoders.Ethernet(this.buffer);
+        // console.debug(`Ethernet type: ${eth?.info.type}`);
 
         if (eth && eth.info.type === decoders.PROTOCOL.ETHERNET.IPV4) {
+          // show the first 10 bytes of the packet
+          // console.log(`packet: length ${nbytes} bytes, truncated? ${truncated}`);
+          // console.log(this.buffer.slice(0, 10));
+
           const ipv4 = decoders.IPV4(this.buffer, eth.offset);
           if (ipv4) {
             const sourceIP = ipv4.info.srcaddr;
             const destIP = ipv4.info.dstaddr;
+            console.debug(`Packet: ${sourceIP} -> ${destIP}, Protocol: ${ipv4.info.protocol}`);
 
             if (ipv4.info.protocol === decoders.PROTOCOL.IP.TCP) {
               const tcp = decoders.TCP(this.buffer, ipv4.offset);
@@ -357,6 +367,9 @@ export class HL7CaptureManager extends EventEmitter {
    * Process incoming packet data
    */
   private processPacket(sourceIP: string, destIP: string, data: Buffer): void {
+    console.log(`Processing packet from ${sourceIP} to ${destIP}, length: ${data.length}`);
+    console.log(data);
+
     if (!this.isCapturing) return;
 
     // Determine direction

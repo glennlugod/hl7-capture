@@ -1,6 +1,6 @@
 declare module "cap" {
   export class Cap {
-    open(device: string, filter: string, bufferSize: number, buffer: Buffer): number;
+    open(device: string, filter: string, bufferSize: number, buffer: Buffer): string;
     close(): void;
     setMinBytes(bytes: number): void;
     send(buffer: Buffer, length: number): number;
