@@ -41,5 +41,6 @@ stories:
   ux-design-system-foundation: docs/stories/ux-1-design-system-foundation.md
   ux-layout-and-components: docs/stories/ux-2-layout-and-components.md
   ux-realtime-and-accessibility: docs/stories/ux-3-realtime-and-accessibility.md
+  dumpcap-integration: docs/stories/story-dumpcap-integration.md
 
 story_status: ready-for-dev

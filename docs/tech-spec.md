@@ -1,3 +1,250 @@
+<!-- Auto-generated tech-spec for dumpcap integration -->
+
+# hl7-capture - Technical Specification
+
+**Author:** Glenn
+**Date:** 2025-11-08
+**Project Level:** 0
+**Change Type:** Replace unreliable native capture library with external capture tool
+**Development Context:** Integrate dumpcap (Wireshark) for packet capture and forward packets to the existing application for HL7 parsing and session management
+
+---
+
+## Context
+
+### Available Documents
+
+- Existing project repository and workflows
+- Current capture implementation: `src/main/hl7-capture.ts` using the `cap` npm module
+
+### Project Stack
+
+- Electron (desktop app) + React renderer
+- Node.js main process (TypeScript)
+- `dumpcap` (Wireshark) will be used as an external capture tool
+
+### Existing Codebase Structure
+
+- Main process: `src/main` (capture, app bootstrap)
+- Renderer: `src/renderer` (UI components)
+- Scripts: `scripts/` (simulators and helpers)
+
+---
+
+## The Change
+
+### Problem Statement
+
+The `cap` npm library integration is unreliable for capturing network traffic across platforms (especially Windows). This causes missed or malformed packets and makes HL7 session reconstruction fragile.
+
+### Proposed Solution
+
+Replace direct use of the `cap` library for live capture with `dumpcap` (the Wireshark capture engine), invoked as an external process. Capture will be written to stdout (pcapng or pcap) or to a rotating capture file and then streamed into the app. The application will parse forwarded packet payloads to detect HL7 markers and maintain sessions as before.
+
+### Scope
+
+In scope:
+
+- Add a `dumpcap` invocation utility in the main process to call dumpcap with safe arguments
+- Accept pcap/pcapng stream or temporary file output and parse TCP payloads for HL7 messages
+- Keep existing HL7 parsing/session logic in `src/main/hl7-capture.ts` and adapt it to accept packet frames from an external source
+- Provide documentation for installing Wireshark/dumpcap and required privileges on Windows
+
+Out of scope:
+
+- Replacing the existing HL7 parsing logic (only adapt input source to be dumpcap)
+- Building a cross-platform installer for dumpcap or Wireshark
+
+---
+
+## Implementation Details
+
+### Source Tree Changes
+
+- `src/main/hl7-capture.ts` — refactor to separate packet source layer from parsing/session logic
+- `src/main/dumpcap-adapter.ts` — new module to spawn dumpcap and stream packets into the main capture manager
+- `scripts/` — update or add helper scripts to run dumpcap in development (example command)
+- `docs/` — update `tech-spec.md` (this file) and add usage docs for dumpcap
+
+### Technical Approach
+
+1. Create an adapter module `dumpcap-adapter.ts` that:
+   - Detects `dumpcap` in PATH or common installation locations
+   - Spawns dumpcap with arguments to capture TCP traffic and write raw packets to stdout in pcapng/pcap format or to a temporary file
+   - Parses the pcap stream (using a lightweight pcap parser such as `pcap-parser` or `pcapjs`) or invokes a minimal parsing layer to extract IPv4/TCP payloads
+   - Emits packet buffers with sourceIP, destIP, and payload to the `HL7CaptureManager` via an event or direct method
+
+2. Refactor `HL7CaptureManager` to accept an optional external packet source (EventEmitter) and add an API:
+   - `attachPacketSource(source: EventEmitter)` — listen for `packet` events {sourceIP, destIP, data}
+   - `detachPacketSource()` — stop listening
+
+3. Provide a fallback where, if dumpcap is not available, the existing `cap` usage remains usable behind a feature flag or runtime choice. This allows debugging and environments where dumpcap can't be installed.
+
+4. Secure spawn and argument handling to avoid shell injection; use direct argument arrays and validate interface names.
+
+### Integration Points
+
+- New module `dumpcap-adapter.ts` integrates with `HL7CaptureManager` in `hl7-capture.ts` via events
+- UI: Add a small configuration option to select capture method (Dumpcap / cap) in the renderer capture panel (future small UI change)
+
+---
+
+## Development Context
+
+### Relevant Existing Code
+
+- `src/main/hl7-capture.ts` — existing capture manager and HL7 session handling
+- `scripts/mllp-sim.js` — simulator for HL7 messages (useful for local testing)
+
+### Dependencies
+
+**Framework/Libraries:**
+
+- Node.js runtime (Electron's main process)
+- Optional: `pcap-parser` or `pcapjs` (choose minimal, well-maintained library) to parse pcap streams
+
+**External:**
+
+- `dumpcap` (part of Wireshark distribution) available on PATH after installation
+
+### Configuration Changes
+
+- Document required permissions on Windows (Npcap WinPcap component or run dumpcap with elevated privileges). See `scripts/setup-npcap.js` for setup references.
+
+### Existing Conventions (Brownfield)
+
+- N/A — project is greenfield-level-0 but follows Electron/Node project conventions
+
+### Test Framework & Standards
+
+- Jest is used for unit/integration tests; add tests for adapter module and HL7CaptureManager integration
+
+---
+
+## Implementation Stack
+
+- Node.js spawn API for invoking dumpcap
+- pcap parsing library (`pcap-parser` or `pcapjs`) to decode packet headers and extract TCP payloads
+- EventEmitter-based integration between adapter and `HL7CaptureManager`
+
+---
+
+## Technical Details
+
+1. Example dumpcap invocation (Windows PowerShell safe args):
+
+```powershell
+# Capture TCP packets on interface index 1 and write to stdout in pcapng
+dumpcap -i 1 -f "tcp" -w -
+```
+
+Or write to rotating files:
+
+```powershell
+dumpcap -i 1 -f "tcp" -b filesize:10240 -w capture.pcapng
+```
+
+Note: Using `-w -` writes binary pcap to stdout which the adapter can parse directly.
+
+2. Parsing approach:
+
+- Use a stream pcap parser to read pcapng/pcap frames from stdout
+- For each packet, decode IPv4 and TCP headers to obtain source/destination IPs and TCP payload
+- Forward payload Buffer to capture manager
+
+3. Handling privileges on Windows:
+
+- `dumpcap` requires elevated privileges to capture on interfaces unless Npcap is installed with the option to allow non-admin capture. Document these steps and link to `scripts/setup-npcap.js` for automations.
+
+---
+
+## Development Setup
+
+1. Install Wireshark (or dumpcap) and ensure `dumpcap` is on PATH
+2. Ensure Npcap is installed on Windows with option "Support raw 802.11 traffic" if needed
+3. Start app and select Dumpcap capture method (or default to dumpcap if available)
+
+---
+
+## Implementation Guide
+
+### Setup Steps
+
+1. Add new file `src/main/dumpcap-adapter.ts`
+2. Implement stream parsing of dumpcap stdout and emit `packet` events
+3. Refactor `src/main/hl7-capture.ts` to accept external packet source events
+4. Add unit tests (Jest) for adapter and integration test that uses `scripts/mllp-sim.js` to send HL7 messages to an interface
+
+### Implementation Steps
+
+1. Implement `dumpcap-adapter.ts` with safe spawn and detection logic
+2. Implement packet parsing using `pcap-parser` and decode IPv4/TCP frames
+3. Expose startup/shutdown APIs for adapter
+4. Wire adapter into `HL7CaptureManager.startCapture()` when method is `dumpcap`
+
+### Testing Strategy
+
+- Unit test adapter parsing using recorded pcap test fixtures
+- Integration test: Run `dumpcap` in a test environment (or read pcap file) and validate `HL7CaptureManager` receives messages
+- Use existing `scripts/mllp-sim.js` to simulate device messages
+
+### Acceptance Criteria
+
+- Dumpcap can be invoked from the application and stream packets into `HL7CaptureManager`
+- Existing HL7 messages captured by `scripts/mllp-sim.js` are reconstructed accurately and session `start`, `message`, `ack`, and `end` elements are emitted
+- Fallback to `cap` is available and documented
+
+---
+
+## Developer Resources
+
+### File Paths Reference
+
+- `src/main/hl7-capture.ts` — HL7 capture manager (refactor target)
+- `src/main/dumpcap-adapter.ts` — new adapter
+- `scripts/setup-npcap.js` — Windows Npcap setup
+- `scripts/mllp-sim.js` — HL7 message simulator
+
+### Key Code Locations
+
+- `HL7CaptureManager` class in `src/main/hl7-capture.ts`
+
+### Testing Locations
+
+- `tests/integration/hl7-capture.integration.test.ts` — update to test adapter integration
+
+### Documentation to Update
+
+- `README.md` — add dumpcap setup and run instructions
+- `docs/tech-spec.md` — (this file)
+
+---
+
+## UX/UI Considerations
+
+- Add configuration switch to the capture UI to choose capture backend (Dumpcap / Cap)
+
+---
+
+## Deployment Strategy
+
+### Deployment Steps
+
+1. Document prerequisites (Wireshark/dumpcap installation) in README
+2. Ship app update that uses dumpcap adapter by default when dumpcap is available
+
+### Rollback Plan
+
+- If dumpcap integration causes issues, provide a runtime toggle to revert to `cap` capture
+
+### Monitoring
+
+- Add logging for adapter startup/shutdown and packet errors. Track dropped packets or parse failures
+
+---
+
+End of spec
+
 # Technical Specification: HL7-Capture - Network Traffic Capture Desktop Application
 
 **Project:** hl7-capture  
