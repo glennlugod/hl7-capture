@@ -1,5 +1,5 @@
 # Workflow Status - hl7-capture
-# Generated: 2025-11-04
+# Generated: 2025-11-08
 # Project: hl7-capture
 # Type: software (greenfield, level 0)
 # Path: greenfield-level-0.yaml
@@ -11,7 +11,7 @@
 # - {file-path}: File created/found (e.g., "docs/tech-spec.md")
 # - skipped: Optional/conditional workflow that was skipped
 
-generated: "2025-11-04"
+generated: "2025-11-08"
 project: "hl7-capture"
 project_type: "software"
 project_level: 0
@@ -34,5 +34,12 @@ workflow_status:
 # Level 0 Story Status (for single atomic change)
 stories:
   hl7-device-capture: docs/stories/story-hl7-device-capture.md
+  interface-selector: docs/stories/story-interface-selector.md
+  configuration-panel: docs/stories/story-configuration-panel.md
+  marker-config-form: docs/stories/story-marker-config-form.md
+  presets: docs/stories/story-presets.md
+  ux-design-system-foundation: docs/stories/ux-1-design-system-foundation.md
+  ux-layout-and-components: docs/stories/ux-2-layout-and-components.md
+  ux-realtime-and-accessibility: docs/stories/ux-3-realtime-and-accessibility.md
 
 story_status: ready-for-dev
