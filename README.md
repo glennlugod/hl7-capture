@@ -130,6 +130,32 @@ Click "Stop Capture" to halt monitoring. Sessions remain visible until cleared.
 
 ## Architecture
 
+### Dumpcap development (Windows)
+
+If you want to develop and test the Dumpcap-based capture backend locally on Windows, follow these steps:
+
+1. Install Npcap (https://npcap.com/) with the option to install WinPcap API compatibility.
+2. Ensure `dumpcap.exe` is available on your PATH or note the installation folder (typically `C:\Program Files\Wireshark`).
+3. Use the included PowerShell helper to run dumpcap with safe arguments and output pcap data to stdout for the adapter to consume during development.
+
+Example (PowerShell):
+
+```powershell
+# Run dumpcap on interface index 1, filter TCP traffic, write to stdout
+& "C:\Program Files\Wireshark\dumpcap.exe" -i 1 -f "tcp" -w - | Out-Default
+```
+
+Or use the helper script in this repo:
+
+```powershell
+.\scripts\run-dumpcap-dev.ps1 -Interface 1 -Filter "tcp"
+```
+
+Notes:
+
+- Running dumpcap may require elevated privileges depending on your Npcap installation options.
+- The helper script is intended for local development and debugging only. It intentionally avoids modifying PATH or system settings.
+
 ### Technology Stack
 
 - **Electron**: Cross-platform desktop framework

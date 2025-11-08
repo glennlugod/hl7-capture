@@ -1,10 +1,66 @@
 import "@testing-library/jest-dom";
 
-import { EventEmitter } from "events";
+import { EventEmitter } from "node:events";
 
-// Use the jest mock for cap (tests/__mocks__/cap.js)
-jest.mock("cap");
+import { HL7CaptureManager } from "../../src/main/hl7-capture";
 
+describe("HL7CaptureManager integration with external packet source", () => {
+  test("receives packet events and emits elements", async () => {
+    const manager = new HL7CaptureManager();
+
+    // Create a fake packet source that emits start marker, a message, then end marker
+    const fakeSource = new EventEmitter();
+    (fakeSource as any).start = jest.fn();
+    (fakeSource as any).stop = jest.fn();
+
+    manager.attachPacketSource(fakeSource as any);
+
+    const emitted: any[] = [];
+    manager.on("element", (el) => emitted.push(el));
+
+    // Start capture
+    await manager.startCapture("lo", {
+      startMarker: 0x05,
+      acknowledgeMarker: 0x06,
+      endMarker: 0x04,
+      sourceIP: "10.0.0.1",
+      destinationIP: "10.0.0.2",
+    });
+
+    // Emit start marker packet
+    fakeSource.emit("packet", {
+      sourceIP: "10.0.0.1",
+      destIP: "10.0.0.2",
+      data: Buffer.from([0x05]),
+    });
+
+    // Emit an HL7 message (with CRLF)
+    fakeSource.emit("packet", {
+      sourceIP: "10.0.0.1",
+      destIP: "10.0.0.2",
+      data: Buffer.from("MSH|^~\\&\r\n"),
+    });
+
+    // Emit end marker
+    fakeSource.emit("packet", {
+      sourceIP: "10.0.0.1",
+      destIP: "10.0.0.2",
+      data: Buffer.from([0x04]),
+    });
+
+    // Allow events to process
+    await new Promise((r) => process.nextTick(r));
+
+    // We expect at least start, message, end elements
+    const types = emitted.map((e) => e.type);
+    expect(types).toContain("start");
+    expect(types).toContain("message");
+    expect(types).toContain("end");
+
+    // Stop capture
+    await manager.stopCapture();
+  });
+});
 describe("HL7CaptureManager integration (mocked cap)", () => {
   it("starts capture, receives HL7 start/message/end markers and records a session", async () => {
     // Mock the os module before requiring HL7CaptureManager so internal imports use our mock
@@ -27,45 +83,6 @@ describe("HL7CaptureManager integration (mocked cap)", () => {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const { HL7CaptureManager } = require("../../src/main/hl7-capture") as any;
 
-    // Import the mocked cap to inspect how it's used
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const capModule = require("cap") as any;
-
-    // We'll capture the packet handler installed via cap.on('packet', ...)
-    let packetHandler: ((nbytes: number, truncated: boolean) => void) | null = null;
-
-    // Provide an implementation for Cap() that records the 'on' callback and returns open->linkType
-    capModule.Cap.mockImplementation(() => {
-      const emitter = new EventEmitter();
-      return {
-        open: jest.fn(() => 1), // LINKTYPE_ETHERNET
-        on: jest.fn((evt: string, cb: any) => {
-          if (evt === "packet") packetHandler = cb;
-          emitter.on(evt, cb);
-        }),
-        close: jest.fn(),
-      };
-    });
-
-    // Mock decoders to return structures expected by hl7-capture
-    capModule.decoders.Ethernet.mockImplementation((buffer: Buffer) => ({
-      info: { type: capModule.decoders.PROTOCOL.ETHERNET.IPV4 },
-      offset: 14,
-    }));
-
-    capModule.decoders.IPV4.mockImplementation((buffer: Buffer, offset: number) => ({
-      info: {
-        srcaddr: "192.0.2.10",
-        dstaddr: "192.0.2.20",
-        protocol: capModule.decoders.PROTOCOL.IP.TCP,
-      },
-      offset: offset + 20,
-    }));
-
-    capModule.decoders.TCP.mockImplementation((buffer: Buffer, offset: number) => ({
-      offset: offset + 20,
-    }));
-
     const manager = new HL7CaptureManager();
 
     const elements: any[] = [];
@@ -80,31 +97,34 @@ describe("HL7CaptureManager integration (mocked cap)", () => {
       destinationIP: "192.0.2.20",
     };
 
-    // Start capture (should call Cap.open and register packet handler)
+    // Attach a fake packet source (EventEmitter) and emit 'packet' events that the manager will consume
+    const fakeSource = new EventEmitter();
+    manager.attachPacketSource(fakeSource);
+
+    // Start capture (should attach to external source and return)
     await manager.startCapture("Ethernet 1 - 192.0.2.10", markers);
 
-    // Ensure packet handler was registered
-    expect(packetHandler).not.toBeNull();
-
-    // Simulate receiving a single-byte start marker packet by writing into the manager's internal buffer
-    const startBuf = Buffer.from([markers.startMarker]);
-    const internalBuffer: Buffer = (manager as any).buffer;
-    const writeOffset = 54; // matches offsets returned by our mock decoders (14 + 20 + 20)
-    startBuf.copy(internalBuffer, writeOffset);
-    packetHandler!(writeOffset + startBuf.length, false);
+    // Simulate receiving a single-byte start marker packet via packet events
+    fakeSource.emit("packet", {
+      sourceIP: markers.sourceIP,
+      destIP: markers.destinationIP,
+      data: Buffer.from([markers.startMarker]),
+    });
 
     // Now simulate a message payload followed by CRLF
     const message = Buffer.from("MSH|^~\\&|ABC|DEF|GHI|JKL|20251108||ADT^A01|123|P|2.5\r\n");
-    const msgOffset = writeOffset + 1;
-    message.copy(internalBuffer, msgOffset);
-    packetHandler!(msgOffset + message.length, false);
+    fakeSource.emit("packet", {
+      sourceIP: markers.sourceIP,
+      destIP: markers.destinationIP,
+      data: message,
+    });
 
-    // Simulate end marker as its own single-byte TCP payload so it's detected as marker
-    const endBuf = Buffer.from([markers.endMarker]);
-    const endWriteOffset = msgOffset + message.length + 1;
-    endBuf.copy(internalBuffer, endWriteOffset);
-    // Call packet handler with nbytes such that data slice tcp.offset..nbytes is exactly 1 byte
-    packetHandler!(endWriteOffset + endBuf.length, false);
+    // Simulate end marker as its own single-byte TCP payload
+    fakeSource.emit("packet", {
+      sourceIP: markers.sourceIP,
+      destIP: markers.destinationIP,
+      data: Buffer.from([markers.endMarker]),
+    });
 
     // Give the event loop a tick for handlers to run
     await new Promise((r) => setTimeout(r, 0));

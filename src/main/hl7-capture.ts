@@ -3,9 +3,12 @@
  * Handles TCP packet capture, HL7 marker detection, and session management
  */
 
-import { Cap, decoders } from "cap";
 import { EventEmitter } from "events";
 import * as os from "os";
+
+import { DumpcapAdapter } from "./dumpcap-adapter";
+
+// decoders are no longer used from 'cap'
 
 import type { NetworkInterface, MarkerConfig, HL7Session, HL7Element } from "../common/types";
 
@@ -25,8 +28,10 @@ export class HL7CaptureManager extends EventEmitter {
   // Session tracking
   private activeSessionKey: string | null = null;
   private sessionBuffer: Buffer = Buffer.alloc(0);
-  private cap: Cap | null = null;
+  // capture backend state (dumpcap adapter is used when external source not provided)
   private buffer: Buffer = Buffer.alloc(65535);
+  // Optional external packet source (e.g., DumpcapAdapter)
+  private externalPacketSource: EventEmitter | null = null;
 
   constructor() {
     super();
@@ -46,17 +51,9 @@ export class HL7CaptureManager extends EventEmitter {
    */
   private resolveDevice(interfaceOrIp: string): string {
     // If the input looks like an IP address, try to find the device for that IP
+    // If an IP was provided, prefer returning the IP (caller resolves friendly names)
     if (interfaceOrIp && this.isValidIP(interfaceOrIp)) {
-      // Cap.findDevice may be available on the Cap class
-      // @ts-ignore - runtime helper
-      if (typeof (Cap as any).findDevice === "function") {
-        try {
-          const dev = (Cap as any).findDevice(interfaceOrIp);
-          if (dev) return dev;
-        } catch (err: any) {
-          this.emit("error", new Error(`Device lookup failed: ${err?.message ?? String(err)}`));
-        }
-      }
+      return interfaceOrIp;
     }
 
     // Try to match by interface label or name from os.networkInterfaces
@@ -70,19 +67,6 @@ export class HL7CaptureManager extends EventEmitter {
           name === interfaceOrIp ||
           `${name} - ${addr.address}` === interfaceOrIp
         ) {
-          // On Windows, Cap expects the adapter name returned by pcap
-          // which is typically something like "\Device\NPF_{...}"; try findDevice by IP again
-          // Try to resolve using findDevice for the matched address
-          // @ts-ignore
-          if (typeof (Cap as any).findDevice === "function") {
-            try {
-              const dev = (Cap as any).findDevice(addr.address);
-              if (dev) return dev;
-            } catch (err: any) {
-              this.emit("error", new Error(`Device lookup failed: ${err?.message ?? String(err)}`));
-            }
-          }
-
           // As a last resort return the interface name
           return name;
         }
@@ -181,66 +165,60 @@ export class HL7CaptureManager extends EventEmitter {
       elementCount: 0,
     });
 
-    this.cap = new Cap();
-    const bufSize = 10 * 1024 * 1024;
+    // If an external packet source is attached, use it
+    if (this.externalPacketSource) {
+      this.externalPacketSource.on("packet", (pkt: any) => {
+        try {
+          if (pkt?.data) {
+            this.processPacket(pkt.sourceIP || "", pkt.destIP || "", pkt.data);
+          }
+        } catch (err) {
+          this.emit("error", err as Error);
+        }
+      });
 
-    // Resolve device name for the platform (Cap expects the libpcap device name, not a friendly interface label)
-    const device = this.resolveDevice(this.currentInterface);
-
-    // Build filter safely: only include host clauses for non-empty IPs
-    const hostClauses: string[] = [];
-    if (this.markerConfig.sourceIP) hostClauses.push(`host ${this.markerConfig.sourceIP}`);
-    if (this.markerConfig.destinationIP)
-      hostClauses.push(`host ${this.markerConfig.destinationIP}`);
-    const filter = `tcp${hostClauses.length ? " and " + hostClauses.join(" and ") : ""}`;
-
-    let linkType: string;
-    try {
-      linkType = this.cap.open(device, filter, bufSize, this.buffer);
-      console.log(
-        `Capture started on device: ${device} with filter: ${filter}. Link type: ${linkType}`
-      );
-      this.cap.setMinBytes(0);
-    } catch (err: any) {
-      // Clean up state on failure
-      this.cap = null;
-      this.isCapturing = false;
-      // Emit an error event with helpful message
-      const msg = `Failed to start capture: ${err?.message ?? String(err)}`;
-      this.emit("error", new Error(msg));
-      throw new Error(msg);
+      return;
     }
 
-    this.cap.on("packet", (nbytes: number, truncated: boolean) => {
-      // linkType can be "NULL" (loopback), "ETHERNET", "IEEE802_11_RADIO", "LINKTYPE_LINUX_SLL", "RAW"
-      if (linkType === "ETHERNET" || linkType === "NULL") {
-        const eth = decoders.Ethernet(this.buffer);
-        // console.debug(`Ethernet type: ${eth?.info.type}`);
-
-        if (eth && eth.info.type === decoders.PROTOCOL.ETHERNET.IPV4) {
-          // show the first 10 bytes of the packet
-          // console.log(`packet: length ${nbytes} bytes, truncated? ${truncated}`);
-          // console.log(this.buffer.slice(0, 10));
-
-          const ipv4 = decoders.IPV4(this.buffer, eth.offset);
-          if (ipv4) {
-            const sourceIP = ipv4.info.srcaddr;
-            const destIP = ipv4.info.dstaddr;
-            console.debug(`Packet: ${sourceIP} -> ${destIP}, Protocol: ${ipv4.info.protocol}`);
-
-            if (ipv4.info.protocol === decoders.PROTOCOL.IP.TCP) {
-              const tcp = decoders.TCP(this.buffer, ipv4.offset);
-              if (tcp) {
-                const data = this.buffer.slice(tcp.offset, nbytes);
-                if (data.length > 0) {
-                  this.processPacket(sourceIP, destIP, data);
-                }
-              }
-            }
-          }
-        }
-      }
+    // No external source attached: create internal DumpcapAdapter and start it
+    const dumpcap = new DumpcapAdapter({
+      interface: this.currentInterface,
+      bpf: this.markerConfig ? "tcp" : undefined,
     });
+    this.attachPacketSource(dumpcap);
+    dumpcap.on("start", () => this.emit("status", { isCapturing: true }));
+    dumpcap.on("stop", () => this.emit("status", { isCapturing: false }));
+    dumpcap.on("error", (err: Error) => this.emit("error", err));
+
+    try {
+      await dumpcap.start();
+    } catch (err: any) {
+      this.detachPacketSource();
+      this.isCapturing = false;
+      this.emit("error", err as Error);
+      throw err;
+    }
+  }
+
+  /**
+   * Attach an EventEmitter packet source (implements 'packet' events)
+   */
+  public attachPacketSource(source: EventEmitter): void {
+    this.externalPacketSource = source;
+    source.on("error", (err: Error) => this.emit("error", err));
+  }
+
+  /**
+   * Detach the current external packet source
+   */
+  public detachPacketSource(): void {
+    if (!this.externalPacketSource) return;
+    try {
+      this.externalPacketSource.removeAllListeners("packet");
+      this.externalPacketSource.removeAllListeners("error");
+    } finally {
+      this.externalPacketSource = null;
+    }
   }
 
   /**
@@ -251,9 +229,16 @@ export class HL7CaptureManager extends EventEmitter {
       return;
     }
 
-    if (this.cap) {
-      this.cap.close();
-      this.cap = null;
+    // If an external packet source is attached and has a stop method, call it
+    if (
+      this.externalPacketSource &&
+      typeof (this.externalPacketSource as any).stop === "function"
+    ) {
+      try {
+        await (this.externalPacketSource as any).stop();
+      } catch (err) {
+        // ignore stop errors
+      }
     }
 
     this.isCapturing = false;

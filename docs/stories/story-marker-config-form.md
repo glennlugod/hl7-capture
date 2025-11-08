@@ -1,7 +1,7 @@
 # Story: Marker Configuration Form
 
 ID: ui-marker-config-form
-Status: ready-for-dev
+Status: done
 
 ## Summary
 
