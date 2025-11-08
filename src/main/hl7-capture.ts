@@ -3,9 +3,9 @@
  * Handles TCP packet capture, HL7 marker detection, and session management
  */
 
-import { Cap, decoders } from 'cap'
-import { EventEmitter } from 'events'
-import * as os from 'os'
+import { Cap, decoders } from "cap";
+import { EventEmitter } from "events";
+import * as os from "os";
 
 import type { NetworkInterface, MarkerConfig, HL7Session, HL7Element } from "../common/types";
 
@@ -37,6 +37,60 @@ export class HL7CaptureManager extends EventEmitter {
       sourceIP: "",
       destinationIP: "",
     };
+  }
+
+  /**
+   * Resolve a libpcap device name for Cap.open.
+   * Accepts either an interface name, a friendly label, or an IP address.
+   * Falls back to Cap.findDevice(ip) when available.
+   */
+  private resolveDevice(interfaceOrIp: string): string {
+    // If the input looks like an IP address, try to find the device for that IP
+    if (interfaceOrIp && this.isValidIP(interfaceOrIp)) {
+      // Cap.findDevice may be available on the Cap class
+      // @ts-ignore - runtime helper
+      if (typeof (Cap as any).findDevice === "function") {
+        try {
+          const dev = (Cap as any).findDevice(interfaceOrIp);
+          if (dev) return dev;
+        } catch (err: any) {
+          this.emit("error", new Error(`Device lookup failed: ${err?.message ?? String(err)}`));
+        }
+      }
+    }
+
+    // Try to match by interface label or name from os.networkInterfaces
+    const nics = os.networkInterfaces();
+    for (const [name, addrs] of Object.entries(nics)) {
+      if (!addrs) continue;
+      for (const addr of addrs) {
+        // Match on address, or on provided friendly label/name
+        if (
+          (addr.family === "IPv4" && addr.address === interfaceOrIp) ||
+          name === interfaceOrIp ||
+          `${name} - ${addr.address}` === interfaceOrIp
+        ) {
+          // On Windows, Cap expects the adapter name returned by pcap
+          // which is typically something like "\Device\NPF_{...}"; try findDevice by IP again
+          // Try to resolve using findDevice for the matched address
+          // @ts-ignore
+          if (typeof (Cap as any).findDevice === "function") {
+            try {
+              const dev = (Cap as any).findDevice(addr.address);
+              if (dev) return dev;
+            } catch (err: any) {
+              this.emit("error", new Error(`Device lookup failed: ${err?.message ?? String(err)}`));
+            }
+          }
+
+          // As a last resort return the interface name
+          return name;
+        }
+      }
+    }
+
+    // Fallback to whatever was provided
+    return interfaceOrIp;
   }
 
   /**
@@ -101,7 +155,7 @@ export class HL7CaptureManager extends EventEmitter {
     if (parts.length !== 4) return false;
 
     return parts.every((part) => {
-      const num = parseInt(part, 10);
+      const num = Number.parseInt(part, 10);
       return num >= 0 && num <= 255;
     });
   }
@@ -128,11 +182,30 @@ export class HL7CaptureManager extends EventEmitter {
     });
 
     this.cap = new Cap();
-    const device = this.currentInterface;
-    const filter = `tcp and host ${this.markerConfig.sourceIP} and host ${this.markerConfig.destinationIP}`;
     const bufSize = 10 * 1024 * 1024;
 
-    const linkType = this.cap.open(device, filter, bufSize, this.buffer);
+    // Resolve device name for the platform (Cap expects the libpcap device name, not a friendly interface label)
+    const device = this.resolveDevice(this.currentInterface);
+
+    // Build filter safely: only include host clauses for non-empty IPs
+    const hostClauses: string[] = [];
+    if (this.markerConfig.sourceIP) hostClauses.push(`host ${this.markerConfig.sourceIP}`);
+    if (this.markerConfig.destinationIP)
+      hostClauses.push(`host ${this.markerConfig.destinationIP}`);
+    const filter = `tcp${hostClauses.length ? " and " + hostClauses.join(" and ") : ""}`;
+
+    let linkType: number;
+    try {
+      linkType = this.cap.open(device, filter, bufSize, this.buffer);
+    } catch (err: any) {
+      // Clean up state on failure
+      this.cap = null;
+      this.isCapturing = false;
+      // Emit an error event with helpful message
+      const msg = `Failed to start capture: ${err?.message ?? String(err)}`;
+      this.emit("error", new Error(msg));
+      throw new Error(msg);
+    }
 
     this.cap.on("packet", (nbytes: number, truncated: boolean) => {
       // LINKTYPE_ETHERNET is 1
