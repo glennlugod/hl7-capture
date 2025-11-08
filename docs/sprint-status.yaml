@@ -44,7 +44,7 @@ development_status:
 
   # New UI Stories added (Configuration Panel feature)
   ui-configuration-panel:
-    status: in-progress
+    status: done
     story_file: docs/stories/story-configuration-panel.md
     owner: Glenn
     ready_date: 2025-11-08
