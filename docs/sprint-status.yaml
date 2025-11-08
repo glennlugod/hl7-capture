@@ -65,3 +65,11 @@ development_status:
     owner: TBD
     ready_date: 2025-11-08
     points: 3
+
+  # Story: Replace unreliable native capture with dumpcap integration
+  dumpcap-integration:
+    status: ready-for-dev
+    story_file: docs/stories/story-dumpcap-integration.md
+    owner: Glenn
+    ready_date: 2025-11-08
+    points: 3
