@@ -57,7 +57,7 @@ development_status:
     points: 2
 
   ui-marker-config-form:
-    status: ready-for-dev
+    status: in-progress
     story_file: docs/stories/story-marker-config-form.md
     owner: TBD
     ready_date: 2025-11-07

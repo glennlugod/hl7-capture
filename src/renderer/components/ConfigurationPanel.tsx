@@ -1,72 +1,104 @@
 import React, { useEffect, useState } from 'react'
 
+import MarkerConfigForm from './Configuration/MarkerConfigForm'
 import InterfaceSelector from './InterfaceSelector'
-import MarkerConfigForm from './MarkerConfigForm'
 
-import type { NetworkInterface, MarkerConfig } from "../../common/types";
+import type { NetworkInterface, Marker } from "../../common/types";
+
 export default function ConfigurationPanel(): JSX.Element {
   const [interfaces, setInterfaces] = useState<NetworkInterface[]>([]);
   const [selectedInterface, setSelectedInterface] = useState<string | null>(null);
-  const [markerConfig, setMarkerConfig] = useState<MarkerConfig>({
-    startMarker: 5,
-    acknowledgeMarker: 6,
-    endMarker: 4,
-    sourceIP: "",
-    destinationIP: "",
-  });
   const [status, setStatus] = useState<string>("");
   const [loadError, setLoadError] = useState<boolean>(false);
 
-  const loadInterfaces = async () => {
+  // Marker presets
+  const [presets, setPresets] = useState<Marker[]>([]);
+  const [selectedPresetId, setSelectedPresetId] = useState<string>("");
+  const [currentMarker, setCurrentMarker] = useState<Marker>({
+    id: "",
+    name: "",
+    type: "string",
+    pattern: "",
+    caseSensitive: false,
+    active: true,
+  });
+
+  // Load network interfaces
+  const loadInterfaces = async (): Promise<NetworkInterface[]> => {
     try {
-      const ifaces = await (globalThis as any).electron.getNetworkInterfaces();
+      const ifaces: NetworkInterface[] = await (window as any).electron.getNetworkInterfaces();
       setLoadError(false);
       setInterfaces(ifaces);
       if (ifaces.length > 0) setSelectedInterface(ifaces[0].name);
       return ifaces;
     } catch (e) {
-      // eslint-disable-next-line no-console
       console.error("Failed loading interfaces", e);
       setLoadError(true);
-      return [] as NetworkInterface[];
+      return [];
+    }
+  };
+
+  // Load marker presets from persistence
+  const loadPresets = async (): Promise<void> => {
+    try {
+      const p: Marker[] = await (window as any).electron.loadPresets();
+      setPresets(p);
+      if (p.length > 0) {
+        const first = p[0];
+        setSelectedPresetId(first.id);
+        setCurrentMarker(first);
+      }
+    } catch (e) {
+      console.error("Failed loading presets", e);
     }
   };
 
   useEffect(() => {
-    let mounted = true;
-    (async () => {
-      if (!mounted) return;
-      await loadInterfaces();
-    })();
-    return () => {
-      mounted = false;
-    };
+    loadInterfaces();
+    loadPresets();
   }, []);
 
-  const handleStart = async () => {
-    setStatus("starting");
+  // Handle saving a marker preset
+  const handleSaveMarker = async (marker: Marker): Promise<void> => {
     try {
-      await (globalThis as any).electron.startCapture(selectedInterface, { markers: markerConfig });
-      setStatus("started");
-    } catch (e: any) {
-      // eslint-disable-next-line no-console
-      console.error("startCapture failed", e);
+      await (window as any).electron.savePreset(marker);
+      setStatus("preset-saved");
+      await loadPresets();
+    } catch (e) {
+      console.error("savePreset failed", e);
       setStatus("error");
     }
   };
 
-  const [presetName, setPresetName] = useState("");
-
-  const handleSavePreset = async () => {
+  // Handle deleting a marker preset
+  const handleDeleteMarker = async (id: string): Promise<void> => {
     try {
-      await (globalThis as any).electron.saveMarkerConfig({
-        name: presetName,
-        markers: markerConfig,
-      });
-      setStatus("preset-saved");
+      await (window as any).electron.deletePreset(id);
+      setStatus("preset-deleted");
+      await loadPresets();
     } catch (e) {
-      // eslint-disable-next-line no-console
-      console.error("savePreset failed", e);
+      console.error("deletePreset failed", e);
+      setStatus("error");
+    }
+  };
+
+  // Handle preset selection
+  const handlePresetSelect = (id: string): void => {
+    setSelectedPresetId(id);
+    const preset = presets.find((p) => p.id === id);
+    if (preset) {
+      setCurrentMarker(preset);
+    }
+  };
+
+  // Start capture action
+  const handleStart = async (): Promise<void> => {
+    setStatus("starting");
+    try {
+      await (window as any).electron.startCapture(selectedInterface, { markers: currentMarker });
+      setStatus("started");
+    } catch (e: any) {
+      console.error("startCapture failed", e);
       setStatus("error");
     }
   };
@@ -74,7 +106,6 @@ export default function ConfigurationPanel(): JSX.Element {
   return (
     <div className="p-4">
       <h3 className="text-lg font-semibold text-slate-900 mb-2">Configuration Panel</h3>
-
       <div className="space-y-4">
         {loadError && (
           <div role="alert" className="text-red-600">
@@ -88,16 +119,27 @@ export default function ConfigurationPanel(): JSX.Element {
           onRefresh={loadInterfaces}
           disabled={false}
         />
-
+        <div className="mt-4">
+          <label className="block text-sm font-medium mb-1">Marker Presets</label>
+          <select
+            value={selectedPresetId}
+            onChange={(e) => handlePresetSelect(e.target.value)}
+            className="w-full rounded border px-2 py-1"
+          >
+            <option value="">-- New Marker --</option>
+            {presets.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+        </div>
         <MarkerConfigForm
-          initial=""
-          onChange={(v) => {
-            // MarkerConfigForm currently returns a string; keep it for now
-            // If the form produces structured data, convert here
-            setMarkerConfig((prev) => ({ ...prev, sourceIP: v }));
-          }}
+          marker={currentMarker}
+          onChange={setCurrentMarker}
+          onSave={handleSaveMarker}
+          onDelete={currentMarker.id ? handleDeleteMarker : undefined}
         />
-
         <div className="flex items-center gap-2 mt-2">
           <button
             onClick={handleStart}
@@ -107,27 +149,6 @@ export default function ConfigurationPanel(): JSX.Element {
             Start Capture
           </button>
           <span aria-live="polite">{status}</span>
-        </div>
-
-        <div className="mt-4">
-          <label htmlFor="preset-name" className="block text-sm font-medium">
-            Preset name
-          </label>
-          <div className="flex gap-2 mt-1">
-            <input
-              value={presetName}
-              onChange={(e) => setPresetName(e.target.value)}
-              className="flex-1 rounded-md border px-2"
-              placeholder="My HL7 Preset"
-              aria-label="preset-name"
-            />
-            <button
-              onClick={handleSavePreset}
-              className="px-3 py-2 rounded-md bg-slate-700 text-white"
-            >
-              Save
-            </button>
-          </div>
         </div>
       </div>
     </div>
