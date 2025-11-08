@@ -26,6 +26,15 @@ export interface MarkerConfig {
   destinationIP: string; // LIS PC IP
 }
 
+export interface Marker {
+  id: string;
+  name: string;
+  type: "string" | "regex" | "hex";
+  pattern: string;
+  caseSensitive: boolean;
+  active: boolean;
+}
+
 /**
  * Individual HL7 element (marker, message, ack, etc.)
  */

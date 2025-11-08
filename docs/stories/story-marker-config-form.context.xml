@@ -1,0 +1,47 @@
+<story-context id="bmad/bmm/workflows/4-implementation/story-context/template" v="1.0">
+  <metadata>
+    <epicId></epicId>
+    <storyId>marker-config-form</storyId>
+    <title>Marker Configuration Form</title>
+    <status>drafted</status>
+    <generatedAt>2025-11-07T09:59:00Z</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/stories/story-marker-config-form.md</sourceStoryPath>
+  </metadata>
+  <story>
+    <asA>User</asA>
+    <iWant>A compact form to define, preview, and save packet/HL7 message markers</iWant>
+    <soThat>I can tag or highlight messages during capture based on matching rules</soThat>
+    <tasks>
+      Implement MarkerConfigForm component; wire save/load presets; add inline preview; validation logic
+    </tasks>
+  </story>
+  <acceptanceCriteria>
+1. User can create a new marker with fields: name, type (string|regex|hex), pattern, caseSensitive, active (boolean).
+2. Shows an inline preview of the marker tested against a sample payload text area.
+3. Allows editing and deleting existing markers with confirmation on delete.
+4. Persist markers to local presets (via IPC) when user clicks Save.
+5. Validation: regex compile errors are surfaced inline; hex input validates format.
+  </acceptanceCriteria>
+  <artifacts>
+    <docs></docs>
+    <code>
+      <entry path="src/renderer/components/Configuration/MarkerConfigForm.tsx" kind="component" symbol="MarkerConfigForm" lines="1-200" reason="Primary UI component for marker form"/>
+      <entry path="src/common/types.ts" kind="interface" symbol="Marker" lines="1-50" reason="Defines Marker shape"/>
+    </code>
+    <dependencies>
+      <dependency ecosystem="node" name="react" version="^17.0.0"/>
+    </dependencies>
+  </artifacts>
+  <constraints></constraints>
+  <interfaces></interfaces>
+  <tests>
+    <standards>Jest and React Testing Library for unit tests</standards>
+    <locations>tests/unit</locations>
+    <ideas>
+      - Unit: form fields render with initial values and call onChange.
+      - Unit: validation blocks Save when pattern invalid.
+      - Integration: saving calls window.electron.savePreset and persists state across reloads.
+    </ideas>
+  </tests>
+</story-context>

@@ -183,6 +183,7 @@ Build **hl7-capture**: A specialized Electron desktop application for capturing 
   - Decoded HL7 message (if valid)
 - ✅ Pause/resume capture
 - ✅ Clear captured sessions
+- ✅ Single persistent configuration (no presets, one configuration per session)
 - ✅ Marker configuration UI (allow custom start/ack/end markers)
 
 ### 2.4 Scope: OUT (Future)
@@ -190,11 +191,13 @@ Build **hl7-capture**: A specialized Electron desktop application for capturing 
 - ❌ HL7 message validation against HL7 standards (v2.x)
 - ❌ Export to HL7 files, PCAP, JSON, or CSV
 - ❌ Traffic statistics or performance graphs
-  -- ❌ Multi-interface simultaneous capture (product will capture on a single interface at a time)
+- ❌ Multi-interface simultaneous capture (product will capture on a single interface at a time)
 - ❌ Persistent database storage of captures
 - ❌ HL7 message editing or modification
 - ❌ Integration with actual LIS systems for live testing
 - ❌ Network simulation or playback of captures
+- ❌ Named configuration presets (single configuration only)
+- ❌ Configuration history or versioning
 
 ---
 
@@ -1072,8 +1075,7 @@ Goal: Replace the current placeholder with a fully-specified Configuration Panel
      - Snaplen (packet length limit)
      - BPF filter override (free-form, optional)
      - Session buffer size (default 100)
-  5. Save / Load Configuration (named presets)
-  6. Validation feedback and Save Configuration button
+  5. Validation feedback and Save Configuration button
 
      16.2 Controls & Interactions
 
@@ -1095,10 +1097,6 @@ Goal: Replace the current placeholder with a fully-specified Configuration Panel
   - Snaplen: numeric input (min 256, max 65535), default 65535.
   - BPF override: a single-line text input that, when provided, takes precedence over generated BPF filter. Show a warning: "Custom BPF overrides generated filters — use carefully." Validate basic characters to avoid injection.
   - Session buffer size: numeric input (min 10, max 5000), default 100.
-
-- Save / Load Configuration
-  - Allow user to save current configuration as a named preset (persisted to `output_folder` e.g., `docs/config-presets/*.json`).
-  - Provide quick apply list and a Delete preset option.
 
 - Primary Actions
   - Save Configuration (persists preset and applies it to in-memory `markerConfig`)
