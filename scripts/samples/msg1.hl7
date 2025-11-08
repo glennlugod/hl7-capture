@@ -1,0 +1,4 @@
+MSH|^~\&|ACME|Lab|LIS|Hospital|20251108||ORU^R01|123456|P|2.3
+PID|1||123456^^^Hospital^MR||Doe^John||19700101|M|||123 Main St^^Metropolis^NY^12345||555-1234
+OBR|1||A1234^Acme|88304^PATH^L|||20251108
+OBX|1|ST|GLU^Glucose||5.6|mmol/L|3.9-5.8|N|||F
