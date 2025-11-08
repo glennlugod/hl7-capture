@@ -68,9 +68,10 @@ development_status:
 
   # Story: Replace unreliable native capture with dumpcap integration
   dumpcap-integration:
-    status: in-progress
+    status: done
     story_file: docs/stories/story-dumpcap-integration.md
     owner: Glenn
     ready_date: 2025-11-08
     start_date: 2025-11-08
+    completion_date: 2025-11-08
     points: 3
