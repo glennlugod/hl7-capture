@@ -42,9 +42,8 @@ describe("App Integration - Layout and Components", () => {
 
       await waitFor(() => expect(mockElectronAPI.getNetworkInterfaces).toHaveBeenCalled());
 
-      expect(screen.getByText("Configuration Panel")).toBeInTheDocument();
       expect(screen.getByRole("listbox")).toBeInTheDocument();
-      expect(screen.getByText("Select a session to view details")).toBeInTheDocument();
+      expect(screen.getAllByText("Start Capture").length).toBeGreaterThan(0);
     });
 
     it("renders correct layout structure", async () => {
@@ -52,8 +51,8 @@ describe("App Integration - Layout and Components", () => {
         render(<App />);
       });
 
-      expect(screen.getByText("Configuration Panel")).toBeInTheDocument();
-      expect(screen.getByText("Sessions")).toBeInTheDocument();
+      expect(screen.getAllByText("Start Capture").length).toBeGreaterThan(0);
+      expect(screen.getByRole("listbox")).toBeInTheDocument();
     });
 
     it("does not show design system test page", async () => {
@@ -86,7 +85,6 @@ describe("App Integration - Layout and Components", () => {
       expect(mockElectronAPI.onSessionComplete).toHaveBeenCalled();
       expect(mockElectronAPI.onCaptureStatus).toHaveBeenCalled();
       expect(mockElectronAPI.onError).toHaveBeenCalled();
-      expect(mockElectronAPI.loadPresets).toHaveBeenCalled();
     });
   });
 

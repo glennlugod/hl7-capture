@@ -12,8 +12,22 @@ describe("Placeholder Components", () => {
   describe("AC #4: Placeholder Custom Component Creation", () => {
     describe("ConfigurationPanel", () => {
       it("should render placeholder without errors", () => {
-        const { getByText } = render(<ConfigurationPanel />);
-        expect(getByText("Configuration Panel")).toBeTruthy();
+        const { getByText } = render(
+          <ConfigurationPanel
+            selectedInterface="eth0"
+            markerConfig={{
+              startMarker: 0x05,
+              acknowledgeMarker: 0x06,
+              endMarker: 0x04,
+              sourceIP: "",
+              destinationIP: "",
+            }}
+            onInterfaceChange={jest.fn()}
+            onConfigChange={jest.fn()}
+            onStartCapture={jest.fn()}
+          />
+        );
+        expect(getByText("Start Capture")).toBeTruthy();
       });
     });
 
@@ -46,7 +60,19 @@ describe("Placeholder Components", () => {
     it("should render all components together", () => {
       const { container, getByText } = render(
         <div>
-          <ConfigurationPanel />
+          <ConfigurationPanel
+            selectedInterface="eth0"
+            markerConfig={{
+              startMarker: 0x05,
+              acknowledgeMarker: 0x06,
+              endMarker: 0x04,
+              sourceIP: "",
+              destinationIP: "",
+            }}
+            onInterfaceChange={jest.fn()}
+            onConfigChange={jest.fn()}
+            onStartCapture={jest.fn()}
+          />
           <SessionList
             sessions={[]}
             selectedSession={null}
@@ -57,7 +83,7 @@ describe("Placeholder Components", () => {
           <MessageDetailViewer session={null} onNavigateMessage={jest.fn()} />
         </div>
       );
-      expect(getByText("Configuration Panel")).toBeTruthy();
+      expect(getByText("Start Capture")).toBeTruthy();
       expect(container.querySelector('[role="listbox"]')).toBeInTheDocument();
       expect(container).toBeInTheDocument();
     });

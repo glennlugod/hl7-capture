@@ -14,6 +14,8 @@ describe("ConfigurationPanel presets and start", () => {
       savePreset: jest.fn().mockResolvedValue(undefined),
       deletePreset: jest.fn().mockResolvedValue(undefined),
       startCapture: jest.fn().mockResolvedValue(undefined),
+      validateMarkerConfig: jest.fn().mockResolvedValue(true),
+      saveMarkerConfig: jest.fn().mockResolvedValue(undefined),
     };
   });
 
@@ -23,7 +25,21 @@ describe("ConfigurationPanel presets and start", () => {
 
   it("calls startCapture when Start is clicked and savePreset when Save is clicked", async () => {
     await act(async () => {
-      render(<ConfigurationPanel />);
+      render(
+        <ConfigurationPanel
+          selectedInterface="eth0"
+          markerConfig={{
+            startMarker: 0x05,
+            acknowledgeMarker: 0x06,
+            endMarker: 0x04,
+            sourceIP: "",
+            destinationIP: "",
+          }}
+          onInterfaceChange={jest.fn()}
+          onConfigChange={jest.fn()}
+          onStartCapture={jest.fn().mockResolvedValue(undefined)}
+        />
+      );
     });
 
     await waitFor(() =>
@@ -33,20 +49,7 @@ describe("ConfigurationPanel presets and start", () => {
     const startBtn = screen.getByText("Start Capture");
     fireEvent.click(startBtn);
     await waitFor(() =>
-      expect((globalThis as any).electron.startCapture).toHaveBeenCalledWith("eth0", {
-        markers: expect.any(Object),
-      })
-    );
-
-    const presetInput = screen.getByLabelText("Name") as HTMLInputElement;
-    fireEvent.change(presetInput, { target: { value: "my-preset" } });
-
-    const saveBtn = screen.getByText("Save");
-    fireEvent.click(saveBtn);
-    await waitFor(() =>
-      expect((globalThis as any).electron.savePreset).toHaveBeenCalledWith(
-        expect.objectContaining({ name: "my-preset" })
-      )
+      expect((globalThis as any).electron.validateMarkerConfig).toHaveBeenCalled()
     );
   });
 });

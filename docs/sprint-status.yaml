@@ -44,21 +44,23 @@ development_status:
 
   # New UI Stories added (Configuration Panel feature)
   ui-configuration-panel:
-    status: done
+    status: in-progress
     story_file: docs/stories/story-configuration-panel.md
-    owner: TBD
+    owner: Glenn
     ready_date: 2025-11-08
+    start_date: 2025-11-08
+    completion_date: 2025-11-08
     points: 5
 
   ui-interface-selector:
-    status: done
+    status: ready-for-dev
     story_file: docs/stories/story-interface-selector.md
     owner: TBD
     ready_date: 2025-11-08
     points: 2
 
   ui-marker-config-form:
-    status: in-progress
+    status: ready-for-dev
     story_file: docs/stories/story-marker-config-form.md
     owner: TBD
     ready_date: 2025-11-08

@@ -1,156 +1,218 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState } from "react";
 
-import MarkerConfigForm from './Configuration/MarkerConfigForm'
-import InterfaceSelector from './InterfaceSelector'
+import AdvancedOptions from "./Configuration/AdvancedOptions";
+import HL7MarkerConfig from "./Configuration/HL7MarkerConfig";
+import InterfaceSelector from "./InterfaceSelector";
 
-import type { NetworkInterface, Marker } from "../../common/types";
+import type { NetworkInterface, MarkerConfig } from "../../common/types";
 
-export default function ConfigurationPanel(): JSX.Element {
+interface ConfigurationPanelProps {
+  selectedInterface: string;
+  markerConfig: MarkerConfig;
+  onInterfaceChange: (name: string) => void;
+  onConfigChange: (config: MarkerConfig) => void;
+  onStartCapture: () => Promise<void>;
+  isCapturing?: boolean;
+}
+
+export default function ConfigurationPanel({
+  selectedInterface,
+  markerConfig,
+  onInterfaceChange,
+  onConfigChange,
+  onStartCapture,
+  isCapturing = false,
+}: Readonly<ConfigurationPanelProps>): JSX.Element {
   const [interfaces, setInterfaces] = useState<NetworkInterface[]>([]);
-  const [selectedInterface, setSelectedInterface] = useState<string | null>(null);
-  const [status, setStatus] = useState<string>("");
   const [loadError, setLoadError] = useState<boolean>(false);
+  const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [errorMessage, setErrorMessage] = useState<string>("");
+  const [showOverrideModal, setShowOverrideModal] = useState<boolean>(false);
 
-  // Marker presets
-  const [presets, setPresets] = useState<Marker[]>([]);
-  const [selectedPresetId, setSelectedPresetId] = useState<string>("");
-  const [currentMarker, setCurrentMarker] = useState<Marker>({
-    id: "",
-    name: "",
-    type: "string",
-    pattern: "",
-    caseSensitive: false,
-    active: true,
+  const [advancedConfig, setAdvancedConfig] = useState({
+    snaplen: 65535,
+    bpfOverride: "",
+    bufferSize: 100,
   });
 
-  // Load network interfaces
+  // Load network interfaces on mount and refresh
   const loadInterfaces = async (): Promise<NetworkInterface[]> => {
     try {
-      const ifaces: NetworkInterface[] = await (window as any).electron.getNetworkInterfaces();
       setLoadError(false);
+      const ifaces = await window.electron.getNetworkInterfaces();
       setInterfaces(ifaces);
-      if (ifaces.length > 0) setSelectedInterface(ifaces[0].name);
+      if (ifaces.length > 0 && !selectedInterface) {
+        onInterfaceChange(ifaces[0].name);
+      }
       return ifaces;
     } catch (e) {
       console.error("Failed loading interfaces", e);
       setLoadError(true);
+      setErrorMessage("Failed to load network interfaces. Ensure pcap/npcap is installed.");
       return [];
-    }
-  };
-
-  // Load marker presets from persistence
-  const loadPresets = async (): Promise<void> => {
-    try {
-      const p: Marker[] = await (window as any).electron.loadPresets();
-      setPresets(p);
-      if (p.length > 0) {
-        const first = p[0];
-        setSelectedPresetId(first.id);
-        setCurrentMarker(first);
-      }
-    } catch (e) {
-      console.error("Failed loading presets", e);
     }
   };
 
   useEffect(() => {
     loadInterfaces();
-    loadPresets();
   }, []);
 
-  // Handle saving a marker preset
-  const handleSaveMarker = async (marker: Marker): Promise<void> => {
+  const handleStartCapture = async (): Promise<void> => {
+    setStatus("loading");
+    setErrorMessage("");
     try {
-      await (window as any).electron.savePreset(marker);
-      setStatus("preset-saved");
-      await loadPresets();
-    } catch (e) {
-      console.error("savePreset failed", e);
-      setStatus("error");
-    }
-  };
+      // Validate configuration before starting
+      const isValid = await window.electron.validateMarkerConfig(markerConfig);
+      if (!isValid) {
+        setStatus("error");
+        setErrorMessage("Invalid marker configuration. Please review errors above.");
+        // Show explicit override modal to allow starting unfiltered if user confirms
+        setShowOverrideModal(true);
+        return;
+      }
 
-  // Handle deleting a marker preset
-  const handleDeleteMarker = async (id: string): Promise<void> => {
-    try {
-      await (window as any).electron.deletePreset(id);
-      setStatus("preset-deleted");
-      await loadPresets();
-    } catch (e) {
-      console.error("deletePreset failed", e);
-      setStatus("error");
-    }
-  };
+      // Save configuration
+      await window.electron.saveMarkerConfig(markerConfig);
 
-  // Handle preset selection
-  const handlePresetSelect = (id: string): void => {
-    setSelectedPresetId(id);
-    const preset = presets.find((p) => p.id === id);
-    if (preset) {
-      setCurrentMarker(preset);
-    }
-  };
-
-  // Start capture action
-  const handleStart = async (): Promise<void> => {
-    setStatus("starting");
-    try {
-      await (window as any).electron.startCapture(selectedInterface, { markers: currentMarker });
-      setStatus("started");
+      // Start capture
+      await onStartCapture();
+      setStatus("success");
     } catch (e: any) {
-      console.error("startCapture failed", e);
       setStatus("error");
+      setErrorMessage(`Failed to start capture: ${e?.message || String(e)}`);
+      console.error("Start capture failed", e);
     }
   };
+
+  const performStartCapture = async (): Promise<void> => {
+    setStatus("loading");
+    setErrorMessage("");
+    try {
+      await window.electron.saveMarkerConfig(markerConfig);
+      await onStartCapture();
+      setStatus("success");
+    } catch (e: any) {
+      setStatus("error");
+      setErrorMessage(`Failed to start capture: ${e?.message || String(e)}`);
+      console.error("Start capture failed", e);
+    }
+  };
+
+  const handleReset = () => {
+    const defaultConfig: MarkerConfig = {
+      startMarker: 0x05,
+      acknowledgeMarker: 0x06,
+      endMarker: 0x04,
+      sourceIP: "",
+      destinationIP: "",
+    };
+    onConfigChange(defaultConfig);
+    setAdvancedConfig({
+      snaplen: 65535,
+      bpfOverride: "",
+      bufferSize: 100,
+    });
+  };
+
+  const isDisabled = isCapturing;
 
   return (
-    <div className="p-4">
-      <h3 className="text-lg font-semibold text-slate-900 mb-2">Configuration Panel</h3>
-      <div className="space-y-4">
-        {loadError && (
-          <div role="alert" className="text-red-600">
-            Failed to load network interfaces. Please ensure pcap is installed.
-          </div>
-        )}
-        <InterfaceSelector
-          interfaces={interfaces}
-          selected={selectedInterface}
-          onSelect={(v) => setSelectedInterface(Array.isArray(v) ? v[0] : v)}
-          onRefresh={loadInterfaces}
-          disabled={false}
-        />
-        <div className="mt-4">
-          <label className="block text-sm font-medium mb-1">Marker Presets</label>
-          <select
-            value={selectedPresetId}
-            onChange={(e) => handlePresetSelect(e.target.value)}
-            className="w-full rounded border px-2 py-1"
-          >
-            <option value="">-- New Marker --</option>
-            {presets.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
+    <div className="space-y-4">
+      {/* Error Banner */}
+      {loadError && (
+        <div role="alert" className="border border-red-200 bg-red-50 p-3 rounded">
+          <p className="text-sm text-red-900">⚠️ {errorMessage}</p>
         </div>
-        <MarkerConfigForm
-          marker={currentMarker}
-          onChange={setCurrentMarker}
-          onSave={handleSaveMarker}
-          onDelete={currentMarker.id ? handleDeleteMarker : undefined}
-        />
-        <div className="flex items-center gap-2 mt-2">
-          <button
-            onClick={handleStart}
-            disabled={!selectedInterface}
-            className="inline-flex items-center px-4 py-2 rounded-md bg-teal-600 text-white"
-          >
-            Start Capture
-          </button>
-          <span aria-live="polite">{status}</span>
+      )}
+
+      {/* Status Messages */}
+      {errorMessage && status === "error" && (
+        <div role="alert" className="border border-red-200 bg-red-50 p-3 rounded">
+          <p className="text-sm text-red-900">{errorMessage}</p>
         </div>
+      )}
+
+      {status === "success" && (
+        <div className="border border-green-200 bg-green-50 p-3 rounded">
+          <p className="text-sm text-green-900">✓ Configuration saved and capture started</p>
+        </div>
+      )}
+
+      {/* Interface Selector */}
+      <InterfaceSelector
+        interfaces={interfaces}
+        selected={selectedInterface}
+        onSelect={onInterfaceChange}
+        onRefresh={loadInterfaces}
+        disabled={isDisabled}
+      />
+
+      {/* HL7 Marker Configuration */}
+      <HL7MarkerConfig value={markerConfig} onChange={onConfigChange} disabled={isDisabled} />
+
+      {/* Advanced Options */}
+      <AdvancedOptions value={advancedConfig} onChange={setAdvancedConfig} disabled={isDisabled} />
+
+      {/* Action Buttons */}
+      <div className="flex gap-2 pt-3 border-t border-slate-200">
+        <button
+          onClick={handleStartCapture}
+          disabled={isDisabled || !selectedInterface || status === "loading"}
+          className="flex-1 px-4 py-2 bg-teal-600 text-white font-medium rounded hover:bg-teal-700 disabled:bg-slate-300 disabled:cursor-not-allowed transition-colors"
+          aria-label="Start packet capture with current configuration"
+        >
+          {status === "loading" ? "Starting..." : "Start Capture"}
+        </button>
+
+        <button
+          onClick={handleReset}
+          disabled={isDisabled}
+          className="px-4 py-2 bg-slate-200 text-slate-900 font-medium rounded hover:bg-slate-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          aria-label="Reset all settings to defaults"
+        >
+          Reset
+        </button>
       </div>
+
+      {/* Override Modal */}
+      {showOverrideModal && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 flex items-center justify-center"
+        >
+          <div className="bg-white border rounded p-6 max-w-lg w-full shadow-lg">
+            <h3 className="text-lg font-semibold mb-2">Start unfiltered capture?</h3>
+            <p className="text-sm text-slate-700 mb-4">
+              Marker validation failed. Starting an unfiltered capture may capture large amounts of
+              unrelated traffic. Are you sure you want to proceed?
+            </p>
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={() => setShowOverrideModal(false)}
+                className="px-3 py-2 bg-slate-200 rounded"
+                aria-label="Cancel start unfiltered"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  setShowOverrideModal(false);
+                  await performStartCapture();
+                }}
+                className="px-3 py-2 bg-rose-600 text-white rounded"
+                aria-label="Start unfiltered"
+              >
+                Start unfiltered
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {!selectedInterface && (
+        <p className="text-xs text-slate-600 italic">Select an interface to enable Start Capture</p>
+      )}
     </div>
   );
 }

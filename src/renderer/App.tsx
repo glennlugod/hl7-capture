@@ -220,7 +220,16 @@ export default function App(): JSX.Element {
 
   return (
     <MainLayout
-      configPanel={<ConfigurationPanel />}
+      configPanel={
+        <ConfigurationPanel
+          selectedInterface={selectedInterface}
+          markerConfig={markerConfig}
+          onInterfaceChange={setSelectedInterface}
+          onConfigChange={updateMarkerConfig}
+          onStartCapture={handleStartCapture}
+          isCapturing={isCapturing}
+        />
+      }
       sessionList={
         <SessionList
           sessions={sessions}
