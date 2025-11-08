@@ -2,7 +2,7 @@
 
 ID: ui-configuration-panel
 
-Status: review
+Status: done
 
 ## Summary
 
@@ -167,3 +167,11 @@ The story implementation is high quality and nearly complete. Please address the
 ---
 
 _Review appended by Senior Developer Review (AI) on 2025-11-08 by Glenn_
+
+---
+
+## Story Completion
+
+- **Completed by**: Glenn
+- **Date**: 2025-11-08
+- **Notes**: Implementation merged into `main` and unit tests executed. Acceptance Criterion #3 (explicit override modal) implemented and covered by unit tests. Marking story as done.
