@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 
 import ControlPanel from "./ControlPanel";
@@ -30,6 +30,13 @@ export default function MainLayout({
 }: Readonly<MainLayoutProps>): JSX.Element {
   // Start collapsed so Sessions and Message Details are visible by default
   const [isConfigCollapsed, setIsConfigCollapsed] = useState(true);
+
+  // Automatically collapse the configuration panel when capture starts.
+  useEffect(() => {
+    if (isCapturing) {
+      setIsConfigCollapsed(true);
+    }
+  }, [isCapturing]);
 
   // Simple two-state labels/icons for the configuration toggle button
   const configButtonAria = isConfigCollapsed
