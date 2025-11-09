@@ -26,7 +26,7 @@ describe("Placeholder Components", () => {
             onConfigChange={jest.fn()}
           />
         );
-        expect(getByText("Reset")).toBeTruthy();
+        expect(getByText("Reset to Defaults")).toBeTruthy();
       });
     });
 
@@ -81,7 +81,7 @@ describe("Placeholder Components", () => {
           <MessageDetailViewer session={null} onNavigateMessage={jest.fn()} />
         </div>
       );
-      expect(getByText("Reset")).toBeTruthy();
+      expect(getByText("Reset to Defaults")).toBeTruthy();
       expect(container.querySelector("[role='listbox']")).toBeInTheDocument();
       expect(container).toBeInTheDocument();
     });

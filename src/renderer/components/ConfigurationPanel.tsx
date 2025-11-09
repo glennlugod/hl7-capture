@@ -3,6 +3,7 @@ import React, { useEffect, useState } from "react";
 import AdvancedOptions from "./Configuration/AdvancedOptions";
 import HL7MarkerConfig from "./Configuration/HL7MarkerConfig";
 import InterfaceSelector from "./InterfaceSelector";
+import { Button } from "./ui/button";
 
 import type { NetworkInterface, MarkerConfig } from "../../common/types";
 
@@ -80,50 +81,69 @@ export default function ConfigurationPanel({
   const isDisabled = isCapturing;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {/* Error Banner */}
       {loadError && (
-        <div role="alert" className="border border-red-200 bg-red-50 p-3 rounded">
-          <p className="text-sm text-red-900">⚠️ {errorMessage}</p>
+        <div
+          role="alert"
+          className="rounded-lg border border-red-300/40 bg-gradient-to-r from-red-50/80 to-orange-50/60 p-4 shadow-sm backdrop-blur-sm"
+        >
+          <p className="text-sm font-medium text-red-900">⚠️ {errorMessage}</p>
         </div>
       )}
 
       {/* Status Messages */}
-      {errorMessage && (
-        <div role="alert" className="border border-red-200 bg-red-50 p-3 rounded">
+      {errorMessage && !loadError && (
+        <div
+          role="alert"
+          className="rounded-lg border border-red-300/40 bg-gradient-to-r from-red-50/80 to-orange-50/60 p-4 shadow-sm backdrop-blur-sm"
+        >
           <p className="text-sm text-red-900">{errorMessage}</p>
         </div>
       )}
 
       {/* Interface Selector */}
-      <InterfaceSelector
-        interfaces={interfaces}
-        selected={selectedInterface}
-        onSelect={onInterfaceChange}
-        onRefresh={loadInterfaces}
-        disabled={isDisabled}
-      />
+      <div className="rounded-lg border border-slate-200/50 bg-white/60 backdrop-blur-sm p-5 shadow-sm">
+        <h3 className="mb-4 text-sm font-semibold text-slate-900">Network Interface</h3>
+        <InterfaceSelector
+          interfaces={interfaces}
+          selected={selectedInterface}
+          onSelect={onInterfaceChange}
+          onRefresh={loadInterfaces}
+          disabled={isDisabled}
+        />
+      </div>
 
       {/* HL7 Marker Configuration */}
-      <HL7MarkerConfig value={markerConfig} onChange={onConfigChange} disabled={isDisabled} />
+      <div className="rounded-lg border border-slate-200/50 bg-white/60 backdrop-blur-sm p-5 shadow-sm">
+        <h3 className="mb-4 text-sm font-semibold text-slate-900">HL7 Markers</h3>
+        <HL7MarkerConfig value={markerConfig} onChange={onConfigChange} disabled={isDisabled} />
+      </div>
 
       {/* Advanced Options */}
-      <AdvancedOptions value={advancedConfig} onChange={setAdvancedConfig} disabled={isDisabled} />
+      <div className="rounded-lg border border-slate-200/50 bg-white/60 backdrop-blur-sm p-5 shadow-sm">
+        <AdvancedOptions
+          value={advancedConfig}
+          onChange={setAdvancedConfig}
+          disabled={isDisabled}
+        />
+      </div>
 
       {/* Action Buttons */}
-      <div className="flex gap-2 pt-3 border-t border-slate-200">
-        <button
+      <div className="flex gap-3 border-t border-slate-200/50 pt-6">
+        <Button
           onClick={handleReset}
           disabled={isDisabled}
-          className="px-4 py-2 bg-slate-200 text-slate-900 font-medium rounded hover:bg-slate-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          variant="secondary"
+          size="default"
           aria-label="Reset all settings to defaults"
         >
           Reset
-        </button>
+        </Button>
       </div>
 
       {!selectedInterface && (
-        <p className="text-xs text-slate-600 italic">Select an interface to enable capture</p>
+        <p className="text-xs text-slate-500">Select an interface to enable capture</p>
       )}
     </div>
   );

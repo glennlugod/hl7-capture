@@ -40,8 +40,8 @@ export default function MainLayout({
 
   return (
     <div className="flex h-screen w-screen flex-col bg-gradient-to-br from-slate-50 via-blue-50/30 to-teal-50/20">
-      {/* Control Panel - Modern gradient header */}
-      <div className="border-b border-slate-200 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 px-6 py-4 shadow-lg">
+      {/* Control Panel - Modern gradient header (softer, brand-aligned) */}
+      <div className="border-b border-slate-200 bg-gradient-to-r from-slate-50 to-blue-50/30 px-6 py-4 shadow-sm">
         <ControlPanel
           isCapturing={isCapturing}
           isPaused={isPaused}
@@ -55,7 +55,7 @@ export default function MainLayout({
 
       {/* Configuration Panel - Modern collapsible with smooth animation */}
       <div
-        className={`border-b border-slate-200/60 bg-white/80 backdrop-blur-sm transition-all duration-300 ease-in-out flex flex-col ${
+        className={`border-b border-slate-200/60 bg-transparent transition-all duration-300 ease-in-out flex flex-col ${
           isConfigCollapsed ? "h-14" : "h-[calc(100vh-4rem)]"
         }`}
       >
@@ -75,7 +75,7 @@ export default function MainLayout({
         </div>
         {!isConfigCollapsed && (
           // When expanded, allow the configuration panel to grow and hide the main panels below.
-          <div className="flex-1 overflow-y-auto p-6 bg-white/50">{configPanel}</div>
+          <div className="flex-1 overflow-y-auto p-6 bg-transparent">{configPanel}</div>
         )}
       </div>
 
