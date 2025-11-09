@@ -58,6 +58,42 @@ export class HL7CaptureManager extends EventEmitter {
   }
 
   /**
+   * Build a BPF (Berkeley Packet Filter) expression from the marker config.
+   * Rules:
+   * - match any traffic coming from deviceIP or lisIP
+   * - match any traffic destined to deviceIP or lisIP
+   * - match any traffic with src or dst port equal to lisPort
+   * - combine rules with OR, and require TCP transport
+   */
+  private buildBPF(config: MarkerConfig): string | undefined {
+    if (!config) return undefined;
+
+    const parts: string[] = [];
+
+    if (config.deviceIP) {
+      // traffic coming from deviceIP or destined to deviceIP
+      parts.push(`src host ${config.deviceIP}`, `dst host ${config.deviceIP}`);
+    }
+
+    if (config.lisIP) {
+      parts.push(`src host ${config.lisIP}`, `dst host ${config.lisIP}`);
+    }
+
+    if (config.lisPort !== undefined && config.lisPort !== null) {
+      // match either source or destination port
+      parts.push(`src port ${config.lisPort}`, `dst port ${config.lisPort}`);
+    }
+
+    if (parts.length === 0) {
+      return "tcp";
+    }
+
+    // Combine with OR and require tcp
+    const inner = parts.join(" or ");
+    return `tcp and (${inner})`;
+  }
+
+  /**
    * Probe whether an external packet source reports it's running.
    * This helper contains its own single try/catch so callers don't need to.
    */
@@ -210,9 +246,13 @@ export class HL7CaptureManager extends EventEmitter {
       }
 
       // No external source attached: create internal DumpcapAdapter and start it
+      // Build a BPF filter that matches any traffic coming from or going to
+      // the device or LIS IPs or the LIS port. If no filterable fields are
+      // provided, fall back to a generic 'tcp' filter.
+      const bpf = this.buildBPF(this.markerConfig);
       dumpcap = new DumpcapAdapter({
         interface: this.currentInterface,
-        bpf: this.markerConfig ? "tcp" : undefined,
+        bpf,
       });
       this.attachPacketSource(dumpcap);
 
@@ -257,7 +297,10 @@ export class HL7CaptureManager extends EventEmitter {
     this.externalPacketSource = source;
 
     // Forward errors
-    source.on("error", (err: Error) => this.emit("error", err));
+    source.on("error", (err: Error) => {
+      console.error("Packet source error:", err);
+      this.emit("error", err);
+    });
 
     // When the source starts, reflect it in manager state and inform UI
     source.on("start", () => {

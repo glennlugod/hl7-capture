@@ -2,7 +2,7 @@ import { ChildProcess, execSync, spawn } from "node:child_process";
 import { EventEmitter } from "node:events";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import * as pcapParserLib from "pcap-parser";
+import * as pcapp from "pcap-parser";
 
 import type {
   PcapPacket,
@@ -165,7 +165,7 @@ export class DumpcapAdapter extends EventEmitter {
   private async setupParser(stream: NodeJS.ReadableStream): Promise<void> {
     try {
       // Use imported module; cast to our local parser interface so tests can still mock the module
-      const parser = pcapParserLib.parse(stream) as unknown as PcapParser;
+      const parser = pcapp.parse(stream) as unknown as PcapParser;
 
       parser.on("packet", (p: PcapPacket) => {
         // Normalize packet without throwing; defensive checks are used to avoid
