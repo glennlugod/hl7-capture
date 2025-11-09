@@ -3,6 +3,7 @@
  * Handles TCP packet capture, HL7 marker detection, and session management
  */
 
+import { execSync } from "node:child_process";
 import { EventEmitter } from "node:events";
 import * as os from "node:os";
 
@@ -77,8 +78,34 @@ export class HL7CaptureManager extends EventEmitter {
    */
   public getNetworkInterfaces(): NetworkInterface[] {
     const interfaces: NetworkInterface[] = [];
-    const networkInterfaces = os.networkInterfaces();
 
+    // Attempt to use dumpcap -D to enumerate interfaces (gives stable numeric indices)
+    try {
+      // spawn a synchronous process to get a small amount of output
+      const out = execSync("dumpcap -D", { encoding: "utf8" }).trim();
+      // dumpcap -D output lines look like: "1. \t\t\t\Device\NPF_{...} (Ethernet)"
+      const lines = out
+        .split(/\r?\n/)
+        .map((l: string) => l.trim())
+        .filter(Boolean);
+      for (const line of lines) {
+        // Extract leading index and the rest using exec to satisfy lint rules
+        const re = /^(\d+)\s*\.\s*(.+)$/;
+        const m = re.exec(line);
+        if (m) {
+          const idx = Number(m[1]);
+          const desc = m[2];
+          // Try to extract a readable name and maybe an IP via OS interfaces as fallback
+          interfaces.push({ index: idx, name: desc, address: desc, ip: "", mac: "" });
+        }
+      }
+      if (interfaces.length > 0) return interfaces;
+    } catch {
+      // ignore failures and fall back to OS enumeration
+    }
+
+    // Fallback: enumerate OS networkInterfaces and leave index undefined
+    const networkInterfaces = os.networkInterfaces();
     for (const [name, addrs] of Object.entries(networkInterfaces)) {
       if (!addrs) continue;
 
@@ -86,6 +113,7 @@ export class HL7CaptureManager extends EventEmitter {
         // Only include IPv4 interfaces
         if (addr.family === "IPv4") {
           interfaces.push({
+            index: -1,
             name: name,
             address: `${name} - ${addr.address}`,
             ip: addr.address,
@@ -94,8 +122,51 @@ export class HL7CaptureManager extends EventEmitter {
         }
       }
     }
+
     return interfaces;
   }
+
+  /**
+   * Validate marker configuration
+   */
+  public validateMarkerConfig(config: MarkerConfig): boolean {
+    // Check markers are valid hex values
+    if (
+      config.startMarker < 0 ||
+      config.startMarker > 0xff ||
+      config.acknowledgeMarker < 0 ||
+      config.acknowledgeMarker > 0xff ||
+      config.endMarker < 0 ||
+      config.endMarker > 0xff
+    ) {
+      return false;
+    }
+
+    // IP addresses are optional but if provided should be valid
+    if (config.sourceIP && !this.isValidIP(config.sourceIP)) {
+      return false;
+    }
+
+    if (config.destinationIP && !this.isValidIP(config.destinationIP)) {
+      return false;
+    }
+
+    return true;
+  }
+
+  /**
+   * Basic IP validation
+   */
+  private isValidIP(ip: string): boolean {
+    const parts = ip.split(".");
+    if (parts.length !== 4) return false;
+
+    return parts.every((part) => {
+      const num = Number.parseInt(part, 10);
+      return num >= 0 && num <= 255;
+    });
+  }
+
   /**
    * Start capture on specified interface
    */

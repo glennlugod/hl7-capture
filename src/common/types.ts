@@ -7,6 +7,7 @@
  * Network interface information
  */
 export interface NetworkInterface {
+  index: number;
   name: string;
   address: string;
   ip: string;

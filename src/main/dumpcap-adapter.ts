@@ -19,6 +19,57 @@ export class DumpcapAdapter extends EventEmitter {
   private proc: ChildProcess | null = null;
   private running = false;
 
+  private resolveInterfaceIndex(iface: string): string | null {
+    try {
+      const out = execSync("dumpcap -D", { encoding: "utf8" }).trim();
+      const lines = out
+        .split(/\r?\n/)
+        .map((l: string) => l.trim())
+        .filter(Boolean);
+      for (const line of lines) {
+        const m = /^(\d+)\s*\.\s*(.+)$/.exec(line);
+        if (m) {
+          const idx = m[1];
+          const desc = m[2];
+          if (desc.includes(iface) || desc.toLowerCase().includes(iface.toLowerCase())) {
+            return idx;
+          }
+        }
+      }
+    } catch {
+      // ignore
+    }
+    return null;
+  }
+
+  private buildArgs(): string[] {
+    const args: string[] = [];
+
+    if (this.options.interface) {
+      const iface = String(this.options.interface);
+      if (/^\d+$/.test(iface)) {
+        args.push("-i", iface);
+      } else {
+        const resolved = this.resolveInterfaceIndex(iface);
+        if (resolved) args.push("-i", resolved);
+        else args.push("-i", iface);
+      }
+    }
+
+    // Use stdout pcap output
+    args.push("-w", "-");
+
+    if (this.options.bpf) {
+      args.push("-f", this.options.bpf);
+    }
+
+    if (this.options.snaplen) {
+      args.push("-s", String(this.options.snaplen));
+    }
+
+    return args;
+  }
+
   constructor(options: DumpcapOptions = {}) {
     super();
     this.options = options;
@@ -64,26 +115,7 @@ export class DumpcapAdapter extends EventEmitter {
       throw err;
     }
 
-    const args: string[] = [];
-
-    // interface selection
-    if (this.options.interface) {
-      // On some platforms dumpcap accepts -i <index|name>
-      args.push("-i", String(this.options.interface));
-    }
-
-    // Use stdout pcap output
-    args.push("-w", "-");
-
-    // Apply BPF filter only if provided
-    if (this.options.bpf) {
-      args.push("-f", this.options.bpf);
-    }
-
-    // snaplen
-    if (this.options.snaplen) {
-      args.push("-s", String(this.options.snaplen));
-    }
+    const args = this.buildArgs();
 
     // Single try-catch for spawn + parser initialization
     try {
