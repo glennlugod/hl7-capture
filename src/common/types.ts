@@ -89,3 +89,32 @@ export interface CaptureStatus {
   packetCount: number;
   elementCount: number;
 }
+
+/**
+ * Types for pcap parser and normalized packet emitted by capture adapters
+ */
+export interface PcapPacketHeader {
+  timestampSeconds?: number;
+  timestampMicroseconds?: number;
+  tsSec?: number;
+  tsUsec?: number;
+  capturedLength?: number;
+  inclLen?: number;
+  capLen?: number;
+  originalLength?: number;
+  origLen?: number;
+}
+
+export interface PcapPacket {
+  header?: PcapPacketHeader;
+  packetHeader?: PcapPacketHeader;
+  data?: Buffer;
+}
+
+export interface PcapParser {
+  on(event: "packet", cb: (p: PcapPacket) => void): this;
+  on(event: "end", cb: () => void): this;
+  on(event: "error", cb: (err: Error) => void): this;
+}
+
+export type NormalizedPacket = { sourceIP: string; destIP: string; data: Buffer; ts: number };

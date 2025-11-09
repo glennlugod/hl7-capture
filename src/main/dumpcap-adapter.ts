@@ -1,8 +1,10 @@
-import { execSync, spawn } from "node:child_process";
+import { ChildProcess, execSync, spawn } from "node:child_process";
 import { EventEmitter } from "node:events";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as pcapParserLib from "pcap-parser";
+
+import type { PcapPacket, PcapPacketHeader, PcapParser, NormalizedPacket } from "../common/types";
 
 export interface DumpcapOptions {
   interface?: string;
@@ -10,9 +12,11 @@ export interface DumpcapOptions {
   snaplen?: number;
 }
 
+// parser types imported from src/common/types.ts
+
 export class DumpcapAdapter extends EventEmitter {
   private readonly options: DumpcapOptions;
-  private proc: any = null;
+  private proc: ChildProcess | null = null;
   private running = false;
 
   constructor(options: DumpcapOptions = {}) {
@@ -26,18 +30,21 @@ export class DumpcapAdapter extends EventEmitter {
     try {
       const res = execSync(`${which} dumpcap`, { encoding: "utf8" }).trim();
       if (res) return res.split(/\r?\n/)[0];
-    } catch (err: any) {
+    } catch (err: unknown) {
       // not found on PATH
-      console.debug(`dumpcap lookup failed: ${err?.message ?? String(err)}`);
+      const msg = err instanceof Error ? err.message : String(err);
+      this.emit("log", `dumpcap lookup failed: ${msg}`);
     }
 
     // Common Windows install locations for Wireshark
     if (process.platform === "win32") {
       const candidates: string[] = [];
-      if (process.env["ProgramFiles"])
-        candidates.push(path.join(process.env["ProgramFiles"]!, "Wireshark", "dumpcap.exe"));
-      if (process.env["ProgramFiles(x86)"])
+      if (process.env["ProgramFiles"]) {
+        candidates.push(path.join(process.env["ProgramFiles"], "Wireshark", "dumpcap.exe"));
+      }
+      if (process.env["ProgramFiles(x86)"]) {
         candidates.push(path.join(process.env["ProgramFiles(x86)"], "Wireshark", "dumpcap.exe"));
+      }
 
       for (const c of candidates) {
         if (fs.existsSync(c)) return c;
@@ -87,18 +94,16 @@ export class DumpcapAdapter extends EventEmitter {
       this.emit("start");
 
       // Hook stderr for diagnostics
-      if (this.proc && this.proc.stderr) {
-        this.proc.stderr.on("data", (chunk: Buffer) => {
-          const msg = chunk.toString("utf8");
-          this.emit("log", msg);
-        });
-      }
+      this.proc?.stderr?.on("data", (chunk: Buffer) => {
+        const msg = chunk.toString("utf8");
+        this.emit("log", msg);
+      });
 
-      if (this.proc && this.proc.stdout) {
+      if (this.proc?.stdout) {
         // Initialize parser and wire events
         await this.setupParser(this.proc.stdout as NodeJS.ReadableStream);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       // If dumpcap failed after being created, attempt best-effort stop to avoid
       // leaving an orphaned native process running. Helpers encapsulate their own
       // try-catch so this method still has only one try-catch.
@@ -106,8 +111,9 @@ export class DumpcapAdapter extends EventEmitter {
 
       this.proc = null;
       this.running = false;
-      this.emit("error", err as Error);
-      throw err;
+      const errObj = err instanceof Error ? err : new Error(String(err));
+      this.emit("error", errObj);
+      throw errObj;
     }
   }
 
@@ -117,20 +123,20 @@ export class DumpcapAdapter extends EventEmitter {
    */
   private async setupParser(stream: NodeJS.ReadableStream): Promise<void> {
     try {
-      // Use imported module; provide an any-typed binding so Jest's `jest.mock('pcap-parser')` can still mock it.
-      const parser = pcapParserLib.parse(stream);
+      // Use imported module; cast to our local parser interface so tests can still mock the module
+      const parser = pcapParserLib.parse(stream) as unknown as PcapParser;
 
-      parser.on("packet", (p: any) => {
+      parser.on("packet", (p: PcapPacket) => {
         // Normalize packet without throwing; defensive checks are used to avoid
         // corrupt reads. If normalization yields null, emit fallback shape.
-        const hdr = p.header || p.packetHeader || {};
+        const hdr: PcapPacketHeader = p.header || p.packetHeader || {};
         const tsSec = hdr.timestampSeconds ?? hdr.tsSec ?? 0;
         const tsUsec = hdr.timestampMicroseconds ?? hdr.tsUsec ?? 0;
         const inclLen =
           hdr.capturedLength ?? hdr.inclLen ?? hdr.capLen ?? (p.data ? p.data.length : 0);
         const origLen = hdr.originalLength ?? hdr.origLen ?? inclLen;
 
-        const normalized = this.normalizePacket(p.data as Buffer | undefined, tsSec, tsUsec);
+        const normalized = this.normalizePacket(p.data, tsSec, tsUsec);
         if (normalized) {
           this.emit("packet", normalized);
         } else {
@@ -144,12 +150,12 @@ export class DumpcapAdapter extends EventEmitter {
       });
 
       parser.on("error", (err: Error) => this.emit("error", err));
-    } catch (err: any) {
+    } catch (err: unknown) {
       const e = new Error(
         "Required dependency 'pcap-parser' not found or parser initialization failed. Install it and retry: npm install pcap-parser"
       );
       // Attach original error if possible. If this throws, let it propagate — avoid nested try-catch.
-      (e as any).cause = err;
+      (e as unknown as { cause?: unknown }).cause = err;
       this.emit("error", e);
       throw e;
     }
@@ -159,7 +165,11 @@ export class DumpcapAdapter extends EventEmitter {
    * Safely attempt to extract packet fields and return a normalized shape or null.
    * This routine avoids throwing by performing length checks before reads.
    */
-  private normalizePacket(raw: Buffer | undefined, tsSec: number, tsUsec: number): any | null {
+  private normalizePacket(
+    raw: Buffer | undefined,
+    tsSec: number,
+    tsUsec: number
+  ): NormalizedPacket | null {
     if (!raw || !Buffer.isBuffer(raw)) return null;
 
     // Minimum lengths: Ethernet (14) + IPv4 (20) + TCP (20)
@@ -185,7 +195,7 @@ export class DumpcapAdapter extends EventEmitter {
     const dataOffsetByte = raw.readUInt8(tcpOffset + 12);
     const tcpHeaderLen = ((dataOffsetByte & 0xf0) >> 4) * 4;
     const payloadStart = tcpOffset + tcpHeaderLen;
-    const payload = payloadStart < raw.length ? raw.slice(payloadStart) : Buffer.alloc(0);
+    const payload = payloadStart < raw.length ? raw.subarray(payloadStart) : Buffer.alloc(0);
     const ts = tsSec * 1000 + Math.floor(tsUsec / 1000);
 
     return { sourceIP: srcIP, destIP: dstIP, data: payload, ts };
@@ -195,51 +205,54 @@ export class DumpcapAdapter extends EventEmitter {
    * Best-effort kill helper: encapsulates risky kill operations and logs failures.
    * Each helper has its own single try-catch to satisfy the "one try-catch per method" rule.
    */
-  private async bestEffortKill(proc: any): Promise<void> {
+  private async bestEffortKill(proc: ChildProcess | null): Promise<void> {
     if (!proc) return;
     try {
-      if (typeof (proc as any).kill === "function") {
-        (proc as any).kill();
+      // ChildProcess.kill exists on the type; check runtime to be defensive
+      if (typeof (proc.kill as unknown) === "function") {
+        proc.kill();
       }
-    } catch (err) {
-      console.debug("dumpcap-adapter: error while killing proc after spawn failure:", err);
-      this.emit("log", `kill-after-spawn-failure: ${String(err)}`);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      this.emit("log", `kill-after-spawn-failure: ${msg}`);
     }
   }
 
-  private safeRemoveListeners(proc: any): void {
+  private safeRemoveListeners(proc: ChildProcess | null): void {
     if (!proc) return;
     try {
-      proc.removeAllListeners("exit");
-      proc.removeAllListeners("close");
-    } catch (err) {
-      console.debug("dumpcap-adapter: remove listeners failed:", err);
-      this.emit("log", `remove-listeners-failed: ${String(err)}`);
+      // removeAllListeners exists on ChildProcess as an EventEmitter method
+      (proc as unknown as NodeJS.EventEmitter).removeAllListeners("exit");
+      (proc as unknown as NodeJS.EventEmitter).removeAllListeners("close");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      this.emit("log", `remove-listeners-failed: ${msg}`);
     }
   }
 
-  private safeKillProc(proc: any): void {
+  private safeKillProc(proc: ChildProcess | null): void {
     if (!proc) return;
     try {
       proc.kill();
-    } catch (err) {
-      console.debug("dumpcap-adapter: error while attempting to kill proc:", err);
-      this.emit("log", `kill-error: ${String(err)}`);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      this.emit("log", `kill-error: ${msg}`);
     }
   }
 
-  private safeEscalateKill(proc: any, isWin: boolean): void {
+  private safeEscalateKill(proc: ChildProcess | null, isWin: boolean): void {
     if (!proc) return;
     try {
       if (isWin) {
         // Best-effort: use taskkill to forcefully kill by PID
-        spawn("taskkill", ["/PID", String(proc.pid), "/T", "/F"]);
+        if (typeof proc.pid === "number") spawn("taskkill", ["/PID", String(proc.pid), "/T", "/F"]);
       } else {
+        // SIGKILL may be unsupported on Windows but we're in the non-Windows branch
         proc.kill("SIGKILL");
       }
-    } catch (err) {
-      console.debug("dumpcap-adapter: escalation kill failed:", err);
-      this.emit("log", `escalation-kill-failed: ${String(err)}`);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      this.emit("log", `escalation-kill-failed: ${msg}`);
     }
   }
 
