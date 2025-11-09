@@ -203,6 +203,17 @@ export class HL7CaptureManager extends EventEmitter {
   }
 
   /**
+   * Type-guard to detect NormalizedPacket shapes at runtime
+   */
+  private isNormalizedPacket(pkt: unknown): pkt is NormalizedPacket {
+    if (!pkt || typeof pkt !== "object") return false;
+    const p = pkt as Record<string, unknown>;
+    return (
+      typeof p.sourceIP === "string" && typeof p.destIP === "string" && Buffer.isBuffer(p.data)
+    );
+  }
+
+  /**
    * Start capture on specified interface (accepts a NetworkInterface object)
    */
   public async startCapture(
@@ -536,7 +547,12 @@ export class HL7CaptureManager extends EventEmitter {
 
       // Start marker (0x05)
       if (marker === this.markerConfig.startMarker) {
-        this.handleStartMarker("", "", data, direction);
+        // If the packet is a NormalizedPacket provide source/destination IPs
+        if (this.isNormalizedPacket(pkt)) {
+          this.handleStartMarker(pkt.sourceIP, pkt.destIP, data, direction);
+        } else {
+          this.handleStartMarker("", "", data, direction);
+        }
       }
       // Acknowledge marker (0x06)
       else if (marker === this.markerConfig.acknowledgeMarker) {
