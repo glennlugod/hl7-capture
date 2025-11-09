@@ -73,39 +73,6 @@ export class HL7CaptureManager extends EventEmitter {
   }
 
   /**
-   * Resolve a libpcap device name for Cap.open.
-   * Accepts either an interface name, a friendly label, or an IP address.
-   * Falls back to Cap.findDevice(ip) when available.
-   */
-  private resolveDevice(interfaceOrIp: string): string {
-    // If the input looks like an IP address, try to find the device for that IP
-    // If an IP was provided, prefer returning the IP (caller resolves friendly names)
-    if (interfaceOrIp && this.isValidIP(interfaceOrIp)) {
-      return interfaceOrIp;
-    }
-
-    // Try to match by interface label or name from os.networkInterfaces
-    const nics = os.networkInterfaces();
-    for (const [name, addrs] of Object.entries(nics)) {
-      if (!addrs) continue;
-      for (const addr of addrs) {
-        // Match on address, or on provided friendly label/name
-        if (
-          (addr.family === "IPv4" && addr.address === interfaceOrIp) ||
-          name === interfaceOrIp ||
-          `${name} - ${addr.address}` === interfaceOrIp
-        ) {
-          // As a last resort return the interface name
-          return name;
-        }
-      }
-    }
-
-    // Fallback to whatever was provided
-    return interfaceOrIp;
-  }
-
-  /**
    * Get available network interfaces
    */
   public getNetworkInterfaces(): NetworkInterface[] {
@@ -127,51 +94,8 @@ export class HL7CaptureManager extends EventEmitter {
         }
       }
     }
-
     return interfaces;
   }
-
-  /**
-   * Validate marker configuration
-   */
-  public validateMarkerConfig(config: MarkerConfig): boolean {
-    // Check markers are valid hex values
-    if (
-      config.startMarker < 0 ||
-      config.startMarker > 0xff ||
-      config.acknowledgeMarker < 0 ||
-      config.acknowledgeMarker > 0xff ||
-      config.endMarker < 0 ||
-      config.endMarker > 0xff
-    ) {
-      return false;
-    }
-
-    // IP addresses are optional but if provided should be valid
-    if (config.sourceIP && !this.isValidIP(config.sourceIP)) {
-      return false;
-    }
-
-    if (config.destinationIP && !this.isValidIP(config.destinationIP)) {
-      return false;
-    }
-
-    return true;
-  }
-
-  /**
-   * Basic IP validation
-   */
-  private isValidIP(ip: string): boolean {
-    const parts = ip.split(".");
-    if (parts.length !== 4) return false;
-
-    return parts.every((part) => {
-      const num = Number.parseInt(part, 10);
-      return num >= 0 && num <= 255;
-    });
-  }
-
   /**
    * Start capture on specified interface
    */
