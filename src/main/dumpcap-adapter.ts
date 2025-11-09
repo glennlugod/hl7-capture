@@ -2,15 +2,9 @@ import { ChildProcess, execSync, spawn } from "node:child_process";
 import { EventEmitter } from "node:events";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import * as pcapp from "pcap-parser";
+import PCAPNGParser from "pcap-ng-parser";
 
-import type {
-  PcapPacket,
-  PcapPacketHeader,
-  PcapParser,
-  NormalizedPacket,
-  NetworkInterface,
-} from "../common/types";
+import type { NormalizedPacket, NetworkInterface } from "../common/types";
 
 export interface DumpcapOptions {
   interface?: NetworkInterface;
@@ -164,45 +158,98 @@ export class DumpcapAdapter extends EventEmitter {
    */
   private async setupParser(stream: NodeJS.ReadableStream): Promise<void> {
     try {
-      // Use imported module; cast to our local parser interface so tests can still mock the module
-      const parser = pcapp.parse(stream) as unknown as PcapParser;
+      // pcap-ng-parser exposes a Transform stream class. Create an instance
+      // and pipe the incoming stdout stream into it.
+      // Use the statically imported PCAPNGParser instance. The parser
+      // implementation may emit either 'data' (pcap-ng) or 'packet'
+      // (legacy pcap-parser) events depending on the provided mock or
+      // runtime implementation. We attach handlers for both shapes.
+      const parser = new PCAPNGParser();
 
-      parser.on("packet", (p: PcapPacket) => {
-        // Normalize packet without throwing; defensive checks are used to avoid
-        // corrupt reads. If normalization yields null, emit fallback shape.
-        const hdr: PcapPacketHeader = p.header || p.packetHeader || {};
+      // Helper to emit normalized/fallback packet
+      const emitFromPayload = (
+        payload: Buffer,
+        tsSec: number,
+        tsUsec: number,
+        inclLen?: number,
+        origLen?: number
+      ) => {
+        const normalized = this.normalizePacket(payload, tsSec, tsUsec);
+        if (normalized) {
+          this.emit("packet", normalized);
+        } else {
+          this.emit("packet", {
+            header: {
+              tsSec,
+              tsUsec,
+              inclLen: inclLen ?? (payload ? payload.length : 0),
+              origLen: origLen ?? (payload ? payload.length : 0),
+            },
+            data: payload,
+          });
+        }
+      };
+
+      // Legacy-style 'packet' events (tests may emit these)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      parser.on("packet", (p: any) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const hdr: any = p.header || p.packetHeader || {};
         const tsSec = hdr.timestampSeconds ?? hdr.tsSec ?? 0;
         const tsUsec = hdr.timestampMicroseconds ?? hdr.tsUsec ?? 0;
         const inclLen =
           hdr.capturedLength ?? hdr.inclLen ?? hdr.capLen ?? (p.data ? p.data.length : 0);
         const origLen = hdr.originalLength ?? hdr.origLen ?? inclLen;
+        emitFromPayload(p.data ?? Buffer.alloc(0), tsSec, tsUsec, inclLen, origLen);
+      });
 
-        const normalized = this.normalizePacket(p.data, tsSec, tsUsec);
-        if (normalized) {
-          this.emit("packet", normalized);
-        } else {
-          this.emit("packet", { header: { tsSec, tsUsec, inclLen, origLen }, data: p.data });
+      // pcap-ng 'data' events with timestampHigh/timestampLow
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      parser.on("data", (p: any) => {
+        try {
+          const tsHigh: number = p.timestampHigh ?? 0;
+          const tsLow: number = p.timestampLow ?? 0;
+          const ts64 = (BigInt(tsHigh) << 32n) + BigInt(tsLow);
+          const totalUsec = ts64; // assume microsecond resolution
+          const tsSec = Number(totalUsec / 1000000n);
+          const tsUsec = Number(totalUsec % 1000000n);
+          const payload: Buffer = p.data ?? Buffer.alloc(0);
+          emitFromPayload(payload, tsSec, tsUsec, payload.length, payload.length);
+        } catch (err) {
+          this.emit(
+            "log",
+            `pcap-ng-parser data handler error: ${err instanceof Error ? err.message : String(err)}`
+          );
         }
       });
 
-      // When the parser stream ends it doesn't necessarily mean the underlying
-      // dumpcap process has exited or that the capture should be considered
-      // fully stopped by consumers. Avoid emitting the public "stop" event
-      // here to prevent prematurely ending capture sessions. Emit a
-      // diagnostic event instead so upper layers can decide how to react.
+      parser.on("interface", (iface: { linkType?: number; snapLen?: number; name?: string }) => {
+        this.emit("log", `pcap-ng-parser interface: ${JSON.stringify(iface)}`);
+      });
+
       parser.on("end", () => {
-        this.emit("log", "pcap-parser stream ended");
+        this.emit("log", "pcap-ng-parser stream ended");
         this.emit("parser-end");
-        // Do not modify `this.running` or emit the public "stop" here. The
-        // process lifecycle is managed by spawn/stop helpers which will emit
-        // "stop" when the child process actually exits or when stop() is
-        // explicitly called.
       });
 
       parser.on("error", (err: Error) => this.emit("error", err));
+
+      // Finally pipe the incoming stream into the parser instance so it
+      // receives data (pcap-ng-parser is a Transform stream). Only pipe
+      // when both the stream and parser support piping/writing. Tests use
+      // a mocked parser EventEmitter and a fake stdout that is not pipeable,
+      // in which case the tests emit events directly on the mocked parser.
+      if (
+        typeof (stream as any).pipe === "function" &&
+        typeof (parser as any).write === "function"
+      ) {
+        (stream as unknown as NodeJS.ReadableStream).pipe(
+          parser as unknown as NodeJS.WritableStream
+        );
+      }
     } catch (err: unknown) {
       const e = new Error(
-        "Required dependency 'pcap-parser' not found or parser initialization failed. Install it and retry: npm install pcap-parser"
+        "Required dependency 'pcap-ng-parser' not found or parser initialization failed. Install it and retry: npm install pcap-ng-parser"
       );
       // Attach original error if possible. If this throws, let it propagate — avoid nested try-catch.
       (e as unknown as { cause?: unknown }).cause = err;

@@ -10,7 +10,9 @@ import { DumpcapAdapter } from "../../src/main/dumpcap-adapter";
 
 // We'll provide a parser EventEmitter instance which tests will emit into.
 const parserEE = new EventEmitter();
-jest.mock("pcap-parser", () => ({ parse: () => parserEE }), { virtual: true });
+// Mock the PCAPNGParser class to return our EventEmitter so adapter's
+// `new PCAPNGParser()` gets the test instance.
+jest.mock("pcap-ng-parser", () => jest.fn(() => parserEE), { virtual: true });
 
 describe("DumpcapAdapter (unit)", () => {
   beforeEach(() => {

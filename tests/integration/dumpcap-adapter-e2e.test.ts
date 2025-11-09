@@ -12,7 +12,8 @@ import { HL7CaptureManager } from "../../src/main/hl7-capture";
 
 // Parser emitter for tests
 const parserEE = new EventEmitter();
-jest.mock("pcap-parser", () => ({ parse: () => parserEE }), { virtual: true });
+// Mock PCAPNGParser so `new PCAPNGParser()` returns our EventEmitter
+jest.mock("pcap-ng-parser", () => jest.fn(() => parserEE), { virtual: true });
 
 describe("DumpcapAdapter -> HL7CaptureManager end-to-end (synthetic)", () => {
   afterEach(() => {

@@ -23,7 +23,7 @@
   "dependencies": {
     "@radix-ui/react-slot": "^1.2.4",
     "@types/react-window": "^1.8.8",
-    "pcap-parser": "^0.2.1",
+    "pcap-ng-parser": "^1.0.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-resizable-panels": "^3.0.6",
