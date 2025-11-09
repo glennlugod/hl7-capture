@@ -79,8 +79,8 @@ describe("App Integration - Layout and Components", () => {
       await act(async () => {
         render(<App />);
       });
-      // getNetworkInterfaces is only called when configuration panel is expanded; it is collapsed by default
-      expect(mockElectronAPI.getNetworkInterfaces).not.toHaveBeenCalled();
+      // ConfigurationPanel currently loads interfaces on mount even when collapsed
+      expect(mockElectronAPI.getNetworkInterfaces).toHaveBeenCalled();
       expect(mockElectronAPI.onNewElement).toHaveBeenCalled();
       expect(mockElectronAPI.onSessionComplete).toHaveBeenCalled();
       expect(mockElectronAPI.onCaptureStatus).toHaveBeenCalled();

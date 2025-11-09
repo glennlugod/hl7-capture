@@ -62,15 +62,7 @@ export default function MainLayout({
         <div className="flex h-14 items-center justify-between border-b border-slate-200/50 bg-gradient-to-r from-slate-50 to-blue-50/30 px-6 shadow-sm">
           <h2 className="text-base font-semibold text-slate-900 tracking-tight">Configuration</h2>
           <div className="flex items-center gap-4">
-            <div className="hidden sm:block">
-              {isConfigCollapsed ? (
-                // Avoid invoking the full configuration panel when collapsed to
-                // prevent expensive mount effects (like network interface
-                // enumeration) during layout-only previews in tests. Tests and
-                // lightweight previews should not trigger side-effects.
-                <div className="text-sm text-slate-700">Configuration (summary)</div>
-              ) : null}
-            </div>
+            <div className="hidden sm:block">{isConfigCollapsed ? configPanel(true) : null}</div>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setIsConfigCollapsed((s) => !s)}
