@@ -1,11 +1,11 @@
-import '@testing-library/jest-dom'
+import "@testing-library/jest-dom";
 
-import React from 'react'
+import React from "react";
 
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from "@testing-library/react";
 
-import { HL7Session } from '../../src/common/types'
-import MessageDetailViewer from '../../src/renderer/components/MessageDetailViewer'
+import { HL7Session } from "../../src/common/types";
+import MessageDetailViewer from "../../src/renderer/components/MessageDetailViewer";
 
 const mockSession: HL7Session = {
   id: "1",
@@ -13,7 +13,7 @@ const mockSession: HL7Session = {
   startTime: Date.now(),
   endTime: Date.now() + 5000,
   deviceIP: "192.168.1.100",
-  pcIP: "192.168.1.1",
+  lisIP: "192.168.1.1",
   elements: [
     {
       id: "e1",

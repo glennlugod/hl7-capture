@@ -169,6 +169,11 @@ export class DumpcapAdapter extends EventEmitter {
         const origLen = hdr.originalLength ?? hdr.origLen ?? inclLen;
 
         const normalized = this.normalizePacket(p.data, tsSec, tsUsec);
+        // Debug: log normalized presence for tests
+        try {
+          // eslint-disable-next-line no-console
+          console.log("[DumpcapAdapter] parser packet, normalized=", !!normalized);
+        } catch {}
         if (normalized) {
           this.emit("packet", normalized);
         } else {

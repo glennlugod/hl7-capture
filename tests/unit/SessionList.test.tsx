@@ -1,11 +1,11 @@
-import '@testing-library/jest-dom'
+import "@testing-library/jest-dom";
 
-import React from 'react'
+import React from "react";
 
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from "@testing-library/react";
 
-import { HL7Session } from '../../src/common/types'
-import SessionList from '../../src/renderer/components/SessionList'
+import { HL7Session } from "../../src/common/types";
+import SessionList from "../../src/renderer/components/SessionList";
 
 // Mock localStorage
 const localStorageMock = (() => {
@@ -43,7 +43,7 @@ const mockSessions: HL7Session[] = [
     sessionId: 1,
     startTime: Date.now(),
     deviceIP: "192.168.1.100",
-    pcIP: "192.168.1.1",
+    lisIP: "192.168.1.1",
     elements: [],
     messages: ["msg1", "msg2"],
     isComplete: true,
@@ -53,7 +53,7 @@ const mockSessions: HL7Session[] = [
     sessionId: 2,
     startTime: Date.now() + 1000,
     deviceIP: "192.168.1.100",
-    pcIP: "192.168.1.1",
+    lisIP: "192.168.1.1",
     elements: [],
     messages: ["msg3"],
     isComplete: true,
@@ -259,7 +259,7 @@ describe("SessionList Component", () => {
         sessionId: i + 1,
         startTime: Date.now() + i * 1000,
         deviceIP: "192.168.1.100",
-        pcIP: "192.168.1.1",
+        lisIP: "192.168.1.1",
         elements: [],
         messages: [`msg${i}`],
         isComplete: true,

@@ -23,8 +23,9 @@ export interface MarkerConfig {
   startMarker: number; // Default: 0x05
   acknowledgeMarker: number; // Default: 0x06
   endMarker: number; // Default: 0x04
-  sourceIP: string; // Medical device IP
-  destinationIP: string; // LIS PC IP
+  deviceIP: string; // Medical device IP (was sourceIP)
+  lisIP: string; // LIS / PC IP (was destinationIP)
+  lisPort?: number; // Optional LIS port filter
 }
 
 export interface Marker {
@@ -59,7 +60,7 @@ export interface HL7Session {
   startTime: number;
   endTime?: number; // Timestamp when session completed
   deviceIP: string;
-  pcIP: string;
+  lisIP: string;
   elements: HL7Element[];
   messages: string[]; // Decoded HL7 messages only
   isComplete: boolean; // true when 0x04 received

@@ -28,8 +28,8 @@ describe("HL7CaptureManager integration with external packet source", () => {
       startMarker: 0x05,
       acknowledgeMarker: 0x06,
       endMarker: 0x04,
-      sourceIP: "10.0.0.1",
-      destinationIP: "10.0.0.2",
+      deviceIP: "10.0.0.1",
+      lisIP: "10.0.0.2",
     });
 
     // Emit start marker packet
@@ -101,8 +101,8 @@ describe("HL7CaptureManager integration (mocked cap)", () => {
       startMarker: 0x05,
       acknowledgeMarker: 0x06,
       endMarker: 0x04,
-      sourceIP: "192.0.2.10",
-      destinationIP: "192.0.2.20",
+      deviceIP: "192.0.2.10",
+      lisIP: "192.0.2.20",
     };
 
     // Attach a fake packet source (EventEmitter) and emit 'packet' events that the manager will consume
@@ -116,23 +116,23 @@ describe("HL7CaptureManager integration (mocked cap)", () => {
 
     // Simulate receiving a single-byte start marker packet via packet events
     fakeSource.emit("packet", {
-      sourceIP: markers.sourceIP,
-      destIP: markers.destinationIP,
+      sourceIP: markers.deviceIP,
+      destIP: markers.lisIP,
       data: Buffer.from([markers.startMarker]),
     });
 
     // Now simulate a message payload followed by CRLF
     const message = Buffer.from("MSH|^~\\&|ABC|DEF|GHI|JKL|20251108||ADT^A01|123|P|2.5\r\n");
     fakeSource.emit("packet", {
-      sourceIP: markers.sourceIP,
-      destIP: markers.destinationIP,
+      sourceIP: markers.deviceIP,
+      destIP: markers.lisIP,
       data: message,
     });
 
     // Simulate end marker as its own single-byte TCP payload
     fakeSource.emit("packet", {
-      sourceIP: markers.sourceIP,
-      destIP: markers.destinationIP,
+      sourceIP: markers.deviceIP,
+      destIP: markers.lisIP,
       data: Buffer.from([markers.endMarker]),
     });
 

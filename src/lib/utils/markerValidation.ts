@@ -40,7 +40,7 @@ export function normalizeHexMarker(input: string): string | null {
 export function hexStringToNumber(input: string): number | null {
   const normalized = normalizeHexMarker(input);
   if (!normalized) return null;
-  return parseInt(normalized, 16);
+  return Number.parseInt(normalized, 16);
 }
 
 /**
@@ -50,8 +50,9 @@ export function validateMarkerConfig(config: {
   startMarker: number | string;
   acknowledgeMarker: number | string;
   endMarker: number | string;
-  sourceIP?: string;
-  destinationIP?: string;
+  deviceIP?: string;
+  lisIP?: string;
+  lisPort?: number;
 }): ValidationResult {
   const errors: string[] = [];
 
@@ -100,12 +101,18 @@ export function validateMarkerConfig(config: {
   }
 
   // Validate IPs if provided
-  if (config.sourceIP && !isValidIPv4(config.sourceIP)) {
-    errors.push("Source IP must be a valid IPv4 address");
+  if (config.deviceIP && !isValidIPv4(config.deviceIP)) {
+    errors.push("Device IP must be a valid IPv4 address");
   }
 
-  if (config.destinationIP && !isValidIPv4(config.destinationIP)) {
-    errors.push("Destination IP must be a valid IPv4 address");
+  if (config.lisIP && !isValidIPv4(config.lisIP)) {
+    errors.push("LIS IP must be a valid IPv4 address");
+  }
+
+  if (config.lisPort !== undefined) {
+    if (!Number.isInteger(config.lisPort) || config.lisPort < 0 || config.lisPort > 65535) {
+      errors.push("LIS port must be an integer between 0 and 65535");
+    }
   }
 
   return {
@@ -118,9 +125,12 @@ export function validateMarkerConfig(config: {
  * Validate IPv4 address format
  */
 export function isValidIPv4(ip: string): boolean {
-  const ipv4Regex =
-    /^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$/;
-  return ipv4Regex.test(ip);
+  // Quick structural check: four dot-separated groups of 1-3 digits
+  if (!/^\d{1,3}(\.\d{1,3}){3}$/.test(ip)) return false;
+  return ip.split(".").every((p) => {
+    const n = Number.parseInt(p, 10);
+    return Number.isInteger(n) && n >= 0 && n <= 255;
+  });
 }
 
 /**

@@ -26,8 +26,9 @@ export default function HL7MarkerConfig({
     formatMarkerForDisplay(value.acknowledgeMarker)
   );
   const [endMarkerInput, setEndMarkerInput] = useState(formatMarkerForDisplay(value.endMarker));
-  const [sourceIP, setSourceIP] = useState(value.sourceIP);
-  const [destinationIP, setDestinationIP] = useState(value.destinationIP);
+  const [deviceIP, setDeviceIP] = useState(value.deviceIP ?? "");
+  const [lisIP, setLisIP] = useState(value.lisIP ?? "");
+  const [lisPort, setLisPort] = useState<number | "">(value.lisPort ?? "");
   const [errors, setErrors] = useState<string[]>([]);
 
   // Validate on every change
@@ -36,12 +37,13 @@ export default function HL7MarkerConfig({
       startMarker: startMarkerInput,
       acknowledgeMarker: ackMarkerInput,
       endMarker: endMarkerInput,
-      sourceIP,
-      destinationIP,
+      deviceIP,
+      lisIP,
+      lisPort: lisPort === "" ? undefined : Number(lisPort),
     });
 
     setErrors(validation.errors);
-  }, [startMarkerInput, ackMarkerInput, endMarkerInput, sourceIP, destinationIP]);
+  }, [startMarkerInput, ackMarkerInput, endMarkerInput, deviceIP, lisIP, lisPort]);
 
   const handleMarkerChange = useCallback(
     (
@@ -58,24 +60,24 @@ export default function HL7MarkerConfig({
         onChange({
           ...value,
           [field]: numValue,
-        });
+        } as MarkerConfig);
       }
     },
     [value, onChange]
   );
 
   const handleIPChange = useCallback(
-    (ip: string, field: "sourceIP" | "destinationIP") => {
+    (ip: string, field: "deviceIP" | "lisIP") => {
       const newConfig = {
         ...value,
         [field]: ip,
-      };
+      } as MarkerConfig;
       onChange(newConfig);
 
-      if (field === "sourceIP") {
-        setSourceIP(ip);
+      if (field === "deviceIP") {
+        setDeviceIP(ip);
       } else {
-        setDestinationIP(ip);
+        setLisIP(ip);
       }
     },
     [value, onChange]
@@ -86,15 +88,17 @@ export default function HL7MarkerConfig({
       startMarker: 0x05,
       acknowledgeMarker: 0x06,
       endMarker: 0x04,
-      sourceIP: "",
-      destinationIP: "",
+      deviceIP: "",
+      lisIP: "",
+      lisPort: undefined,
     };
     onChange(defaultConfig);
     setStartMarkerInput(formatMarkerForDisplay(0x05));
     setAckMarkerInput(formatMarkerForDisplay(0x06));
     setEndMarkerInput(formatMarkerForDisplay(0x04));
-    setSourceIP("");
-    setDestinationIP("");
+    setDeviceIP("");
+    setLisIP("");
+    setLisPort("");
   };
 
   const hasErrors = errors.length > 0;
@@ -169,39 +173,65 @@ export default function HL7MarkerConfig({
       {/* IP Filters */}
       <div className="border-t border-slate-200 pt-3">
         <h4 className="text-sm font-semibold text-slate-900 mb-2">Capture Filters (Optional)</h4>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-3 gap-3">
           <div>
-            <label htmlFor="source-ip" className="block text-sm font-medium text-slate-700 mb-1">
-              Source IP (Medical Device)
+            <label htmlFor="device-ip" className="block text-sm font-medium text-slate-700 mb-1">
+              Device IP (Medical Device)
             </label>
             <input
-              id="source-ip"
+              id="device-ip"
               type="text"
-              value={sourceIP}
-              onChange={(e) => handleIPChange(e.target.value, "sourceIP")}
+              value={deviceIP}
+              onChange={(e) => handleIPChange(e.target.value, "deviceIP")}
               disabled={disabled}
               placeholder="e.g. 192.168.1.100"
               className="w-full px-2 py-1 border border-slate-300 rounded text-sm disabled:bg-slate-100"
-              aria-label="Source IP address"
+              aria-label="Device IP address"
             />
             <p className="text-xs text-slate-500 mt-1">Leave empty to capture all sources</p>
           </div>
 
           <div>
-            <label htmlFor="dest-ip" className="block text-sm font-medium text-slate-700 mb-1">
-              Destination IP (LIS/PC)
+            <label htmlFor="lis-ip" className="block text-sm font-medium text-slate-700 mb-1">
+              LIS IP (LIS/PC)
             </label>
             <input
-              id="dest-ip"
+              id="lis-ip"
               type="text"
-              value={destinationIP}
-              onChange={(e) => handleIPChange(e.target.value, "destinationIP")}
+              value={lisIP}
+              onChange={(e) => handleIPChange(e.target.value, "lisIP")}
               disabled={disabled}
               placeholder="e.g. 192.168.1.50"
               className="w-full px-2 py-1 border border-slate-300 rounded text-sm disabled:bg-slate-100"
-              aria-label="Destination IP address"
+              aria-label="LIS IP address"
             />
             <p className="text-xs text-slate-500 mt-1">Leave empty to capture all destinations</p>
+          </div>
+
+          <div>
+            <label htmlFor="lis-port" className="block text-sm font-medium text-slate-700 mb-1">
+              LIS Port (Optional)
+            </label>
+            <input
+              id="lis-port"
+              type="number"
+              value={lisPort}
+              onChange={(e) => {
+                const v = e.target.value;
+                const num = v === "" ? "" : Number(v);
+                setLisPort(num);
+                const newConfig = {
+                  ...value,
+                  lisPort: num === "" ? undefined : num,
+                } as MarkerConfig;
+                onChange(newConfig);
+              }}
+              disabled={disabled}
+              placeholder="e.g. 5000"
+              className="w-full px-2 py-1 border border-slate-300 rounded text-sm disabled:bg-slate-100"
+              aria-label="LIS port"
+            />
+            <p className="text-xs text-slate-500 mt-1">Leave empty to accept any port</p>
           </div>
         </div>
       </div>
@@ -211,8 +241,8 @@ export default function HL7MarkerConfig({
         <div role="alert" className="border border-red-200 bg-red-50 p-3 rounded">
           <p className="text-sm font-medium text-red-900 mb-1">Validation Errors:</p>
           <ul className="text-sm text-red-800 list-disc list-inside space-y-0.5">
-            {errors.map((error, idx) => (
-              <li key={idx}>{error}</li>
+            {errors.map((error) => (
+              <li key={error}>{error}</li>
             ))}
           </ul>
         </div>

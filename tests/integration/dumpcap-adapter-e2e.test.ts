@@ -66,8 +66,8 @@ describe("DumpcapAdapter -> HL7CaptureManager end-to-end (synthetic)", () => {
       startMarker: 0x05,
       acknowledgeMarker: 0x06,
       endMarker: 0x04,
-      sourceIP: "10.0.0.1",
-      destinationIP: "10.0.0.2",
+      deviceIP: "10.0.0.1",
+      lisIP: "10.0.0.2",
     });
 
     await expect(adapter.start()).resolves.toBeUndefined();

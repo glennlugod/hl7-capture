@@ -4,8 +4,8 @@ import {
   isValidIPv4,
   isValidSnaplen,
   normalizeHexMarker,
-  validateMarkerConfig
-} from '../../src/lib/utils/markerValidation'
+  validateMarkerConfig,
+} from "../../src/lib/utils/markerValidation";
 
 describe("markerValidation utilities", () => {
   describe("normalizeHexMarker", () => {
@@ -101,11 +101,11 @@ describe("markerValidation utilities", () => {
         startMarker: 0x05,
         acknowledgeMarker: 0x06,
         endMarker: 0x04,
-        sourceIP: "invalid-ip",
-        destinationIP: "192.168.1.1",
+        deviceIP: "invalid-ip",
+        lisIP: "192.168.1.1",
       });
       expect(result.valid).toBe(false);
-      expect(result.errors).toContain("Source IP must be a valid IPv4 address");
+      expect(result.errors).toContain("Device IP must be a valid IPv4 address");
     });
 
     it("should accept empty IPs", () => {
@@ -113,8 +113,8 @@ describe("markerValidation utilities", () => {
         startMarker: 0x05,
         acknowledgeMarker: 0x06,
         endMarker: 0x04,
-        sourceIP: "",
-        destinationIP: "",
+        deviceIP: "",
+        lisIP: "",
       });
       expect(result.valid).toBe(true);
     });
@@ -151,7 +151,7 @@ describe("markerValidation utilities", () => {
 
     it("should reject non-integer values", () => {
       expect(isValidSnaplen(256.5)).toBe(false);
-      expect(isValidSnaplen(NaN)).toBe(false);
+      expect(isValidSnaplen(Number.NaN)).toBe(false);
     });
   });
 
@@ -170,7 +170,7 @@ describe("markerValidation utilities", () => {
 
     it("should reject non-integer values", () => {
       expect(isValidBufferSize(100.5)).toBe(false);
-      expect(isValidBufferSize(NaN)).toBe(false);
+      expect(isValidBufferSize(Number.NaN)).toBe(false);
     });
   });
 });

@@ -19,8 +19,8 @@ describe("Placeholder Components", () => {
               startMarker: 0x05,
               acknowledgeMarker: 0x06,
               endMarker: 0x04,
-              sourceIP: "",
-              destinationIP: "",
+              deviceIP: "",
+              lisIP: "",
             }}
             onInterfaceChange={jest.fn()}
             onConfigChange={jest.fn()}
@@ -65,8 +65,8 @@ describe("Placeholder Components", () => {
               startMarker: 0x05,
               acknowledgeMarker: 0x06,
               endMarker: 0x04,
-              sourceIP: "",
-              destinationIP: "",
+              deviceIP: "",
+              lisIP: "",
             }}
             onInterfaceChange={jest.fn()}
             onConfigChange={jest.fn()}

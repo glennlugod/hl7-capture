@@ -51,8 +51,9 @@ export class HL7CaptureManager extends EventEmitter {
       startMarker: 0x05,
       acknowledgeMarker: 0x06,
       endMarker: 0x04,
-      sourceIP: "",
-      destinationIP: "",
+      deviceIP: "",
+      lisIP: "",
+      lisPort: undefined,
     };
   }
 
@@ -143,11 +144,11 @@ export class HL7CaptureManager extends EventEmitter {
     }
 
     // IP addresses are optional but if provided should be valid
-    if (config.sourceIP && !this.isValidIP(config.sourceIP)) {
+    if (config.deviceIP && !this.isValidIP(config.deviceIP)) {
       return false;
     }
 
-    if (config.destinationIP && !this.isValidIP(config.destinationIP)) {
+    if (config.lisIP && !this.isValidIP(config.lisIP)) {
       return false;
     }
 
@@ -471,7 +472,7 @@ export class HL7CaptureManager extends EventEmitter {
 
     // Determine direction
     const direction: "device-to-pc" | "pc-to-device" =
-      sourceIP === this.markerConfig.sourceIP ? "device-to-pc" : "pc-to-device";
+      sourceIP === this.markerConfig.deviceIP ? "device-to-pc" : "pc-to-device";
 
     // Check for HL7 markers
     if (data.length === 1) {
@@ -514,7 +515,7 @@ export class HL7CaptureManager extends EventEmitter {
       sessionId: this.sessionCounter,
       startTime: Date.now(),
       deviceIP: sourceIP,
-      pcIP: destIP,
+      lisIP: destIP,
       elements: [element],
       messages: [],
       isComplete: false,

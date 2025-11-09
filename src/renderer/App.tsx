@@ -15,8 +15,9 @@ export default function App(): JSX.Element {
     startMarker: 0x05,
     acknowledgeMarker: 0x06,
     endMarker: 0x04,
-    sourceIP: "",
-    destinationIP: "",
+    deviceIP: "",
+    lisIP: "",
+    lisPort: undefined,
   });
 
   const [isCapturing, setIsCapturing] = useState(false);
