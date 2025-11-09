@@ -33,7 +33,7 @@ type PacketShape = {
 export class HL7CaptureManager extends EventEmitter {
   private isCapturing: boolean = false;
   private isPaused: boolean = false;
-  private currentInterface: string = "";
+  private currentInterface: NetworkInterface = { index: -1, name: "" };
   private markerConfig: MarkerConfig;
   private readonly sessions: Map<string, HL7Session> = new Map();
   private sessionCounter: number = 0;
@@ -176,16 +176,11 @@ export class HL7CaptureManager extends EventEmitter {
     let dumpcap: DumpcapAdapter | null = null;
 
     try {
-      // If an external packet source is attached, check whether it's actually
-      // running. Some backends (DumpcapAdapter) expose `isRunning()` and the
-      // manager's `isCapturing` flag may be stale if a process exited.
-      if (this.externalPacketSource && this.probeIsRunning(this.externalPacketSource) === false) {
-        // Clean up references from a previously stopped source so we can start
-        // a fresh capture. detachPacketSource is best-effort and swallows
-        // its own errors.
-        this.detachPacketSource();
-        this.isCapturing = false;
-      }
+      // If an external packet source is attached, we will wire it below.
+      // Do not pre-emptively detach a provided external source here; callers
+      // may attach a source and start it after calling startCapture (tests
+      // and some integrations do this). The attach/detach helpers handle
+      // lifecycle cleanup when stopCapture/detachPacketSource are called.
 
       if (this.isCapturing) {
         throw new Error("Capture already in progress");
@@ -193,11 +188,8 @@ export class HL7CaptureManager extends EventEmitter {
 
       // Normalize the provided NetworkInterface into the string expected by DumpcapAdapter
       // Prefer numeric index when available and non-negative, otherwise use the name.
-      const ifaceStr =
-        typeof networkInterface?.index === "number" && networkInterface.index >= 0
-          ? String(networkInterface.index)
-          : (networkInterface?.name ?? "");
-      this.currentInterface = ifaceStr;
+      // Keep the original NetworkInterface object for later use by adapters
+      this.currentInterface = networkInterface;
       this.markerConfig = config;
       this.isCapturing = true;
       this.sessions.clear();
@@ -208,6 +200,7 @@ export class HL7CaptureManager extends EventEmitter {
         isCapturing: true,
         sessionCount: 0,
         elementCount: 0,
+        interface: this.currentInterface,
       });
 
       // If an external packet source is attached, ensure it's wired and return
@@ -273,6 +266,7 @@ export class HL7CaptureManager extends EventEmitter {
         isCapturing: true,
         sessionCount: this.sessions.size,
         elementCount: this.getTotalElementCount(),
+        interface: this.currentInterface,
       });
     });
 
@@ -283,6 +277,7 @@ export class HL7CaptureManager extends EventEmitter {
         isCapturing: false,
         sessionCount: this.sessions.size,
         elementCount: this.getTotalElementCount(),
+        interface: this.currentInterface,
       });
     });
 
@@ -370,6 +365,7 @@ export class HL7CaptureManager extends EventEmitter {
       isCapturing: false,
       sessionCount: this.sessions.size,
       elementCount: this.getTotalElementCount(),
+      interface: this.currentInterface,
     });
   }
 
@@ -388,6 +384,7 @@ export class HL7CaptureManager extends EventEmitter {
       isPaused: true,
       sessionCount: this.sessions.size,
       elementCount: this.getTotalElementCount(),
+      interface: this.currentInterface,
     });
   }
 
@@ -406,6 +403,7 @@ export class HL7CaptureManager extends EventEmitter {
       isPaused: false,
       sessionCount: this.sessions.size,
       elementCount: this.getTotalElementCount(),
+      interface: this.currentInterface,
     });
   }
 
@@ -427,6 +425,7 @@ export class HL7CaptureManager extends EventEmitter {
       isCapturing: this.isCapturing,
       sessionCount: 0,
       elementCount: 0,
+      interface: this.currentInterface,
     });
   }
 
@@ -610,6 +609,7 @@ export class HL7CaptureManager extends EventEmitter {
       isCapturing: this.isCapturing,
       sessionCount: this.sessions.size,
       elementCount: this.getTotalElementCount(),
+      interface: this.currentInterface,
     });
 
     // Clear active session

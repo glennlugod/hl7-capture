@@ -4,10 +4,16 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import * as pcapParserLib from "pcap-parser";
 
-import type { PcapPacket, PcapPacketHeader, PcapParser, NormalizedPacket } from "../common/types";
+import type {
+  PcapPacket,
+  PcapPacketHeader,
+  PcapParser,
+  NormalizedPacket,
+  NetworkInterface,
+} from "../common/types";
 
 export interface DumpcapOptions {
-  interface?: string;
+  interface?: NetworkInterface;
   bpf?: string;
   snaplen?: number;
 }
@@ -46,13 +52,16 @@ export class DumpcapAdapter extends EventEmitter {
     const args: string[] = [];
 
     if (this.options.interface) {
-      const iface = String(this.options.interface);
-      if (/^\d+$/.test(iface)) {
-        args.push("-i", iface);
+      const iface = this.options.interface;
+      // Prefer numeric index when available; fall back to name for resolution
+      const ifaceStr = typeof iface.index === "number" ? String(iface.index) : iface.name;
+
+      if (/^\d+$/.test(ifaceStr)) {
+        args.push("-i", ifaceStr);
       } else {
-        const resolved = this.resolveInterfaceIndex(iface);
+        const resolved = this.resolveInterfaceIndex(ifaceStr);
         if (resolved) args.push("-i", resolved);
-        else args.push("-i", iface);
+        else args.push("-i", ifaceStr);
       }
     }
 

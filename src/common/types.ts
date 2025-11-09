@@ -82,7 +82,7 @@ export interface CapturedPacket {
 export interface CaptureStatus {
   isCapturing: boolean;
   isPaused: boolean;
-  interface: string;
+  interface: NetworkInterface;
   sessionCount: number;
   packetCount: number;
   elementCount: number;

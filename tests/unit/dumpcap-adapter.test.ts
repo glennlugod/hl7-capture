@@ -39,7 +39,7 @@ describe("DumpcapAdapter (unit)", () => {
     // Mock spawn to return fakeProc
     (child_process.spawn as unknown as jest.Mock).mockImplementation(() => fakeProc as any);
 
-    const adapter = new DumpcapAdapter({ interface: "lo" });
+    const adapter = new DumpcapAdapter({ interface: { index: -1, name: "lo" } });
 
     const packets: any[] = [];
     adapter.on("packet", (p) => packets.push(p));
@@ -102,7 +102,7 @@ describe("DumpcapAdapter (unit)", () => {
 
 describe("DumpcapAdapter (unit) - missing dumpcap", () => {
   test("start() should throw when dumpcap is not available", async () => {
-    const adapter = new DumpcapAdapter({ interface: "lo" });
+    const adapter = new DumpcapAdapter({ interface: { index: -1, name: "lo" } });
 
     // Monkey-patch findDumpcap to return null to simulate missing dumpcap
     // override private method in test

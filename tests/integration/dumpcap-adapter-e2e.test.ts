@@ -36,7 +36,7 @@ describe("DumpcapAdapter -> HL7CaptureManager end-to-end (synthetic)", () => {
 
     (DumpcapAdapter.prototype as any).findDumpcap = jest.fn(() => "dumpcap");
 
-    const adapter = new DumpcapAdapter({ interface: "lo" });
+    const adapter = new DumpcapAdapter({ interface: { index: -1, name: "lo" } });
     const manager = new HL7CaptureManager();
 
     const emittedElements: any[] = [];
