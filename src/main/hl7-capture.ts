@@ -536,11 +536,6 @@ export class HL7CaptureManager extends EventEmitter {
 
     if (!this.isCapturing) return;
 
-    // We no longer receive source/destination IPs here; adapters that can
-    // determine direction should call the manager directly with that
-    // information (future improvement). For now default to 'pc-to-device'.
-    const direction: "device-to-pc" | "pc-to-device" = "pc-to-device";
-
     // Check for HL7 markers
     if (data.length === 1) {
       const marker = data[0];
@@ -549,22 +544,22 @@ export class HL7CaptureManager extends EventEmitter {
       if (marker === this.markerConfig.startMarker) {
         // If the packet is a NormalizedPacket provide source/destination IPs
         if (this.isNormalizedPacket(pkt)) {
-          this.handleStartMarker(pkt.sourceIP, pkt.destIP, data, direction);
+          this.handleStartMarker(pkt.sourceIP, pkt.destIP, data, "device-to-pc");
         } else {
-          this.handleStartMarker("", "", data, direction);
+          this.handleStartMarker("", "", data, "device-to-pc");
         }
       }
       // Acknowledge marker (0x06)
       else if (marker === this.markerConfig.acknowledgeMarker) {
-        this.handleAckMarker(data, direction);
+        this.handleAckMarker(data, "pc-to-device");
       }
       // End marker (0x04)
       else if (marker === this.markerConfig.endMarker) {
-        this.handleEndMarker(data, direction);
+        this.handleEndMarker(data, "device-to-pc");
       }
     } else {
       // Potential HL7 message
-      this.handleMessage(data, direction);
+      this.handleMessage(data, "device-to-pc");
     }
   }
 
