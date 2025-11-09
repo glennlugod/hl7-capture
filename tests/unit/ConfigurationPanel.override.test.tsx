@@ -10,9 +10,7 @@ import ConfigurationPanel from "../../src/renderer/components/ConfigurationPanel
 describe("ConfigurationPanel override flow", () => {
   beforeEach(() => {
     (globalThis as any).electron = {
-      getNetworkInterfaces: jest
-        .fn()
-        .mockResolvedValue([{ index: -1, name: "eth0", address: "eth0", ip: "", mac: "" }]),
+      getNetworkInterfaces: jest.fn().mockResolvedValue([{ index: -1, name: "eth0" }]),
       validateMarkerConfig: jest.fn().mockResolvedValue(false), // invalid config
       saveMarkerConfig: jest.fn().mockResolvedValue(undefined),
       startCapture: jest.fn().mockResolvedValue(undefined),

@@ -9,10 +9,7 @@
 export interface NetworkInterface {
   index: number;
   name: string;
-  address: string;
-  ip: string;
-  mac: string;
-  status?: "up" | "down" | "unknown";
+  // Removed: address, ip, mac, status — UI and main now rely on `name` and `index` only
 }
 
 /**

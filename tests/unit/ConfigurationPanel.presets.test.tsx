@@ -9,9 +9,7 @@ import ConfigurationPanel from "../../src/renderer/components/ConfigurationPanel
 describe("ConfigurationPanel presets and start", () => {
   beforeEach(() => {
     (globalThis as any).electron = {
-      getNetworkInterfaces: jest
-        .fn()
-        .mockResolvedValue([{ index: -1, name: "eth0", address: "eth0", ip: "", mac: "" }]),
+      getNetworkInterfaces: jest.fn().mockResolvedValue([{ index: -1, name: "eth0" }]),
       loadPresets: jest.fn().mockResolvedValue([]),
       savePreset: jest.fn().mockResolvedValue(undefined),
       deletePreset: jest.fn().mockResolvedValue(undefined),

@@ -1,4 +1,4 @@
-import React from 'react'
+import React from "react";
 
 import type { NetworkInterface } from "@common/types";
 
@@ -18,9 +18,8 @@ export default function InterfaceSelector({
   disabled = false,
 }: Readonly<Props>): JSX.Element {
   const getDisplayName = (iface: NetworkInterface): string => {
-    const ips = iface.ip ?? iface.address ?? "";
-    const mac = iface.mac ?? "";
-    return `${iface.name} [${ips} - ${mac}]`;
+    const idx = iface.index !== undefined && iface.index >= 0 ? `${iface.index}.` : "";
+    return idx ? `${idx} ${iface.name}` : iface.name;
   };
 
   return (
@@ -36,12 +35,7 @@ export default function InterfaceSelector({
             aria-label="Network Interface"
           >
             {interfaces.map((iface) => (
-              <option
-                key={iface.name}
-                value={iface.name}
-                disabled={iface.status === "down"}
-                title={iface.status === "down" ? "Interface is offline or unsupported" : undefined}
-              >
+              <option key={iface.name} value={iface.name}>
                 {getDisplayName(iface)}
               </option>
             ))}

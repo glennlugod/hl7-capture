@@ -97,7 +97,8 @@ export class HL7CaptureManager extends EventEmitter {
           const idx = Number(m[1]);
           const desc = m[2];
           // Try to extract a readable name and maybe an IP via OS interfaces as fallback
-          interfaces.push({ index: idx, name: desc, address: desc, ip: "", mac: "" });
+          // Only include index and name per shared type definition
+          interfaces.push({ index: idx, name: desc });
         }
       }
       if (interfaces.length > 0) return interfaces;
@@ -116,9 +117,6 @@ export class HL7CaptureManager extends EventEmitter {
           interfaces.push({
             index: -1,
             name: name,
-            address: `${name} - ${addr.address}`,
-            ip: addr.address,
-            mac: addr.mac,
           });
         }
       }
