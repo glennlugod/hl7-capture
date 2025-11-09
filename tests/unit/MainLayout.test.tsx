@@ -20,7 +20,7 @@ describe("MainLayout Component", () => {
   it("renders without crashing", () => {
     const { container } = render(
       <MainLayout
-        configPanel={<div>Config</div>}
+        configPanel={() => <div>Config</div>}
         sessionList={<div>Sessions</div>}
         messageDetail={<div>Message</div>}
         {...defaultProps}
@@ -32,7 +32,7 @@ describe("MainLayout Component", () => {
   it("displays configuration panel", () => {
     const { queryByText } = render(
       <MainLayout
-        configPanel={<div>Config</div>}
+        configPanel={() => <div>Config</div>}
         sessionList={<div>Sessions</div>}
         messageDetail={<div>Message</div>}
         {...defaultProps}
@@ -45,7 +45,7 @@ describe("MainLayout Component", () => {
   it("displays session list", () => {
     const { getAllByText } = render(
       <MainLayout
-        configPanel={<div>Config</div>}
+        configPanel={() => <div>Config</div>}
         sessionList={<div>Sessions</div>}
         messageDetail={<div>Message</div>}
         {...defaultProps}
@@ -57,7 +57,7 @@ describe("MainLayout Component", () => {
   it("displays message detail", () => {
     const { getByText } = render(
       <MainLayout
-        configPanel={<div>Config</div>}
+        configPanel={() => <div>Config</div>}
         sessionList={<div>Sessions</div>}
         messageDetail={<div>Message</div>}
         {...defaultProps}
@@ -67,21 +67,21 @@ describe("MainLayout Component", () => {
   });
 
   it("displays 'Configuration' header", () => {
-    const { getByText } = render(
+    const { getByRole } = render(
       <MainLayout
-        configPanel={<div>Config</div>}
+        configPanel={() => <div>Config</div>}
         sessionList={<div>Sessions</div>}
         messageDetail={<div>Message</div>}
         {...defaultProps}
       />
     );
-    expect(getByText("Configuration")).toBeInTheDocument();
+    expect(getByRole("heading", { name: "Configuration" })).toBeInTheDocument();
   });
 
   it("displays 'Message Details' header", () => {
     const { getByText } = render(
       <MainLayout
-        configPanel={<div>Config</div>}
+        configPanel={() => <div>Config</div>}
         sessionList={<div>Sessions</div>}
         messageDetail={<div>Message</div>}
         {...defaultProps}
@@ -93,7 +93,7 @@ describe("MainLayout Component", () => {
   it("renders expand/collapse button for configuration", () => {
     const { getByRole } = render(
       <MainLayout
-        configPanel={<div>Config</div>}
+        configPanel={() => <div>Config</div>}
         sessionList={<div>Sessions</div>}
         messageDetail={<div>Message</div>}
         {...defaultProps}
@@ -108,7 +108,7 @@ describe("MainLayout Component", () => {
     const onStartCapture = jest.fn();
     render(
       <MainLayout
-        configPanel={<div>Config</div>}
+        configPanel={() => <div>Config</div>}
         sessionList={<div>Sessions</div>}
         messageDetail={<div>Message</div>}
         isCapturing={false}
@@ -126,7 +126,7 @@ describe("MainLayout Component", () => {
   it("accepts capturing state", () => {
     const { container } = render(
       <MainLayout
-        configPanel={<div>Config</div>}
+        configPanel={() => <div>Config</div>}
         sessionList={<div>Sessions</div>}
         messageDetail={<div>Message</div>}
         isCapturing={true}
@@ -144,7 +144,7 @@ describe("MainLayout Component", () => {
   it("accepts paused state", () => {
     const { container } = render(
       <MainLayout
-        configPanel={<div>Config</div>}
+        configPanel={() => <div>Config</div>}
         sessionList={<div>Sessions</div>}
         messageDetail={<div>Message</div>}
         isCapturing={true}
@@ -162,7 +162,7 @@ describe("MainLayout Component", () => {
   it("AC #2: should render panel resize handle for resizable panels", () => {
     const { container } = render(
       <MainLayout
-        configPanel={<div>Config</div>}
+        configPanel={() => <div>Config</div>}
         sessionList={<div>Sessions</div>}
         messageDetail={<div>Message</div>}
         {...defaultProps}

@@ -293,6 +293,10 @@ export class HL7CaptureManager extends EventEmitter {
         this.emit("error", err as Error);
       }
     });
+
+    source.on("log", (message: string) => {
+      console.log(`[PacketSource] ${message}`);
+    });
   }
 
   /**

@@ -144,9 +144,18 @@ export class DumpcapAdapter extends EventEmitter {
         }
       });
 
+      // When the parser stream ends it doesn't necessarily mean the underlying
+      // dumpcap process has exited or that the capture should be considered
+      // fully stopped by consumers. Avoid emitting the public "stop" event
+      // here to prevent prematurely ending capture sessions. Emit a
+      // diagnostic event instead so upper layers can decide how to react.
       parser.on("end", () => {
-        this.emit("stop");
-        this.running = false;
+        this.emit("log", "pcap-parser stream ended");
+        this.emit("parser-end");
+        // Do not modify `this.running` or emit the public "stop" here. The
+        // process lifecycle is managed by spawn/stop helpers which will emit
+        // "stop" when the child process actually exits or when stop() is
+        // explicitly called.
       });
 
       parser.on("error", (err: Error) => this.emit("error", err));
@@ -271,6 +280,29 @@ export class DumpcapAdapter extends EventEmitter {
     // Wait for process to exit, attempt graceful kill then escalate to forced
     // termination if the process does not exit within timeout.
     await new Promise<void>((resolve) => {
+      // If the provided proc doesn't look like an EventEmitter (as is the
+      // case for some tests which provide a plain object mock), avoid calling
+      // .once/.on which would throw. Instead, attempt best-effort kills and
+      // resolve immediately.
+      const maybeProc: unknown = proc;
+      const isEventEmitter = (v: unknown): v is NodeJS.EventEmitter =>
+        typeof v === "object" &&
+        v !== null &&
+        typeof (v as NodeJS.EventEmitter).once === "function";
+      const hasOnce = isEventEmitter(maybeProc);
+      if (!hasOnce) {
+        // Best-effort: try to kill and escalate, then resolve.
+        this.safeKillProc(proc);
+        // Give a tick for any async side-effects, then escalate.
+        setTimeout(() => {
+          this.safeEscalateKill(proc, isWin);
+          // Use helper that logs failures internally.
+          this.safeRemoveListeners(proc);
+          resolve();
+        }, 0);
+        return;
+      }
+
       let finished = false;
 
       const done = () => {
