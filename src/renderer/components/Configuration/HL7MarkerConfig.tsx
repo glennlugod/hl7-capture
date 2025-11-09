@@ -1,8 +1,12 @@
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useState } from "react";
 
-import { normalizeHexMarker, validateMarkerConfig } from '../../../lib/utils/markerValidation'
+import { normalizeHexMarker, validateMarkerConfig } from "../../../lib/utils/markerValidation";
 
 import type { MarkerConfig } from "../../../common/types";
+
+function formatMarkerForDisplay(marker: number): string {
+  return `0x${marker.toString(16).toUpperCase().padStart(2, "0")}`;
+}
 
 interface Props {
   value: MarkerConfig;
@@ -39,10 +43,6 @@ export default function HL7MarkerConfig({
     setErrors(validation.errors);
   }, [startMarkerInput, ackMarkerInput, endMarkerInput, sourceIP, destinationIP]);
 
-  function formatMarkerForDisplay(marker: number): string {
-    return `0x${marker.toString(16).toUpperCase().padStart(2, "0")}`;
-  }
-
   const handleMarkerChange = useCallback(
     (
       input: string,
@@ -54,7 +54,7 @@ export default function HL7MarkerConfig({
       // Parse and normalize
       const normalized = normalizeHexMarker(input);
       if (normalized) {
-        const numValue = parseInt(normalized, 16);
+        const numValue = Number.parseInt(normalized, 16);
         onChange({
           ...value,
           [field]: numValue,

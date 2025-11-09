@@ -3,7 +3,6 @@ import React, { useEffect, useState } from "react";
 import AdvancedOptions from "./Configuration/AdvancedOptions";
 import HL7MarkerConfig from "./Configuration/HL7MarkerConfig";
 import InterfaceSelector from "./InterfaceSelector";
-import { Button } from "./ui/button";
 
 import type { NetworkInterface, MarkerConfig } from "../../common/types";
 
@@ -59,25 +58,6 @@ export default function ConfigurationPanel({
     loadInterfaces();
   }, []);
 
-  // Note: start-capture behavior moved to `ControlPanel`. ConfigurationPanel only manages
-  // configuration, interfaces, and reset functionality.
-
-  const handleReset = () => {
-    const defaultConfig: MarkerConfig = {
-      startMarker: 0x05,
-      acknowledgeMarker: 0x06,
-      endMarker: 0x04,
-      sourceIP: "",
-      destinationIP: "",
-    };
-    onConfigChange(defaultConfig);
-    setAdvancedConfig({
-      snaplen: 65535,
-      bpfOverride: "",
-      bufferSize: 100,
-    });
-  };
-
   const isDisabled = isCapturing;
 
   return (
@@ -127,19 +107,6 @@ export default function ConfigurationPanel({
           onChange={setAdvancedConfig}
           disabled={isDisabled}
         />
-      </div>
-
-      {/* Action Buttons */}
-      <div className="flex gap-3 border-t border-slate-200/50 pt-6">
-        <Button
-          onClick={handleReset}
-          disabled={isDisabled}
-          variant="secondary"
-          size="default"
-          aria-label="Reset all settings to defaults"
-        >
-          Reset
-        </Button>
       </div>
 
       {!selectedInterface && (
