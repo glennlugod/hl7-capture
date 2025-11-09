@@ -66,7 +66,9 @@ export class DumpcapAdapter extends EventEmitter {
     }
 
     // Use stdout pcap output
-    args.push("-w", "-");
+    // Force libpcap (pcap) format instead of pcapng by adding -F pcap
+    // This ensures compatibility with pcap-parser which expects classic pcap
+    args.push("-F", "pcap", "-w", "-");
 
     if (this.options.bpf) {
       args.push("-f", this.options.bpf);
