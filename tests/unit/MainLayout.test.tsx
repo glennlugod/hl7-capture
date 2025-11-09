@@ -1,10 +1,10 @@
-import '@testing-library/jest-dom'
+import "@testing-library/jest-dom";
 
-import React from 'react'
+import React from "react";
 
-import { render } from '@testing-library/react'
+import { render } from "@testing-library/react";
 
-import MainLayout from '../../src/renderer/components/MainLayout'
+import MainLayout from "../../src/renderer/components/MainLayout";
 
 const defaultProps = {
   isCapturing: false,
@@ -30,7 +30,7 @@ describe("MainLayout Component", () => {
   });
 
   it("displays configuration panel", () => {
-    const { getByText } = render(
+    const { queryByText } = render(
       <MainLayout
         configPanel={<div>Config</div>}
         sessionList={<div>Sessions</div>}
@@ -38,7 +38,8 @@ describe("MainLayout Component", () => {
         {...defaultProps}
       />
     );
-    expect(getByText("Config")).toBeInTheDocument();
+    // Configuration content is collapsed by default; ensure it's not rendered
+    expect(queryByText("Config")).not.toBeInTheDocument();
   });
 
   it("displays session list", () => {
@@ -65,7 +66,7 @@ describe("MainLayout Component", () => {
     expect(getByText("Message")).toBeInTheDocument();
   });
 
-  it('displays "Configuration" header', () => {
+  it("displays 'Configuration' header", () => {
     const { getByText } = render(
       <MainLayout
         configPanel={<div>Config</div>}
@@ -77,7 +78,7 @@ describe("MainLayout Component", () => {
     expect(getByText("Configuration")).toBeInTheDocument();
   });
 
-  it('displays "Message Details" header', () => {
+  it("displays 'Message Details' header", () => {
     const { getByText } = render(
       <MainLayout
         configPanel={<div>Config</div>}
@@ -98,7 +99,8 @@ describe("MainLayout Component", () => {
         {...defaultProps}
       />
     );
-    const button = getByRole("button", { name: /collapse configuration panel/i });
+    // Default is collapsed, so button should offer to expand the configuration panel
+    const button = getByRole("button", { name: /expand configuration panel/i });
     expect(button).toBeInTheDocument();
   });
 
@@ -167,7 +169,7 @@ describe("MainLayout Component", () => {
       />
     );
     // exact classes may change; the resize handle has a gradient background class in layout
-    const resizeHandle = container.querySelector('[class*="bg-gradient-to-b"]');
+    const resizeHandle = container.querySelector("[class*='bg-gradient-to-b']");
     expect(resizeHandle).toBeTruthy();
   });
 });

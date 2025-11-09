@@ -1,10 +1,10 @@
-import '@testing-library/jest-dom'
+import "@testing-library/jest-dom";
 
-import React from 'react'
+import React from "react";
 
-import { act, render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from "@testing-library/react";
 
-import App from '../../src/renderer/App'
+import App from "../../src/renderer/App";
 
 // Mock the electron API
 const mockElectronAPI = {
@@ -27,11 +27,11 @@ const mockElectronAPI = {
 describe("App Integration - Layout and Components", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    (globalThis as any).electron = mockElectronAPI;
+    (globalThis as unknown as { electron: unknown }).electron = mockElectronAPI;
   });
 
   afterEach(() => {
-    delete (globalThis as any).electron;
+    delete (globalThis as unknown as { electron?: unknown }).electron;
   });
 
   describe("AC #5: Component Integration into Layout", () => {
@@ -39,10 +39,8 @@ describe("App Integration - Layout and Components", () => {
       await act(async () => {
         render(<App />);
       });
-
-      await waitFor(() => expect(mockElectronAPI.getNetworkInterfaces).toHaveBeenCalled());
-
-      expect(screen.getByRole("listbox")).toBeInTheDocument();
+      // Configuration panel is collapsed by default, so getNetworkInterfaces isn't called yet.
+      await waitFor(() => expect(screen.getByRole("listbox")).toBeInTheDocument());
       expect(screen.getAllByText("Start Capture").length).toBeGreaterThan(0);
     });
 
@@ -70,17 +68,19 @@ describe("App Integration - Layout and Components", () => {
         render(<App />);
       });
 
-      const collapseButton = screen.getByRole("button", {
-        name: /collapse configuration panel/i,
+      // Default is collapsed, so button should offer to Expand the configuration panel
+      const expandButton = screen.getByRole("button", {
+        name: /expand configuration panel/i,
       });
-      expect(collapseButton).toBeInTheDocument();
+      expect(expandButton).toBeInTheDocument();
     });
 
     it("initializes electron API listeners on mount", async () => {
       await act(async () => {
         render(<App />);
       });
-      expect(mockElectronAPI.getNetworkInterfaces).toHaveBeenCalled();
+      // getNetworkInterfaces is only called when configuration panel is expanded; it is collapsed by default
+      expect(mockElectronAPI.getNetworkInterfaces).not.toHaveBeenCalled();
       expect(mockElectronAPI.onNewElement).toHaveBeenCalled();
       expect(mockElectronAPI.onSessionComplete).toHaveBeenCalled();
       expect(mockElectronAPI.onCaptureStatus).toHaveBeenCalled();
