@@ -41,7 +41,7 @@ describe("Placeholder Components", () => {
             onAutoScrollChange={jest.fn()}
           />
         );
-        expect(container.querySelector('[role="listbox"]')).toBeInTheDocument();
+        expect(container.querySelector("[role='listbox']")).toBeInTheDocument();
       });
     });
 
@@ -82,7 +82,7 @@ describe("Placeholder Components", () => {
         </div>
       );
       expect(getByText("Reset")).toBeTruthy();
-      expect(container.querySelector('[role="listbox"]')).toBeInTheDocument();
+      expect(container.querySelector("[role='listbox']")).toBeInTheDocument();
       expect(container).toBeInTheDocument();
     });
   });
