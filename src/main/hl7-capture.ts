@@ -15,6 +15,7 @@ import type {
   HL7Session,
   HL7Element,
   PcapPacket,
+  NormalizedPacket,
   // NormalizedPacket,
 } from "../common/types";
 
@@ -324,13 +325,13 @@ export class HL7CaptureManager extends EventEmitter {
     });
 
     // Packet forwarding: normalize expected packet shape and pass to processor
-    source.on("packet", (pkt: PcapPacket) => {
+    source.on("packet", (pkt: PcapPacket | NormalizedPacket) => {
       try {
         if (!pkt?.data) return;
         // Forward raw bytes to the byte-oriented processor. Direction is
         // defaulted within `processPacket` for adapters that don't provide
         // source/destination information.
-        this.processPacket(pkt.data);
+        this.processPacket(pkt);
       } catch (err) {
         this.emit("error", err as Error);
       }
@@ -514,7 +515,11 @@ export class HL7CaptureManager extends EventEmitter {
   /**
    * Process incoming packet data
    */
-  private processPacket(data: Buffer): void {
+  private processPacket(pkt: PcapPacket | NormalizedPacket): void {
+    // Safely read packet bytes and bail out if absent
+    const data = pkt?.data;
+    if (!data || data.length === 0) return;
+
     console.log(`Processing packet, length: ${data.length}`);
     console.log(data);
 
