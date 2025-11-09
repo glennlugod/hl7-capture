@@ -1,12 +1,12 @@
-import '@testing-library/jest-dom'
+import "@testing-library/jest-dom";
 
-import React from 'react'
+import React from "react";
 
-import { render } from '@testing-library/react'
+import { render } from "@testing-library/react";
 
-import ConfigurationPanel from '../../src/renderer/components/ConfigurationPanel'
-import MessageDetailViewer from '../../src/renderer/components/MessageDetailViewer'
-import SessionList from '../../src/renderer/components/SessionList'
+import ConfigurationPanel from "../../src/renderer/components/ConfigurationPanel";
+import MessageDetailViewer from "../../src/renderer/components/MessageDetailViewer";
+import SessionList from "../../src/renderer/components/SessionList";
 
 describe("Placeholder Components", () => {
   describe("AC #4: Placeholder Custom Component Creation", () => {
@@ -24,10 +24,9 @@ describe("Placeholder Components", () => {
             }}
             onInterfaceChange={jest.fn()}
             onConfigChange={jest.fn()}
-            onStartCapture={jest.fn()}
           />
         );
-        expect(getByText("Start Capture")).toBeTruthy();
+        expect(getByText("Reset")).toBeTruthy();
       });
     });
 
@@ -71,7 +70,6 @@ describe("Placeholder Components", () => {
             }}
             onInterfaceChange={jest.fn()}
             onConfigChange={jest.fn()}
-            onStartCapture={jest.fn()}
           />
           <SessionList
             sessions={[]}
@@ -83,7 +81,7 @@ describe("Placeholder Components", () => {
           <MessageDetailViewer session={null} onNavigateMessage={jest.fn()} />
         </div>
       );
-      expect(getByText("Start Capture")).toBeTruthy();
+      expect(getByText("Reset")).toBeTruthy();
       expect(container.querySelector('[role="listbox"]')).toBeInTheDocument();
       expect(container).toBeInTheDocument();
     });

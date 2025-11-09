@@ -1,7 +1,7 @@
-import React, { useState } from 'react'
-import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
+import React, { useState } from "react";
+import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 
-import ControlPanel from './ControlPanel'
+import ControlPanel from "./ControlPanel";
 
 interface MainLayoutProps {
   configPanel: React.ReactNode;
@@ -27,7 +27,7 @@ export default function MainLayout({
   onPauseCapture,
   onResumeCapture,
   onClearSessions,
-}: MainLayoutProps): JSX.Element {
+}: Readonly<MainLayoutProps>): JSX.Element {
   const [isConfigCollapsed, setIsConfigCollapsed] = useState(false);
 
   return (

@@ -192,7 +192,6 @@ export default function App(): JSX.Element {
           markerConfig={markerConfig}
           onInterfaceChange={setSelectedInterface}
           onConfigChange={updateMarkerConfig}
-          onStartCapture={handleStartCapture}
           isCapturing={isCapturing}
         />
       }

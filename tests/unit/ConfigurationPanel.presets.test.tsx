@@ -1,10 +1,10 @@
-import '@testing-library/jest-dom'
+import "@testing-library/jest-dom";
 
-import React from 'react'
+import React from "react";
 
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from "@testing-library/react";
 
-import ConfigurationPanel from '../../src/renderer/components/ConfigurationPanel'
+import ConfigurationPanel from "../../src/renderer/components/ConfigurationPanel";
 
 describe("ConfigurationPanel presets and start", () => {
   beforeEach(() => {
@@ -37,7 +37,6 @@ describe("ConfigurationPanel presets and start", () => {
           }}
           onInterfaceChange={jest.fn()}
           onConfigChange={jest.fn()}
-          onStartCapture={jest.fn().mockResolvedValue(undefined)}
         />
       );
     });
@@ -46,10 +45,7 @@ describe("ConfigurationPanel presets and start", () => {
       expect((globalThis as any).electron.getNetworkInterfaces).toHaveBeenCalled()
     );
 
-    const startBtn = screen.getByText("Start Capture");
-    fireEvent.click(startBtn);
-    await waitFor(() =>
-      expect((globalThis as any).electron.validateMarkerConfig).toHaveBeenCalled()
-    );
+    // ConfigurationPanel no longer includes a Start Capture button; ensure it's absent
+    expect(screen.queryByText("Start Capture")).toBeNull();
   });
 });

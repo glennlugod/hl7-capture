@@ -1,8 +1,11 @@
 // Ensure child_process.spawn is a mock we can control
+/* eslint-disable @typescript-eslint/no-explicit-any */
 jest.mock("node:child_process", () => ({ spawn: jest.fn() }));
 
 import * as child_process from "node:child_process";
 import { EventEmitter } from "node:events";
+
+import { waitFor } from "@testing-library/react";
 
 import { DumpcapAdapter } from "../../src/main/dumpcap-adapter";
 import { HL7CaptureManager } from "../../src/main/hl7-capture";
@@ -94,11 +97,15 @@ describe("DumpcapAdapter -> HL7CaptureManager end-to-end (synthetic)", () => {
       parserEE.emit("end");
     });
 
-    await new Promise((r) => setTimeout(r, 10));
-
-    const types = emittedElements.map((e) => e.type);
-    expect(types).toContain("start");
-    expect(types).toContain("end");
+    // Wait for the manager to process packets and emit elements. Use waitFor to
+    // avoid flaky timing assumptions; give a generous timeout for CI.
+    await waitFor(
+      () => {
+        const types = emittedElements.map((e) => e.type);
+        expect(types).toEqual(expect.arrayContaining(["start", "end"]));
+      },
+      { timeout: 2000 }
+    );
 
     await adapter.stop();
   }, 20000);
