@@ -1,5 +1,3 @@
-import React from 'react'
-
 import type { HL7Session } from "../../common/types";
 
 interface Props {
@@ -30,7 +28,7 @@ export default function MessageViewer({ session, onClose }: Readonly<Props>): JS
             </div>
             <div className="info-row">
               <span className="label">PC IP:</span>
-              <span className="value">{session.pcIP}</span>
+              <span className="value">{session.lisIP}</span>
             </div>
             <div className="info-row">
               <span className="label">Start Time:</span>

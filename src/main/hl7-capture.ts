@@ -9,7 +9,14 @@ import * as os from "node:os";
 
 import { DumpcapAdapter } from "./dumpcap-adapter";
 
-import type { NetworkInterface, MarkerConfig, HL7Session, HL7Element } from "../common/types";
+import type {
+  NetworkInterface,
+  MarkerConfig,
+  HL7Session,
+  HL7Element,
+  PcapPacket,
+  // NormalizedPacket,
+} from "../common/types";
 
 // Local lightweight types for external packet sources and packet shapes
 interface PacketSource extends EventEmitter {
@@ -17,14 +24,6 @@ interface PacketSource extends EventEmitter {
   stop?: () => Promise<void> | void;
   isRunning?: () => boolean;
 }
-
-type PacketShape = {
-  data?: Buffer;
-  sourceIP?: string;
-  destIP?: string;
-  src?: string;
-  dst?: string;
-};
 
 /**
  * HL7 Capture Manager
@@ -325,11 +324,13 @@ export class HL7CaptureManager extends EventEmitter {
     });
 
     // Packet forwarding: normalize expected packet shape and pass to processor
-    source.on("packet", (pkt: PacketShape) => {
+    source.on("packet", (pkt: PcapPacket) => {
       try {
-        if (pkt?.data) {
-          this.processPacket(pkt.sourceIP || pkt.src || "", pkt.destIP || pkt.dst || "", pkt.data);
-        }
+        if (!pkt?.data) return;
+        // Forward raw bytes to the byte-oriented processor. Direction is
+        // defaulted within `processPacket` for adapters that don't provide
+        // source/destination information.
+        this.processPacket(pkt.data);
       } catch (err) {
         this.emit("error", err as Error);
       }
@@ -513,15 +514,16 @@ export class HL7CaptureManager extends EventEmitter {
   /**
    * Process incoming packet data
    */
-  private processPacket(sourceIP: string, destIP: string, data: Buffer): void {
-    console.log(`Processing packet from ${sourceIP} to ${destIP}, length: ${data.length}`);
+  private processPacket(data: Buffer): void {
+    console.log(`Processing packet, length: ${data.length}`);
     console.log(data);
 
     if (!this.isCapturing) return;
 
-    // Determine direction
-    const direction: "device-to-pc" | "pc-to-device" =
-      sourceIP === this.markerConfig.deviceIP ? "device-to-pc" : "pc-to-device";
+    // We no longer receive source/destination IPs here; adapters that can
+    // determine direction should call the manager directly with that
+    // information (future improvement). For now default to 'pc-to-device'.
+    const direction: "device-to-pc" | "pc-to-device" = "pc-to-device";
 
     // Check for HL7 markers
     if (data.length === 1) {
@@ -529,7 +531,7 @@ export class HL7CaptureManager extends EventEmitter {
 
       // Start marker (0x05)
       if (marker === this.markerConfig.startMarker) {
-        this.handleStartMarker(sourceIP, destIP, data, direction);
+        this.handleStartMarker("", "", data, direction);
       }
       // Acknowledge marker (0x06)
       else if (marker === this.markerConfig.acknowledgeMarker) {

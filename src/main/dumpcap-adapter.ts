@@ -180,10 +180,13 @@ export class DumpcapAdapter extends EventEmitter {
         const origLen = hdr.originalLength ?? hdr.origLen ?? inclLen;
 
         const normalized = this.normalizePacket(p.data, tsSec, tsUsec);
+        const headerObj = { tsSec, tsUsec, inclLen, origLen };
         if (normalized) {
-          this.emit("packet", normalized);
+          // attach header information to normalized packet
+          const withHeader = { ...normalized, header: headerObj };
+          this.emit("packet", withHeader);
         } else {
-          this.emit("packet", { header: { tsSec, tsUsec, inclLen, origLen }, data: p.data });
+          this.emit("packet", { header: headerObj, data: p.data });
         }
       });
 

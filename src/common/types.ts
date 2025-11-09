@@ -115,4 +115,10 @@ export interface PcapParser {
   on(event: "error", cb: (err: Error) => void): this;
 }
 
-export type NormalizedPacket = { sourceIP: string; destIP: string; data: Buffer; ts: number };
+export type NormalizedPacket = {
+  sourceIP: string;
+  destIP: string;
+  data: Buffer;
+  ts: number;
+  header?: PcapPacketHeader & { inclLen?: number; origLen?: number };
+};
