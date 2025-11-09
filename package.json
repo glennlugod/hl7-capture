@@ -18,7 +18,8 @@
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "lint": "eslint src --ext .ts,.tsx",
-    "format": "prettier --write 'src/**/*.{ts,tsx,css}'"
+    "format": "prettier --write 'src/**/*.{ts,tsx,css}'",
+    "clean": "node scripts/clean.mjs"
   },
   "dependencies": {
     "@radix-ui/react-slot": "^1.2.4",
