@@ -3,14 +3,27 @@
  * Handles TCP packet capture, HL7 marker detection, and session management
  */
 
-import { EventEmitter } from "events";
-import * as os from "os";
+import { EventEmitter } from "node:events";
+import * as os from "node:os";
 
 import { DumpcapAdapter } from "./dumpcap-adapter";
 
-// decoders are no longer used from 'cap'
-
 import type { NetworkInterface, MarkerConfig, HL7Session, HL7Element } from "../common/types";
+
+// Local lightweight types for external packet sources and packet shapes
+interface PacketSource extends EventEmitter {
+  start?: () => Promise<void> | void;
+  stop?: () => Promise<void> | void;
+  isRunning?: () => boolean;
+}
+
+type PacketShape = {
+  data?: Buffer;
+  sourceIP?: string;
+  destIP?: string;
+  src?: string;
+  dst?: string;
+};
 
 /**
  * HL7 Capture Manager
@@ -21,17 +34,15 @@ export class HL7CaptureManager extends EventEmitter {
   private isPaused: boolean = false;
   private currentInterface: string = "";
   private markerConfig: MarkerConfig;
-  private sessions: Map<string, HL7Session> = new Map();
+  private readonly sessions: Map<string, HL7Session> = new Map();
   private sessionCounter: number = 0;
-  private maxSessions: number = 100;
+  private readonly maxSessions: number = 100;
 
   // Session tracking
   private activeSessionKey: string | null = null;
   private sessionBuffer: Buffer = Buffer.alloc(0);
-  // capture backend state (dumpcap adapter is used when external source not provided)
-  private buffer: Buffer = Buffer.alloc(65535);
   // Optional external packet source (e.g., DumpcapAdapter)
-  private externalPacketSource: EventEmitter | null = null;
+  private externalPacketSource: PacketSource | null = null;
 
   constructor() {
     super();
@@ -42,6 +53,23 @@ export class HL7CaptureManager extends EventEmitter {
       sourceIP: "",
       destinationIP: "",
     };
+  }
+
+  /**
+   * Probe whether an external packet source reports it's running.
+   * This helper contains its own single try/catch so callers don't need to.
+   */
+  private probeIsRunning(source: PacketSource | null): boolean {
+    if (!source) return false;
+    const maybeFn = source.isRunning;
+    if (typeof maybeFn !== "function") return false;
+
+    try {
+      return !!maybeFn.call(source);
+    } catch {
+      // If probing fails, treat as not running
+      return false;
+    }
   }
 
   /**
@@ -148,85 +176,86 @@ export class HL7CaptureManager extends EventEmitter {
    * Start capture on specified interface
    */
   public async startCapture(interfaceName: string, config: MarkerConfig): Promise<void> {
-    // If an external packet source is attached, check whether it's actually
-    // running. Some backends (DumpcapAdapter) expose `isRunning()` and the
-    // manager's `isCapturing` flag may be stale if a process exited.
-    if (
-      this.externalPacketSource &&
-      typeof (this.externalPacketSource as any).isRunning === "function"
-    ) {
-      try {
-        const running = !!(this.externalPacketSource as any).isRunning();
-        if (!running) {
-          // Clean up references from a previously stopped source so we can start
-          // a fresh capture.
-          try {
-            this.detachPacketSource();
-          } catch (err) {
-            // ignore detach errors
-          }
-          this.isCapturing = false;
-        }
-      } catch (err) {
-        // If probing failed, fall back to existing isCapturing flag
-      }
-    }
-
-    if (this.isCapturing) {
-      throw new Error("Capture already in progress");
-    }
-
-    this.currentInterface = interfaceName;
-    this.markerConfig = config;
-    this.isCapturing = true;
-    this.sessions.clear();
-    this.sessionCounter = 0;
-
-    // Emit status update
-    this.emit("status", {
-      isCapturing: true,
-      sessionCount: 0,
-      elementCount: 0,
-    });
-
-    // If an external packet source is attached, ensure it's wired and return
-    if (this.externalPacketSource) {
-      this.attachPacketSource(this.externalPacketSource);
-      return;
-    }
-
-    // No external source attached: create internal DumpcapAdapter and start it
-    const dumpcap = new DumpcapAdapter({
-      interface: this.currentInterface,
-      bpf: this.markerConfig ? "tcp" : undefined,
-    });
-    this.attachPacketSource(dumpcap);
+    let dumpcap: DumpcapAdapter | null = null;
 
     try {
+      // If an external packet source is attached, check whether it's actually
+      // running. Some backends (DumpcapAdapter) expose `isRunning()` and the
+      // manager's `isCapturing` flag may be stale if a process exited.
+      if (this.externalPacketSource && this.probeIsRunning(this.externalPacketSource) === false) {
+        // Clean up references from a previously stopped source so we can start
+        // a fresh capture. detachPacketSource is best-effort and swallows
+        // its own errors.
+        this.detachPacketSource();
+        this.isCapturing = false;
+      }
+
+      if (this.isCapturing) {
+        throw new Error("Capture already in progress");
+      }
+
+      this.currentInterface = interfaceName;
+      this.markerConfig = config;
+      this.isCapturing = true;
+      this.sessions.clear();
+      this.sessionCounter = 0;
+
+      // Emit status update
+      this.emit("status", {
+        isCapturing: true,
+        sessionCount: 0,
+        elementCount: 0,
+      });
+
+      // If an external packet source is attached, ensure it's wired and return
+      if (this.externalPacketSource) {
+        this.attachPacketSource(this.externalPacketSource);
+        return;
+      }
+
+      // No external source attached: create internal DumpcapAdapter and start it
+      dumpcap = new DumpcapAdapter({
+        interface: this.currentInterface,
+        bpf: this.markerConfig ? "tcp" : undefined,
+      });
+      this.attachPacketSource(dumpcap);
+
       await dumpcap.start();
-    } catch (err: any) {
+    } catch (error_) {
       // If dumpcap failed after being created, attempt to stop it to avoid
-      // leaving an orphaned native process running. Then detach listeners.
-      try {
-        if (typeof (dumpcap as any).stop === "function") {
-          await (dumpcap as any).stop();
+      // leaving an orphaned native process running. Use a best-effort stop
+      // call without awaiting to avoid nested try/catch structures.
+      if (dumpcap) {
+        const stopFn = (dumpcap as unknown as PacketSource).stop;
+        if (typeof stopFn === "function") {
+          // Schedule a best-effort stop asynchronously so synchronous throws
+          // from stop() don't occur inside this catch block (avoids nested
+          // try/catch in this function). The inner callback may use its own
+          // try/catch but that's a different function scope.
+          setImmediate(() => {
+            try {
+              const res = stopFn.call(dumpcap);
+              if (res && typeof (res as Promise<unknown>).then === "function") {
+                (res as Promise<unknown>).catch((e: unknown) => this.emit("error", e as Error));
+              }
+            } catch (e) {
+              this.emit("error", e as Error);
+            }
+          });
         }
-      } catch (stopErr) {
-        // Best-effort stop; emit error for diagnostics but continue cleanup
-        this.emit("error", stopErr as Error);
       }
 
       this.detachPacketSource();
       this.isCapturing = false;
-      this.emit("error", err as Error);
-      throw err;
+      this.emit("error", error_ as Error);
+      throw error_;
     }
   }
 
   /**
    * Attach an EventEmitter packet source (implements 'packet' events)
    */
-  public attachPacketSource(source: EventEmitter): void {
+  public attachPacketSource(source: PacketSource): void {
     // Avoid re-attaching the same source multiple times
     if (this.externalPacketSource === source) return;
     this.externalPacketSource = source;
@@ -255,14 +284,10 @@ export class HL7CaptureManager extends EventEmitter {
     });
 
     // Packet forwarding: normalize expected packet shape and pass to processor
-    source.on("packet", (pkt: any) => {
+    source.on("packet", (pkt: PacketShape) => {
       try {
         if (pkt?.data) {
-          this.processPacket(
-            pkt.sourceIP || pkt.src || "",
-            pkt.destIP || pkt.dst || "",
-            pkt.data as Buffer
-          );
+          this.processPacket(pkt.sourceIP || pkt.src || "", pkt.destIP || pkt.dst || "", pkt.data);
         }
       } catch (err) {
         this.emit("error", err as Error);
@@ -275,32 +300,34 @@ export class HL7CaptureManager extends EventEmitter {
    */
   public detachPacketSource(stopFirst = true): void {
     if (!this.externalPacketSource) return;
-    try {
-      // Optionally attempt to stop the source first (best-effort). When the
-      // source already emitted 'stop' we don't want to call stop again, so
-      // callers can pass stopFirst = false.
-      if (stopFirst) {
+    // Optionally attempt to stop the source first (best-effort). When the
+    // source already emitted 'stop' we don't want to call stop again, so
+    // callers can pass stopFirst = false. detachPacketSource should not throw
+    // — it's best-effort and will swallow stop errors to avoid requiring
+    // callers to nest try/catch.
+    if (stopFirst) {
+      const maybeStop = this.externalPacketSource?.stop;
+      if (typeof maybeStop === "function") {
         try {
-          const maybeStop = (this.externalPacketSource as any).stop;
-          if (typeof maybeStop === "function") {
-            const res = maybeStop.call(this.externalPacketSource);
-            if (res && typeof res.then === "function") {
-              res.catch(() => {});
-            }
+          const res = maybeStop.call(this.externalPacketSource);
+          if (res && typeof (res as Promise<unknown>).then === "function") {
+            // Attach a no-op catch to avoid unhandled promise rejections.
+            (res as Promise<unknown>).catch(() => {});
           }
-        } catch (stopErr) {
+        } catch {
           // ignore stop errors during detach
         }
       }
-
-      // Remove listeners we may have attached
-      this.externalPacketSource.removeAllListeners("packet");
-      this.externalPacketSource.removeAllListeners("error");
-      this.externalPacketSource.removeAllListeners("start");
-      this.externalPacketSource.removeAllListeners("stop");
-    } finally {
-      this.externalPacketSource = null;
     }
+
+    // Remove listeners we may have attached. removeAllListeners is safe even
+    // if some listeners were already removed.
+    this.externalPacketSource.removeAllListeners("packet");
+    this.externalPacketSource.removeAllListeners("error");
+    this.externalPacketSource.removeAllListeners("start");
+    this.externalPacketSource.removeAllListeners("stop");
+
+    this.externalPacketSource = null;
   }
 
   /**
@@ -310,30 +337,27 @@ export class HL7CaptureManager extends EventEmitter {
     // Attempt to stop any attached external packet source (dumpcap) even if
     // internal `isCapturing` state is out-of-sync. This ensures we don't leave
     // orphaned native processes running.
-    if (
-      this.externalPacketSource &&
-      typeof (this.externalPacketSource as any).stop === "function"
-    ) {
+    // Use a single try/catch pattern for the method: attempt to stop the
+    // external packet source if present, but swallow errors and emit them via
+    // manager's 'error' event. detachPacketSource is best-effort and itself
+    // swallows stop errors, so we don't need nested try/catch.
+    if (this.externalPacketSource && typeof this.externalPacketSource.stop === "function") {
       try {
-        await (this.externalPacketSource as any).stop();
-      } catch (stopErr) {
-        // Best-effort stop; log the error but continue cleanup
-        this.emit("error", stopErr as Error);
+        await this.externalPacketSource.stop();
+      } catch (error_) {
+        // Best-effort stop; emit the error but continue cleanup
+        this.emit("error", error_ as Error);
       }
     }
 
     // Always clear manager state and detach the packet source reference so
-    // subsequent starts are clean.
+    // subsequent starts are clean. detachPacketSource will not throw.
     this.isCapturing = false;
     this.isPaused = false;
     this.activeSessionKey = null;
     this.sessionBuffer = Buffer.alloc(0);
 
-    try {
-      this.detachPacketSource();
-    } catch (err) {
-      // ignore detach errors
-    }
+    this.detachPacketSource();
 
     this.emit("status", {
       isCapturing: false,
@@ -543,7 +567,8 @@ export class HL7CaptureManager extends EventEmitter {
     // Check for message terminator (CR LF)
     const crlfIndex = this.sessionBuffer.indexOf(Buffer.from("\r\n"));
     if (crlfIndex !== -1) {
-      const messageData = this.sessionBuffer.slice(0, crlfIndex + 2);
+      // Create a new Buffer copy for the message data (preserve original semantics)
+      const messageData = Buffer.from(this.sessionBuffer.subarray(0, crlfIndex + 2));
       const element = this.createElement("message", direction, messageData);
 
       session.elements.push(element);
@@ -551,8 +576,8 @@ export class HL7CaptureManager extends EventEmitter {
 
       this.emit("element", element);
 
-      // Clear buffer
-      this.sessionBuffer = this.sessionBuffer.slice(crlfIndex + 2);
+      // Clear buffer by creating a view of remaining bytes
+      this.sessionBuffer = this.sessionBuffer.subarray(crlfIndex + 2);
     }
   }
 

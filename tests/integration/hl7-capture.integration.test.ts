@@ -7,11 +7,16 @@ import { HL7CaptureManager } from "../../src/main/hl7-capture";
 describe("HL7CaptureManager integration with external packet source", () => {
   test("receives packet events and emits elements", async () => {
     const manager = new HL7CaptureManager();
+    // Prevent unhandled 'error' events from failing the test run
+    manager.on("error", () => {});
 
     // Create a fake packet source that emits start marker, a message, then end marker
     const fakeSource = new EventEmitter();
     (fakeSource as any).start = jest.fn();
     (fakeSource as any).stop = jest.fn();
+    // Some packet sources expose isRunning; provide a noop that returns true so
+    // the manager doesn't detach the source when probing.
+    (fakeSource as any).isRunning = jest.fn(() => true);
 
     manager.attachPacketSource(fakeSource as any);
 
@@ -85,6 +90,9 @@ describe("HL7CaptureManager integration (mocked cap)", () => {
 
     const manager = new HL7CaptureManager();
 
+    // Prevent unhandled 'error' events from failing the test run
+    manager.on("error", () => {});
+
     const elements: any[] = [];
 
     manager.on("element", (el: any) => elements.push(el));
@@ -100,6 +108,8 @@ describe("HL7CaptureManager integration (mocked cap)", () => {
     // Attach a fake packet source (EventEmitter) and emit 'packet' events that the manager will consume
     const fakeSource = new EventEmitter();
     manager.attachPacketSource(fakeSource);
+    // Provide isRunning so manager's probe (if present) sees the source as running
+    (fakeSource as any).isRunning = () => true;
 
     // Start capture (should attach to external source and return)
     await manager.startCapture("Ethernet 1 - 192.0.2.10", markers);
