@@ -158,94 +158,154 @@ export class DumpcapAdapter extends EventEmitter {
    */
   private async setupParser(stream: NodeJS.ReadableStream): Promise<void> {
     try {
-      // pcap-ng-parser exposes a Transform stream class. Create an instance
-      // and pipe the incoming stdout stream into it.
-      // Use the statically imported PCAPNGParser instance. The parser
-      // implementation may emit either 'data' (pcap-ng) or 'packet'
-      // (legacy pcap-parser) events depending on the provided mock or
-      // runtime implementation. We attach handlers for both shapes.
-      const parser = new PCAPNGParser();
+      // We'll create the parser lazily but first install a small detector
+      // transform that inspects the first few bytes coming from dumpcap's
+      // stdout. If the data looks like text (dumpcap error text, for
+      // example when a filter is invalid), we avoid piping it into the
+      // binary parser which would throw Buffer read errors. When a valid
+      // pcap/pcap-ng magic header is seen we attach the parser and pipe.
+      const createParserAndAttachHandlers = () => {
+        const parser = new PCAPNGParser();
 
-      // Helper to emit normalized/fallback packet
-      const emitFromPayload = (
-        payload: Buffer,
-        tsSec: number,
-        tsUsec: number,
-        inclLen?: number,
-        origLen?: number
-      ) => {
-        const normalized = this.normalizePacket(payload, tsSec, tsUsec);
-        if (normalized) {
-          this.emit("packet", normalized);
-        } else {
-          this.emit("packet", {
-            header: {
-              tsSec,
-              tsUsec,
-              inclLen: inclLen ?? (payload ? payload.length : 0),
-              origLen: origLen ?? (payload ? payload.length : 0),
-            },
-            data: payload,
-          });
-        }
+        // Helper to emit normalized/fallback packet
+        const emitFromPayload = (
+          payload: Buffer,
+          tsSec: number,
+          tsUsec: number,
+          inclLen?: number,
+          origLen?: number
+        ) => {
+          const normalized = this.normalizePacket(payload, tsSec, tsUsec);
+          if (normalized) {
+            this.emit("packet", normalized);
+          } else {
+            this.emit("packet", {
+              header: {
+                tsSec,
+                tsUsec,
+                inclLen: inclLen ?? (payload ? payload.length : 0),
+                origLen: origLen ?? (payload ? payload.length : 0),
+              },
+              data: payload,
+            });
+          }
+        };
+
+        // Legacy-style 'packet' events (tests may emit these)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        parser.on("packet", (p: any) => {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const hdr: any = p.header || p.packetHeader || {};
+          const tsSec = hdr.timestampSeconds ?? hdr.tsSec ?? 0;
+          const tsUsec = hdr.timestampMicroseconds ?? hdr.tsUsec ?? 0;
+          const inclLen =
+            hdr.capturedLength ?? hdr.inclLen ?? hdr.capLen ?? (p.data ? p.data.length : 0);
+          const origLen = hdr.originalLength ?? hdr.origLen ?? inclLen;
+          emitFromPayload(p.data ?? Buffer.alloc(0), tsSec, tsUsec, inclLen, origLen);
+        });
+
+        // pcap-ng 'data' events with timestampHigh/timestampLow
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        parser.on("data", (p: any) => {
+          try {
+            const tsHigh: number = p.timestampHigh ?? 0;
+            const tsLow: number = p.timestampLow ?? 0;
+            const ts64 = (BigInt(tsHigh) << 32n) + BigInt(tsLow);
+            const totalUsec = ts64; // assume microsecond resolution
+            const tsSec = Number(totalUsec / 1000000n);
+            const tsUsec = Number(totalUsec % 1000000n);
+            const payload: Buffer = p.data ?? Buffer.alloc(0);
+            emitFromPayload(payload, tsSec, tsUsec, payload.length, payload.length);
+          } catch (err) {
+            this.emit(
+              "log",
+              `pcap-ng-parser data handler error: ${err instanceof Error ? err.message : String(err)}`
+            );
+          }
+        });
+
+        parser.on("interface", (iface: { linkType?: number; snapLen?: number; name?: string }) => {
+          this.emit("log", `pcap-ng-parser interface: ${JSON.stringify(iface)}`);
+        });
+
+        parser.on("end", () => {
+          this.emit("log", "pcap-ng-parser stream ended");
+          this.emit("parser-end");
+        });
+
+        parser.on("error", (err: Error) => this.emit("error", err));
+
+        return parser;
       };
 
-      // Legacy-style 'packet' events (tests may emit these)
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      parser.on("packet", (p: any) => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const hdr: any = p.header || p.packetHeader || {};
-        const tsSec = hdr.timestampSeconds ?? hdr.tsSec ?? 0;
-        const tsUsec = hdr.timestampMicroseconds ?? hdr.tsUsec ?? 0;
-        const inclLen =
-          hdr.capturedLength ?? hdr.inclLen ?? hdr.capLen ?? (p.data ? p.data.length : 0);
-        const origLen = hdr.originalLength ?? hdr.origLen ?? inclLen;
-        emitFromPayload(p.data ?? Buffer.alloc(0), tsSec, tsUsec, inclLen, origLen);
-      });
+      // Only pipe into the parser after we've detected a valid pcap/pcap-ng
+      // header. The detector will buffer a small amount of data and then
+      // either attach the parser (and forward buffered data) or emit an
+      // error if the stream looks like textual error output.
+      if (stream && typeof (stream as unknown as { pipe?: unknown }).pipe === "function") {
+        const s = stream as unknown;
+        const readable = s as NodeJS.ReadableStream;
 
-      // pcap-ng 'data' events with timestampHigh/timestampLow
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      parser.on("data", (p: any) => {
-        try {
-          const tsHigh: number = p.timestampHigh ?? 0;
-          const tsLow: number = p.timestampLow ?? 0;
-          const ts64 = (BigInt(tsHigh) << 32n) + BigInt(tsLow);
-          const totalUsec = ts64; // assume microsecond resolution
-          const tsSec = Number(totalUsec / 1000000n);
-          const tsUsec = Number(totalUsec % 1000000n);
-          const payload: Buffer = p.data ?? Buffer.alloc(0);
-          emitFromPayload(payload, tsSec, tsUsec, payload.length, payload.length);
-        } catch (err) {
-          this.emit(
-            "log",
-            `pcap-ng-parser data handler error: ${err instanceof Error ? err.message : String(err)}`
-          );
-        }
-      });
+        // Buffer incoming bytes until we can decide if the output is binary
+        // (pcap/pcap-ng magic) or textual error output. Once detected, write
+        // buffered bytes into a freshly created parser and pipe the
+        // remainder of the stream into that parser.
+        let buf = Buffer.alloc(0);
+        let detected = false;
 
-      parser.on("interface", (iface: { linkType?: number; snapLen?: number; name?: string }) => {
-        this.emit("log", `pcap-ng-parser interface: ${JSON.stringify(iface)}`);
-      });
+        const onData = (chunk: Buffer) => {
+          if (detected) return;
+          buf = Buffer.concat([buf, chunk]);
+          if (buf.length < 4) return; // need at least 4 bytes for magic
 
-      parser.on("end", () => {
-        this.emit("log", "pcap-ng-parser stream ended");
-        this.emit("parser-end");
-      });
+          const first4 = buf.subarray(0, 4);
+          const isPcapNg = first4.equals(Buffer.from([0x0a, 0x0d, 0x0d, 0x0a]));
+          const isPcapBE = first4.equals(Buffer.from([0xa1, 0xb2, 0xc3, 0xd4]));
+          const isPcapLE = first4.equals(Buffer.from([0xd4, 0xc3, 0xb2, 0xa1]));
 
-      parser.on("error", (err: Error) => this.emit("error", err));
+          if (isPcapNg || isPcapBE || isPcapLE) {
+            detected = true;
+            const parser = createParserAndAttachHandlers();
 
-      // Finally pipe the incoming stream into the parser instance so it
-      // receives data (pcap-ng-parser is a Transform stream). Only pipe
-      // when both the stream and parser support piping/writing. Tests use
-      // a mocked parser EventEmitter and a fake stdout that is not pipeable,
-      // in which case the tests emit events directly on the mocked parser.
-      if (
-        typeof (stream as any).pipe === "function" &&
-        typeof (parser as any).write === "function"
-      ) {
-        (stream as unknown as NodeJS.ReadableStream).pipe(
-          parser as unknown as NodeJS.WritableStream
-        );
+            // Restore buffered bytes into the readable stream so piping
+            // delivers the full, ordered stream to the parser.
+            try {
+              // 'unshift' is available on NodeJS Readable streams
+              (readable as unknown as { unshift?: (chunk: Buffer) => void }).unshift?.(buf);
+            } catch (err) {
+              this.emit(
+                "log",
+                `failed unshifting buffered bytes to readable: ${err instanceof Error ? err.message : String(err)}`
+              );
+            }
+
+            // stop collecting data via the listener and pipe remaining stream
+            readable.removeListener("data", onData);
+            readable.on("error", (err) => this.emit("error", err));
+            readable.pipe(parser as unknown as NodeJS.WritableStream);
+
+            this.emit("log", "Detected binary pcap/pcap-ng output; attaching parser");
+            buf = Buffer.alloc(0);
+            return;
+          }
+
+          // Not binary; stop listening and emit a readable error message.
+          detected = true;
+          readable.removeListener("data", onData);
+          const textPreview = buf.toString("utf8").slice(0, 200);
+          const err = new Error(`dumpcap produced non-binary output: ${textPreview}`);
+          this.emit("error", err);
+        };
+
+        readable.on("data", onData);
+        readable.on("end", () => {
+          if (!detected) {
+            // stream ended before we saw 4 bytes; emit an error with what we have
+            const textPreview = buf.toString("utf8").slice(0, 200);
+            this.emit("error", new Error(`dumpcap stream ended unexpectedly: ${textPreview}`));
+          }
+        });
+        readable.on("error", (err) => this.emit("error", err));
       }
     } catch (err: unknown) {
       const e = new Error(
