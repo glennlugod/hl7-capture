@@ -231,13 +231,17 @@ export class DumpcapAdapter extends EventEmitter {
     if (raw.length < 14 + 20 + 20) return null;
 
     const ethType = raw.readUInt16BE(12);
-    if (ethType !== 0x0800) return null; // not IPv4
+    if (ethType !== 0x0800) {
+      return null; // not IPv4
+    }
 
     const ipOffset = 14;
     const verIhl = raw.readUInt8(ipOffset);
     const ihl = (verIhl & 0x0f) * 4;
     const protocol = raw.readUInt8(ipOffset + 9);
-    if (protocol !== 6) return null; // not TCP
+    if (protocol !== 6) {
+      return null; // not TCP
+    }
 
     const srcIP = `${raw.readUInt8(ipOffset + 12)}.${raw.readUInt8(ipOffset + 13)}.${raw.readUInt8(
       ipOffset + 14
