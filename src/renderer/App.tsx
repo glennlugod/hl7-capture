@@ -1,6 +1,6 @@
 import "./App.css";
 
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 import ConfigurationPanel from "./components/ConfigurationPanel";
 import MainLayout from "./components/MainLayout";
@@ -10,8 +10,6 @@ import SessionList from "./components/SessionList";
 import type { HL7Session, MarkerConfig } from "../common/types";
 
 export default function App(): JSX.Element {
-  // Note: design system test page is rendered after hooks so hooks run consistently
-
   const [selectedInterface, setSelectedInterface] = useState<string>("");
   const [markerConfig, setMarkerConfig] = useState<MarkerConfig>({
     startMarker: 0x05,
@@ -115,7 +113,6 @@ export default function App(): JSX.Element {
     try {
       await window.electron.clearSessions();
       setSessions([]);
-      // sessionCount removed from this component
     } catch (err) {
       console.error(`Failed to clear sessions: ${err}`);
     }
@@ -124,8 +121,6 @@ export default function App(): JSX.Element {
   const updateMarkerConfig = (updates: Partial<MarkerConfig>) => {
     setMarkerConfig((prev) => ({ ...prev, ...updates }));
   };
-
-  // handleToggleAutoScroll removed — SessionList receives `onAutoScrollChange` directly
 
   const handleSelectSession = (session: HL7Session) => {
     setSelectedSession(session);
