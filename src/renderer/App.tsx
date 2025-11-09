@@ -184,17 +184,20 @@ export default function App(): JSX.Element {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [sessions, selectedSession, isCapturing]);
 
+  const renderConfigPanel = (collapsed: boolean) => (
+    <ConfigurationPanel
+      selectedInterface={selectedInterface}
+      markerConfig={markerConfig}
+      onInterfaceChange={setSelectedInterface}
+      onConfigChange={updateMarkerConfig}
+      isCapturing={isCapturing}
+      collapsed={collapsed}
+    />
+  );
+
   return (
     <MainLayout
-      configPanel={
-        <ConfigurationPanel
-          selectedInterface={selectedInterface}
-          markerConfig={markerConfig}
-          onInterfaceChange={setSelectedInterface}
-          onConfigChange={updateMarkerConfig}
-          isCapturing={isCapturing}
-        />
-      }
+      configPanel={renderConfigPanel}
       sessionList={
         <SessionList
           sessions={sessions}

@@ -12,6 +12,7 @@ interface ConfigurationPanelProps {
   onInterfaceChange: (name: string) => void;
   onConfigChange: (config: MarkerConfig) => void;
   isCapturing?: boolean;
+  collapsed?: boolean;
 }
 
 export default function ConfigurationPanel({
@@ -20,6 +21,7 @@ export default function ConfigurationPanel({
   onInterfaceChange,
   onConfigChange,
   isCapturing = false,
+  collapsed = false,
 }: Readonly<ConfigurationPanelProps>): JSX.Element {
   const [interfaces, setInterfaces] = useState<NetworkInterface[]>([]);
   const [loadError, setLoadError] = useState<boolean>(false);
@@ -62,55 +64,65 @@ export default function ConfigurationPanel({
 
   return (
     <div className="space-y-6">
-      {/* Error Banner */}
-      {loadError && (
-        <div
-          role="alert"
-          className="rounded-lg border border-red-300/40 bg-gradient-to-r from-red-50/80 to-orange-50/60 p-4 shadow-sm backdrop-blur-sm"
-        >
-          <p className="text-sm font-medium text-red-900">⚠️ {errorMessage}</p>
+      {collapsed ? (
+        <div className="flex items-center justify-between px-3 py-2">
+          <div className="text-sm text-slate-700">
+            {selectedInterface ? `Interface: ${selectedInterface}` : "No interface selected"}
+          </div>
         </div>
-      )}
+      ) : (
+        <>
+          {/* Error Banner */}
+          {loadError && (
+            <div
+              role="alert"
+              className="rounded-lg border border-red-300/40 bg-gradient-to-r from-red-50/80 to-orange-50/60 p-4 shadow-sm backdrop-blur-sm"
+            >
+              <p className="text-sm font-medium text-red-900">⚠️ {errorMessage}</p>
+            </div>
+          )}
 
-      {/* Status Messages */}
-      {errorMessage && !loadError && (
-        <div
-          role="alert"
-          className="rounded-lg border border-red-300/40 bg-gradient-to-r from-red-50/80 to-orange-50/60 p-4 shadow-sm backdrop-blur-sm"
-        >
-          <p className="text-sm text-red-900">{errorMessage}</p>
-        </div>
-      )}
+          {/* Status Messages */}
+          {errorMessage && !loadError && (
+            <div
+              role="alert"
+              className="rounded-lg border border-red-300/40 bg-gradient-to-r from-red-50/80 to-orange-50/60 p-4 shadow-sm backdrop-blur-sm"
+            >
+              <p className="text-sm text-red-900">{errorMessage}</p>
+            </div>
+          )}
 
-      {/* Interface Selector */}
-      <div className="rounded-lg border border-slate-200/50 bg-white/60 backdrop-blur-sm p-5 shadow-sm">
-        <h3 className="mb-4 text-sm font-semibold text-slate-900">Network Interface</h3>
-        <InterfaceSelector
-          interfaces={interfaces}
-          selected={selectedInterface}
-          onSelect={onInterfaceChange}
-          onRefresh={loadInterfaces}
-          disabled={isDisabled}
-        />
-      </div>
+          {/* Interface Selector */}
+          <div className="rounded-lg border border-slate-200/50 bg-white/60 backdrop-blur-sm p-5 shadow-sm">
+            <h3 className="mb-4 text-sm font-semibold text-slate-900">Network Interface</h3>
+            <InterfaceSelector
+              interfaces={interfaces}
+              selected={selectedInterface}
+              onSelect={onInterfaceChange}
+              onRefresh={loadInterfaces}
+              disabled={isDisabled}
+            />
+          </div>
 
-      {/* HL7 Marker Configuration */}
-      <div className="rounded-lg border border-slate-200/50 bg-white/60 backdrop-blur-sm p-5 shadow-sm">
-        <h3 className="mb-4 text-sm font-semibold text-slate-900">HL7 Markers</h3>
-        <HL7MarkerConfig value={markerConfig} onChange={onConfigChange} disabled={isDisabled} />
-      </div>
+          {/* HL7 Marker Configuration */}
+          <div className="rounded-lg border border-slate-200/50 bg-white/60 backdrop-blur-sm p-5 shadow-sm">
+            <h3 className="mb-4 text-sm font-semibold text-slate-900">HL7 Markers</h3>
+            <HL7MarkerConfig value={markerConfig} onChange={onConfigChange} disabled={isDisabled} />
+          </div>
 
-      {/* Advanced Options */}
-      <div className="rounded-lg border border-slate-200/50 bg-white/60 backdrop-blur-sm p-5 shadow-sm">
-        <AdvancedOptions
-          value={advancedConfig}
-          onChange={setAdvancedConfig}
-          disabled={isDisabled}
-        />
-      </div>
+          {/* Advanced Options */}
+          <div className="rounded-lg border border-slate-200/50 bg-white/60 backdrop-blur-sm p-5 shadow-sm">
+            <AdvancedOptions
+              value={advancedConfig}
+              onChange={setAdvancedConfig}
+              disabled={isDisabled}
+            />
+          </div>
 
-      {!selectedInterface && (
-        <p className="text-xs text-slate-500">Select an interface to enable capture</p>
+          {!selectedInterface && (
+            <p className="text-xs text-slate-500">Select an interface to enable capture</p>
+          )}
+        </>
       )}
     </div>
   );

@@ -4,7 +4,7 @@ import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import ControlPanel from "./ControlPanel";
 
 interface MainLayoutProps {
-  configPanel: React.ReactNode;
+  configPanel: (collapsed: boolean) => React.ReactNode;
   sessionList: React.ReactNode;
   messageDetail: React.ReactNode;
   isCapturing: boolean;
@@ -61,21 +61,26 @@ export default function MainLayout({
       >
         <div className="flex h-14 items-center justify-between border-b border-slate-200/50 bg-gradient-to-r from-slate-50 to-blue-50/30 px-6 shadow-sm">
           <h2 className="text-base font-semibold text-slate-900 tracking-tight">Configuration</h2>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setIsConfigCollapsed((s) => !s)}
-              className="group flex items-center gap-2 rounded-lg bg-white px-3 py-1.5 text-sm font-medium text-slate-700 shadow-sm ring-1 ring-slate-200 transition-all hover:bg-slate-50 hover:shadow focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
-              aria-label={configButtonAria}
-              aria-expanded={!isConfigCollapsed}
-            >
-              <span className="transition-transform group-hover:scale-110">{configButtonIcon}</span>
-              <span>{configButtonText}</span>
-            </button>
+          <div className="flex items-center gap-4">
+            <div className="hidden sm:block">{isConfigCollapsed ? configPanel(true) : null}</div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setIsConfigCollapsed((s) => !s)}
+                className="group flex items-center gap-2 rounded-lg bg-white px-3 py-1.5 text-sm font-medium text-slate-700 shadow-sm ring-1 ring-slate-200 transition-all hover:bg-slate-50 hover:shadow focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+                aria-label={configButtonAria}
+                aria-expanded={!isConfigCollapsed}
+              >
+                <span className="transition-transform group-hover:scale-110">
+                  {configButtonIcon}
+                </span>
+                <span>{configButtonText}</span>
+              </button>
+            </div>
           </div>
         </div>
         {!isConfigCollapsed && (
           // When expanded, allow the configuration panel to grow and hide the main panels below.
-          <div className="flex-1 overflow-y-auto p-6 bg-transparent">{configPanel}</div>
+          <div className="flex-1 overflow-y-auto p-6 bg-transparent">{configPanel(false)}</div>
         )}
       </div>
 
