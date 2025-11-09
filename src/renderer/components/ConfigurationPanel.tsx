@@ -7,9 +7,9 @@ import InterfaceSelector from "./InterfaceSelector";
 import type { NetworkInterface, MarkerConfig } from "../../common/types";
 
 interface ConfigurationPanelProps {
-  selectedInterface: string;
+  selectedInterface: NetworkInterface | null;
   markerConfig: MarkerConfig;
-  onInterfaceChange: (name: string) => void;
+  onInterfaceChange: (iface: NetworkInterface | null) => void;
   onConfigChange: (config: MarkerConfig) => void;
   isCapturing?: boolean;
   collapsed?: boolean;
@@ -45,7 +45,7 @@ export default function ConfigurationPanel({
       const ifaces = await electronApi.getNetworkInterfaces();
       setInterfaces(ifaces);
       if (ifaces.length > 0 && !selectedInterface) {
-        onInterfaceChange(ifaces[0].name);
+        onInterfaceChange(ifaces[0]);
       }
       return ifaces;
     } catch (e) {
@@ -67,7 +67,7 @@ export default function ConfigurationPanel({
       {collapsed ? (
         <div className="flex items-center justify-between px-3 py-2">
           <div className="text-sm text-slate-700">
-            {selectedInterface ? `Interface: ${selectedInterface}` : "No interface selected"}
+            {selectedInterface ? `Interface: ${selectedInterface.name}` : "No interface selected"}
           </div>
         </div>
       ) : (

@@ -62,13 +62,16 @@ describe("DumpcapAdapter -> HL7CaptureManager end-to-end (synthetic)", () => {
 
     // parserEE is the mocked parser instance
 
-    await manager.startCapture("lo", {
-      startMarker: 0x05,
-      acknowledgeMarker: 0x06,
-      endMarker: 0x04,
-      deviceIP: "10.0.0.1",
-      lisIP: "10.0.0.2",
-    });
+    await manager.startCapture(
+      { index: -1, name: "lo" },
+      {
+        startMarker: 0x05,
+        acknowledgeMarker: 0x06,
+        endMarker: 0x04,
+        deviceIP: "10.0.0.1",
+        lisIP: "10.0.0.2",
+      }
+    );
 
     await expect(adapter.start()).resolves.toBeUndefined();
 
@@ -96,6 +99,8 @@ describe("DumpcapAdapter -> HL7CaptureManager end-to-end (synthetic)", () => {
       });
       parserEE.emit("end");
     });
+    // Allow event loop time for the manager to process packets and emit elements
+    await new Promise((r) => setTimeout(r, 50));
 
     // Wait for the manager to process packets and emit elements. Use waitFor to
     // avoid flaky timing assumptions; give a generous timeout for CI.

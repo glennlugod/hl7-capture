@@ -4,8 +4,8 @@ import type { NetworkInterface } from "@common/types";
 
 interface Props {
   interfaces: NetworkInterface[];
-  selected: string | null;
-  onSelect: (name: string) => void;
+  selected: NetworkInterface | null;
+  onSelect: (iface: NetworkInterface | null) => void;
   onRefresh?: () => Promise<NetworkInterface[]> | void;
   disabled?: boolean;
 }
@@ -29,11 +29,16 @@ export default function InterfaceSelector({
         <div className="flex items-center gap-2">
           <select
             id="interface-select"
-            value={selected ?? ""}
-            onChange={(e) => onSelect(e.target.value)}
+            value={selected?.name ?? ""}
+            onChange={(e) => {
+              const name = e.target.value;
+              const iface = interfaces.find((i) => i.name === name) || null;
+              onSelect(iface);
+            }}
             disabled={disabled}
             aria-label="Network Interface"
           >
+            <option value="">Select an interface</option>
             {interfaces.map((iface) => (
               <option key={iface.name} value={iface.name}>
                 {getDisplayName(iface)}

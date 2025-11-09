@@ -167,9 +167,12 @@ export class HL7CaptureManager extends EventEmitter {
   }
 
   /**
-   * Start capture on specified interface
+   * Start capture on specified interface (accepts a NetworkInterface object)
    */
-  public async startCapture(interfaceName: string, config: MarkerConfig): Promise<void> {
+  public async startCapture(
+    networkInterface: NetworkInterface,
+    config: MarkerConfig
+  ): Promise<void> {
     let dumpcap: DumpcapAdapter | null = null;
 
     try {
@@ -188,7 +191,13 @@ export class HL7CaptureManager extends EventEmitter {
         throw new Error("Capture already in progress");
       }
 
-      this.currentInterface = interfaceName;
+      // Normalize the provided NetworkInterface into the string expected by DumpcapAdapter
+      // Prefer numeric index when available and non-negative, otherwise use the name.
+      const ifaceStr =
+        typeof networkInterface?.index === "number" && networkInterface.index >= 0
+          ? String(networkInterface.index)
+          : (networkInterface?.name ?? "");
+      this.currentInterface = ifaceStr;
       this.markerConfig = config;
       this.isCapturing = true;
       this.sessions.clear();

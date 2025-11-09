@@ -29,7 +29,7 @@ describe("ConfigurationPanel override flow", () => {
     await act(async () => {
       render(
         <ConfigurationPanel
-          selectedInterface="eth0"
+          selectedInterface={{ index: -1, name: "eth0" }}
           markerConfig={{
             startMarker: 0x05,
             acknowledgeMarker: 0x06,

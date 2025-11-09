@@ -7,10 +7,10 @@ import MainLayout from "./components/MainLayout";
 import MessageDetailViewer from "./components/MessageDetailViewer";
 import SessionList from "./components/SessionList";
 
-import type { HL7Session, MarkerConfig } from "../common/types";
+import type { HL7Session, MarkerConfig, NetworkInterface } from "../common/types";
 
 export default function App(): JSX.Element {
-  const [selectedInterface, setSelectedInterface] = useState<string>("");
+  const [selectedInterface, setSelectedInterface] = useState<NetworkInterface | null>(null);
   const [markerConfig, setMarkerConfig] = useState<MarkerConfig>({
     startMarker: 0x05,
     acknowledgeMarker: 0x06,
@@ -87,6 +87,11 @@ export default function App(): JSX.Element {
       setIsPaused(false);
       setSessions([]);
       try {
+        if (!selectedInterface) {
+          console.error("No interface selected");
+          setIsCapturing(false);
+          return;
+        }
         await window.electron.startCapture(selectedInterface, markerConfig);
       } catch (error_) {
         // Revert optimistic state on failure and surface error

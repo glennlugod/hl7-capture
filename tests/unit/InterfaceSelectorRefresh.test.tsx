@@ -1,13 +1,15 @@
-import '@testing-library/jest-dom'
+import "@testing-library/jest-dom";
 
-import React from 'react'
+import React from "react";
 
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from "@testing-library/react";
 
-import InterfaceSelector from '../../src/renderer/components/InterfaceSelector'
+import InterfaceSelector from "../../src/renderer/components/InterfaceSelector";
 
-const initialIfaces = [{ name: "eth0", ip: "1", mac: "m", address: "1", status: "up" }];
-const refreshedIfaces = [{ name: "wlan0", ip: "2", mac: "n", address: "2", status: "up" }];
+const initialIfaces = [{ index: -1, name: "eth0", ip: "1", mac: "m", address: "1", status: "up" }];
+const refreshedIfaces = [
+  { index: -1, name: "wlan0", ip: "2", mac: "n", address: "2", status: "up" },
+];
 
 describe("InterfaceSelector Refresh", () => {
   it("calls onRefresh and updates options", async () => {
@@ -15,7 +17,7 @@ describe("InterfaceSelector Refresh", () => {
     render(
       <InterfaceSelector
         interfaces={initialIfaces as any}
-        selected={initialIfaces[0].name}
+        selected={initialIfaces[0]}
         onSelect={() => {}}
         onRefresh={mockRefresh}
         disabled={false}

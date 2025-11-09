@@ -14,7 +14,7 @@ describe("Placeholder Components", () => {
       it("should render placeholder without errors", () => {
         const { getByText } = render(
           <ConfigurationPanel
-            selectedInterface="eth0"
+            selectedInterface={{ index: -1, name: "eth0" }}
             markerConfig={{
               startMarker: 0x05,
               acknowledgeMarker: 0x06,
@@ -60,7 +60,7 @@ describe("Placeholder Components", () => {
       const { container, getByText } = render(
         <div>
           <ConfigurationPanel
-            selectedInterface="eth0"
+            selectedInterface={{ index: -1, name: "eth0" }}
             markerConfig={{
               startMarker: 0x05,
               acknowledgeMarker: 0x06,

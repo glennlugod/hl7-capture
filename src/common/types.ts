@@ -9,7 +9,6 @@
 export interface NetworkInterface {
   index: number;
   name: string;
-  // Removed: address, ip, mac, status — UI and main now rely on `name` and `index` only
 }
 
 /**

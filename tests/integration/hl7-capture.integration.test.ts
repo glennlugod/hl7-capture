@@ -24,13 +24,16 @@ describe("HL7CaptureManager integration with external packet source", () => {
     manager.on("element", (el) => emitted.push(el));
 
     // Start capture
-    await manager.startCapture("lo", {
-      startMarker: 0x05,
-      acknowledgeMarker: 0x06,
-      endMarker: 0x04,
-      deviceIP: "10.0.0.1",
-      lisIP: "10.0.0.2",
-    });
+    await manager.startCapture(
+      { index: -1, name: "lo" },
+      {
+        startMarker: 0x05,
+        acknowledgeMarker: 0x06,
+        endMarker: 0x04,
+        deviceIP: "10.0.0.1",
+        lisIP: "10.0.0.2",
+      }
+    );
 
     // Emit start marker packet
     fakeSource.emit("packet", {
@@ -112,7 +115,7 @@ describe("HL7CaptureManager integration (mocked cap)", () => {
     (fakeSource as any).isRunning = () => true;
 
     // Start capture (should attach to external source and return)
-    await manager.startCapture("Ethernet 1 - 192.0.2.10", markers);
+    await manager.startCapture({ index: -1, name: "Ethernet 1 - 192.0.2.10" }, markers);
 
     // Simulate receiving a single-byte start marker packet via packet events
     fakeSource.emit("packet", {

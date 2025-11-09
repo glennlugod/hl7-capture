@@ -11,8 +11,8 @@ const electronAPI = {
   getNetworkInterfaces: (): Promise<NetworkInterface[]> => ipcRenderer.invoke("get-interfaces"),
 
   // HL7 capture operations
-  startCapture: (interfaceName: string, config: MarkerConfig): Promise<void> =>
-    ipcRenderer.invoke("start-capture", interfaceName, config),
+  startCapture: (networkInterface: NetworkInterface, config: MarkerConfig): Promise<void> =>
+    ipcRenderer.invoke("start-capture", networkInterface, config),
 
   stopCapture: (): Promise<void> => ipcRenderer.invoke("stop-capture"),
 

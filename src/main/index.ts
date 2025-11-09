@@ -3,6 +3,8 @@ import path from "node:path";
 
 import { HL7CaptureManager } from "./hl7-capture";
 
+import type { NetworkInterface } from "../common/types";
+
 let mainWindow: BrowserWindow | null;
 let captureManager: HL7CaptureManager;
 
@@ -109,9 +111,10 @@ ipcMain.handle("get-interfaces", async () => {
 });
 
 // Capture control
-ipcMain.handle("start-capture", async (_event, interfaceName: string, config) => {
+ipcMain.handle("start-capture", async (_event, networkInterface: NetworkInterface, config) => {
   try {
-    await captureManager.startCapture(interfaceName, config);
+    // Accept a NetworkInterface object from the renderer/preload and pass it through
+    await captureManager.startCapture(networkInterface, config);
   } catch (error) {
     throw new Error(`Failed to start capture: ${error}`);
   }
