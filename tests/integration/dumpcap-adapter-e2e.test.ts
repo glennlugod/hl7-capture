@@ -1,9 +1,23 @@
+// Ensure child_process.spawn is a mock we can control
+jest.mock("node:child_process", () => ({ spawn: jest.fn() }));
+
+import * as child_process from "node:child_process";
 import { EventEmitter } from "node:events";
 
 import { DumpcapAdapter } from "../../src/main/dumpcap-adapter";
 import { HL7CaptureManager } from "../../src/main/hl7-capture";
 
+// Parser emitter for tests
+const parserEE = new EventEmitter();
+jest.mock("pcap-parser", () => ({ parse: () => parserEE }), { virtual: true });
+
 describe("DumpcapAdapter -> HL7CaptureManager end-to-end (synthetic)", () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+    jest.resetAllMocks();
+    jest.resetModules();
+  });
+
   test("adapter emits normalized packet and manager emits elements", async () => {
     const fakeStdout = new EventEmitter() as any;
     fakeStdout.pause = () => {};
@@ -15,9 +29,8 @@ describe("DumpcapAdapter -> HL7CaptureManager end-to-end (synthetic)", () => {
       kill: jest.fn(),
     } as any;
 
-    const child = require("node:child_process");
-    const originalSpawn = child.spawn;
-    (child as any).spawn = jest.fn(() => fakeProc);
+    (child_process.spawn as unknown as jest.Mock).mockImplementation(() => fakeProc as any);
+
     (DumpcapAdapter.prototype as any).findDumpcap = jest.fn(() => "dumpcap");
 
     const adapter = new DumpcapAdapter({ interface: "lo" });
@@ -43,13 +56,8 @@ describe("DumpcapAdapter -> HL7CaptureManager end-to-end (synthetic)", () => {
     ip.writeUInt8(2, 19);
     const tcp = Buffer.alloc(20);
     tcp.writeUInt8(5 << 4, 12);
-    const payload = Buffer.from([0x05, 0x48, 0x65, 0x6c, 0x6c, 0x6f, 0x04]);
-    const rawFrame = Buffer.concat([eth, ip, tcp, payload]);
 
-    const parserEE = new EventEmitter();
-    jest.doMock("pcap-parser", () => ({ parse: (_: any) => parserEE }), { virtual: true });
-
-    await expect(adapter.start()).resolves.toBeUndefined();
+    // parserEE is the mocked parser instance
 
     await manager.startCapture("lo", {
       startMarker: 0x05,
@@ -58,6 +66,8 @@ describe("DumpcapAdapter -> HL7CaptureManager end-to-end (synthetic)", () => {
       sourceIP: "10.0.0.1",
       destinationIP: "10.0.0.2",
     });
+
+    await expect(adapter.start()).resolves.toBeUndefined();
 
     // Emit three packets: start marker, message payload, end marker
     const startPayload = Buffer.from([0x05]);
@@ -91,6 +101,5 @@ describe("DumpcapAdapter -> HL7CaptureManager end-to-end (synthetic)", () => {
     expect(types).toContain("end");
 
     await adapter.stop();
-    (child as any).spawn = originalSpawn;
   }, 20000);
 });

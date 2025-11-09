@@ -2,8 +2,7 @@ import { execSync, spawn } from "node:child_process";
 import { EventEmitter } from "node:events";
 import * as fs from "node:fs";
 import * as path from "node:path";
-
-// This adapter relies exclusively on the installed `pcap-parser` package.
+import * as pcapParserLib from "pcap-parser";
 
 export interface DumpcapOptions {
   interface?: string;
@@ -79,131 +78,220 @@ export class DumpcapAdapter extends EventEmitter {
       args.push("-s", String(this.options.snaplen));
     }
 
-    // Force stdout to be binary
+    // Single try-catch for spawn + parser initialization
     try {
+      // Force stdout to be binary
       this.proc = spawn(dumpcapPath, args, { stdio: ["ignore", "pipe", "pipe"] });
+
+      this.running = true;
+      this.emit("start");
+
+      // Hook stderr for diagnostics
+      if (this.proc && this.proc.stderr) {
+        this.proc.stderr.on("data", (chunk: Buffer) => {
+          const msg = chunk.toString("utf8");
+          this.emit("log", msg);
+        });
+      }
+
+      if (this.proc && this.proc.stdout) {
+        // Initialize parser and wire events
+        await this.setupParser(this.proc.stdout as NodeJS.ReadableStream);
+      }
     } catch (err: any) {
+      // If dumpcap failed after being created, attempt best-effort stop to avoid
+      // leaving an orphaned native process running. Helpers encapsulate their own
+      // try-catch so this method still has only one try-catch.
+      await this.bestEffortKill(this.proc);
+
+      this.proc = null;
+      this.running = false;
       this.emit("error", err as Error);
       throw err;
     }
+  }
 
-    this.running = true;
-    this.emit("start");
+  /**
+   * Initialize pcap parser on the provided stream and wire parser events.
+   * This method contains a single try-catch (per the refactor requirement).
+   */
+  private async setupParser(stream: NodeJS.ReadableStream): Promise<void> {
+    try {
+      // Use imported module; provide an any-typed binding so Jest's `jest.mock('pcap-parser')` can still mock it.
+      const parser = pcapParserLib.parse(stream);
 
-    // Hook stderr for diagnostics
-    if (this.proc && this.proc.stderr) {
-      this.proc.stderr.on("data", (chunk: Buffer) => {
-        const msg = chunk.toString("utf8");
-        this.emit("log", msg);
-      });
-    }
-    if (this.proc && this.proc.stdout) {
-      // Require the npm pcap-parser library (streaming parser). If it's not
-      // available the adapter fails fast so the runtime/CI must ensure the
-      // dependency is present.
-      try {
-        // eslint-disable-next-line @typescript-eslint/no-var-requires
-        const pcapParser = require("pcap-parser");
-        const parser = pcapParser.parse(this.proc.stdout as NodeJS.ReadableStream);
-        parser.on("packet", (p: any) => {
-          try {
-            // p.header: { timestampSeconds, timestampMicroseconds, capturedLength, originalLength }
-            const hdr = p.header || p.packetHeader || {};
-            const tsSec = hdr.timestampSeconds ?? hdr.tsSec ?? 0;
-            const tsUsec = hdr.timestampMicroseconds ?? hdr.tsUsec ?? 0;
-            const inclLen =
-              hdr.capturedLength ?? hdr.inclLen ?? hdr.capLen ?? (p.data ? p.data.length : 0);
-            const origLen = hdr.originalLength ?? hdr.origLen ?? inclLen;
+      parser.on("packet", (p: any) => {
+        // Normalize packet without throwing; defensive checks are used to avoid
+        // corrupt reads. If normalization yields null, emit fallback shape.
+        const hdr = p.header || p.packetHeader || {};
+        const tsSec = hdr.timestampSeconds ?? hdr.tsSec ?? 0;
+        const tsUsec = hdr.timestampMicroseconds ?? hdr.tsUsec ?? 0;
+        const inclLen =
+          hdr.capturedLength ?? hdr.inclLen ?? hdr.capLen ?? (p.data ? p.data.length : 0);
+        const origLen = hdr.originalLength ?? hdr.origLen ?? inclLen;
 
-            // Attempt to decode Ethernet -> IPv4 -> TCP and emit normalized packet shape.
-            // Expected normalized shape: { sourceIP, destIP, data: Buffer, ts: number }
-            const raw = p.data as Buffer | undefined;
-            let normalized: any = null;
-            if (raw && Buffer.isBuffer(raw)) {
-              // Minimum lengths: Ethernet (14) + IPv4 (20) + TCP (20)
-              try {
-                if (raw.length >= 14 + 20 + 20) {
-                  const ethType = raw.readUInt16BE(12);
-                  // IPv4
-                  if (ethType === 0x0800) {
-                    const ipOffset = 14;
-                    const verIhl = raw.readUInt8(ipOffset);
-                    const ihl = (verIhl & 0x0f) * 4;
-                    const protocol = raw.readUInt8(ipOffset + 9);
-                    const srcIP = `${raw.readUInt8(ipOffset + 12)}.${raw.readUInt8(
-                      ipOffset + 13
-                    )}.${raw.readUInt8(ipOffset + 14)}.${raw.readUInt8(ipOffset + 15)}`;
-                    const dstIP = `${raw.readUInt8(ipOffset + 16)}.${raw.readUInt8(
-                      ipOffset + 17
-                    )}.${raw.readUInt8(ipOffset + 18)}.${raw.readUInt8(ipOffset + 19)}`;
-
-                    // TCP
-                    if (protocol === 6) {
-                      const tcpOffset = ipOffset + ihl;
-                      const dataOffsetByte = raw.readUInt8(tcpOffset + 12);
-                      const tcpHeaderLen = ((dataOffsetByte & 0xf0) >> 4) * 4;
-                      const payloadStart = tcpOffset + tcpHeaderLen;
-                      const payload =
-                        payloadStart < raw.length ? raw.slice(payloadStart) : Buffer.alloc(0);
-                      const ts = tsSec * 1000 + Math.floor(tsUsec / 1000);
-                      normalized = { sourceIP: srcIP, destIP: dstIP, data: payload, ts };
-                    }
-                  }
-                }
-              } catch (parseErr) {
-                // If parsing fails, fall back to non-normalized emit below
-                console.debug("Packet header parsing failed:", parseErr);
-              }
-            }
-
-            if (normalized) {
-              this.emit("packet", normalized);
-            } else {
-              // Fallback: emit original parser shape with header and data
-              this.emit("packet", { header: { tsSec, tsUsec, inclLen, origLen }, data: p.data });
-            }
-          } catch (err) {
-            this.emit("error", err as Error);
-          }
-        });
-
-        parser.on("end", () => {
-          this.emit("stop");
-          this.running = false;
-        });
-
-        parser.on("error", (err: Error) => this.emit("error", err));
-      } catch (err: any) {
-        const e = new Error(
-          "Required dependency 'pcap-parser' not found. Install it and retry: npm install pcap-parser"
-        );
-        // Attach original error as cause when supported, and log for diagnostics
-        try {
-          // Node 16+ supports Error options with cause
-          (e as any).cause = err;
-        } catch (error_: any) {
-          console.debug("Could not attach cause to error:", error_);
+        const normalized = this.normalizePacket(p.data as Buffer | undefined, tsSec, tsUsec);
+        if (normalized) {
+          this.emit("packet", normalized);
+        } else {
+          this.emit("packet", { header: { tsSec, tsUsec, inclLen, origLen }, data: p.data });
         }
-        this.emit("error", e);
-        // Ensure caller sees the failure
-        throw e;
+      });
+
+      parser.on("end", () => {
+        this.emit("stop");
+        this.running = false;
+      });
+
+      parser.on("error", (err: Error) => this.emit("error", err));
+    } catch (err: any) {
+      const e = new Error(
+        "Required dependency 'pcap-parser' not found or parser initialization failed. Install it and retry: npm install pcap-parser"
+      );
+      // Attach original error if possible. If this throws, let it propagate — avoid nested try-catch.
+      (e as any).cause = err;
+      this.emit("error", e);
+      throw e;
+    }
+  }
+
+  /**
+   * Safely attempt to extract packet fields and return a normalized shape or null.
+   * This routine avoids throwing by performing length checks before reads.
+   */
+  private normalizePacket(raw: Buffer | undefined, tsSec: number, tsUsec: number): any | null {
+    if (!raw || !Buffer.isBuffer(raw)) return null;
+
+    // Minimum lengths: Ethernet (14) + IPv4 (20) + TCP (20)
+    if (raw.length < 14 + 20 + 20) return null;
+
+    const ethType = raw.readUInt16BE(12);
+    if (ethType !== 0x0800) return null; // not IPv4
+
+    const ipOffset = 14;
+    const verIhl = raw.readUInt8(ipOffset);
+    const ihl = (verIhl & 0x0f) * 4;
+    const protocol = raw.readUInt8(ipOffset + 9);
+    if (protocol !== 6) return null; // not TCP
+
+    const srcIP = `${raw.readUInt8(ipOffset + 12)}.${raw.readUInt8(ipOffset + 13)}.${raw.readUInt8(
+      ipOffset + 14
+    )}.${raw.readUInt8(ipOffset + 15)}`;
+    const dstIP = `${raw.readUInt8(ipOffset + 16)}.${raw.readUInt8(ipOffset + 17)}.${raw.readUInt8(
+      ipOffset + 18
+    )}.${raw.readUInt8(ipOffset + 19)}`;
+
+    const tcpOffset = ipOffset + ihl;
+    const dataOffsetByte = raw.readUInt8(tcpOffset + 12);
+    const tcpHeaderLen = ((dataOffsetByte & 0xf0) >> 4) * 4;
+    const payloadStart = tcpOffset + tcpHeaderLen;
+    const payload = payloadStart < raw.length ? raw.slice(payloadStart) : Buffer.alloc(0);
+    const ts = tsSec * 1000 + Math.floor(tsUsec / 1000);
+
+    return { sourceIP: srcIP, destIP: dstIP, data: payload, ts };
+  }
+
+  /**
+   * Best-effort kill helper: encapsulates risky kill operations and logs failures.
+   * Each helper has its own single try-catch to satisfy the "one try-catch per method" rule.
+   */
+  private async bestEffortKill(proc: any): Promise<void> {
+    if (!proc) return;
+    try {
+      if (typeof (proc as any).kill === "function") {
+        (proc as any).kill();
       }
+    } catch (err) {
+      console.debug("dumpcap-adapter: error while killing proc after spawn failure:", err);
+      this.emit("log", `kill-after-spawn-failure: ${String(err)}`);
+    }
+  }
+
+  private safeRemoveListeners(proc: any): void {
+    if (!proc) return;
+    try {
+      proc.removeAllListeners("exit");
+      proc.removeAllListeners("close");
+    } catch (err) {
+      console.debug("dumpcap-adapter: remove listeners failed:", err);
+      this.emit("log", `remove-listeners-failed: ${String(err)}`);
+    }
+  }
+
+  private safeKillProc(proc: any): void {
+    if (!proc) return;
+    try {
+      proc.kill();
+    } catch (err) {
+      console.debug("dumpcap-adapter: error while attempting to kill proc:", err);
+      this.emit("log", `kill-error: ${String(err)}`);
+    }
+  }
+
+  private safeEscalateKill(proc: any, isWin: boolean): void {
+    if (!proc) return;
+    try {
+      if (isWin) {
+        // Best-effort: use taskkill to forcefully kill by PID
+        spawn("taskkill", ["/PID", String(proc.pid), "/T", "/F"]);
+      } else {
+        proc.kill("SIGKILL");
+      }
+    } catch (err) {
+      console.debug("dumpcap-adapter: escalation kill failed:", err);
+      this.emit("log", `escalation-kill-failed: ${String(err)}`);
     }
   }
 
   public async stop(): Promise<void> {
     if (!this.running) return;
 
-    if (this.proc) {
-      try {
-        this.proc.kill();
-      } catch (err: any) {
-        // Log the error during process termination for diagnostics
-        console.debug("Failed to kill dumpcap process:", err);
-      }
-      this.proc = null;
+    if (!this.proc) {
+      this.running = false;
+      this.emit("stop");
+      return;
     }
 
+    const proc = this.proc;
+    const isWin = process.platform === "win32";
+
+    // Wait for process to exit, attempt graceful kill then escalate to forced
+    // termination if the process does not exit within timeout.
+    await new Promise<void>((resolve) => {
+      let finished = false;
+
+      const done = () => {
+        if (finished) return;
+        finished = true;
+        // Use helper that logs failures internally.
+        this.safeRemoveListeners(proc);
+        resolve();
+      };
+
+      proc.once("exit", done);
+      proc.once("close", done);
+
+      // Attempt graceful kill using helper which logs failures.
+      this.safeKillProc(proc);
+
+      // After timeout, escalate: on Windows use taskkill, otherwise SIGKILL
+      const to = setTimeout(() => {
+        if (finished) return;
+        // Use helper to escalate; helper will log failures internally.
+        this.safeEscalateKill(proc, isWin);
+      }, 2000);
+
+      // Ensure timer cleared when done
+      const wrappedDone = () => {
+        clearTimeout(to);
+        done();
+      };
+
+      proc.once("exit", wrappedDone);
+      proc.once("close", wrappedDone);
+    });
+
+    this.proc = null;
     this.running = false;
     this.emit("stop");
   }

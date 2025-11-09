@@ -72,7 +72,8 @@ function initializeCaptureManager(): void {
   // Listen for new HL7 elements
   captureManager.on("element", (element) => {
     if (mainWindow) {
-      mainWindow.webContents.send("new-element", element);
+      // Preload listens for 'hl7-element-received'
+      mainWindow.webContents.send("hl7-element-received", element);
     }
   });
 

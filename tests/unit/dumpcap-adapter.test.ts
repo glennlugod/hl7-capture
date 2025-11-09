@@ -1,20 +1,27 @@
+// Top-level test module imports and mocks. We must register module mocks
+// before importing the module under test so the module gets the mocked
+// implementations during initialization.
+jest.mock("node:child_process", () => ({ spawn: jest.fn() }));
+
+import * as child_process from "node:child_process";
 import { EventEmitter } from "node:events";
 
 import { DumpcapAdapter } from "../../src/main/dumpcap-adapter";
 
-describe("DumpcapAdapter (unit)", () => {
-  let originalSpawn: any;
+// We'll provide a parser EventEmitter instance which tests will emit into.
+const parserEE = new EventEmitter();
+jest.mock("pcap-parser", () => ({ parse: () => parserEE }), { virtual: true });
 
+describe("DumpcapAdapter (unit)", () => {
   beforeEach(() => {
-    // Mock child_process.spawn to return a controllable stdout stream
-    originalSpawn = (require as any)("child_process").spawn;
     // Ensure adapter's findDumpcap returns a usable value so start() proceeds
     (DumpcapAdapter.prototype as any).findDumpcap = jest.fn(() => "dumpcap");
   });
 
   afterEach(() => {
-    (require as any)("child_process").spawn = originalSpawn;
+    jest.restoreAllMocks();
     jest.resetAllMocks();
+    jest.resetModules();
   });
 
   test("parses packets from stdout and emits packet events", async () => {
@@ -30,15 +37,7 @@ describe("DumpcapAdapter (unit)", () => {
     } as any;
 
     // Mock spawn to return fakeProc
-    (require as any)("child_process").spawn = jest.fn(() => fakeProc);
-
-    // Mock pcap-parser to attach to the provided stream and emit a packet
-    const parserEE = new EventEmitter();
-    const mockPcapParser = {
-      parse: (_stream: NodeJS.ReadableStream) => parserEE as any,
-    };
-
-    jest.mock("pcap-parser", () => mockPcapParser, { virtual: true });
+    (child_process.spawn as unknown as jest.Mock).mockImplementation(() => fakeProc as any);
 
     const adapter = new DumpcapAdapter({ interface: "lo" });
 
@@ -106,8 +105,8 @@ describe("DumpcapAdapter (unit) - missing dumpcap", () => {
     const adapter = new DumpcapAdapter({ interface: "lo" });
 
     // Monkey-patch findDumpcap to return null to simulate missing dumpcap
-    // @ts-ignore
-    adapter["findDumpcap"] = () => null;
+    // override private method in test
+    (adapter as any)["findDumpcap"] = () => null;
 
     await expect(adapter.start()).rejects.toThrow(/dumpcap not found/i);
   });

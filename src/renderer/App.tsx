@@ -1,12 +1,12 @@
-import './App.css'
+import "./App.css";
 
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState } from "react";
 
-import ConfigurationPanel from './components/ConfigurationPanel'
-import { DesignSystemTestPage } from './components/DesignSystemTestPage'
-import MainLayout from './components/MainLayout'
-import MessageDetailViewer from './components/MessageDetailViewer'
-import SessionList from './components/SessionList'
+import ConfigurationPanel from "./components/ConfigurationPanel";
+import { DesignSystemTestPage } from "./components/DesignSystemTestPage";
+import MainLayout from "./components/MainLayout";
+import MessageDetailViewer from "./components/MessageDetailViewer";
+import SessionList from "./components/SessionList";
 
 import type { NetworkInterface, HL7Session, CaptureStatus, MarkerConfig } from "../common/types";
 
@@ -114,10 +114,19 @@ export default function App(): JSX.Element {
 
       // Save configuration and start capture
       await window.electron.saveMarkerConfig(markerConfig);
-      await window.electron.startCapture(selectedInterface, markerConfig);
+      // Optimistically update UI so buttons and panels reflect the requested state
       setIsCapturing(true);
+      setIsPaused(false);
       setSessions([]);
       setSessionCount(0);
+      try {
+        await window.electron.startCapture(selectedInterface, markerConfig);
+      } catch (startErr) {
+        // Revert optimistic state on failure and surface error
+        setIsCapturing(false);
+        setError(`Failed to start capture: ${startErr}`);
+        return;
+      }
     } catch (err) {
       setError(`Failed to start capture: ${err}`);
     }
@@ -126,8 +135,10 @@ export default function App(): JSX.Element {
   const handleStopCapture = async () => {
     try {
       setError("");
-      await window.electron.stopCapture();
+      // Optimistically update UI for immediate feedback
       setIsCapturing(false);
+      setIsPaused(false);
+      await window.electron.stopCapture();
     } catch (err) {
       setError(`Failed to stop capture: ${err}`);
     }
