@@ -169,6 +169,11 @@ export class DumpcapAdapter extends EventEmitter {
       // Use imported module; cast to our local parser interface so tests can still mock the module
       const parser = pcapp.parse(stream) as unknown as PcapParser;
 
+      // For testing with a static pcap file, uncomment below:
+      // const filePath = "E:\\horiba-pcap.pcap"; // Replace with your pcap file path
+      // const readableStream = fs.createReadStream(filePath);
+      // const parser = pcapp.parse(readableStream) as unknown as PcapParser;
+
       parser.on("packet", (p: PcapPacket) => {
         // Normalize packet without throwing; defensive checks are used to avoid
         // corrupt reads. If normalization yields null, emit fallback shape.
@@ -186,7 +191,7 @@ export class DumpcapAdapter extends EventEmitter {
           const withHeader = { ...normalized, header: headerObj };
           this.emit("packet", withHeader);
         } else {
-          this.emit("packet", { header: headerObj, data: p.data });
+          this.emit("raw-packet", { header: headerObj, data: p.data });
         }
       });
 
