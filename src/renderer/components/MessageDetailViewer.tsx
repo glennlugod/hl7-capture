@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 
 import { HL7Session } from "../../common/types";
 
@@ -11,36 +11,19 @@ export default function MessageDetailViewer({
   session,
   onNavigateMessage,
 }: Readonly<MessageDetailViewerProps>): JSX.Element {
+  // IMPORTANT: All hooks must be called unconditionally (before any early returns)
+  // to maintain hook call order consistency across renders
   const [activeTab, setActiveTab] = useState<"hex" | "decoded">("hex");
   const [selectedElementIndex, setSelectedElementIndex] = useState<number>(0);
   const tabsRef = useRef<HTMLDivElement>(null);
 
-  if (!session) {
-    return (
-      <div className="flex h-full flex-col items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50/20 to-teal-50/10">
-        <svg
-          className="w-20 h-20 text-slate-300 mb-4"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={1.5}
-            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-          />
-        </svg>
-        <p className="text-base font-medium text-slate-600">Select a session to view details</p>
-        <p className="text-sm text-slate-400 mt-2">
-          Choose a session from the list to see message details
-        </p>
-      </div>
-    );
-  }
-
-  const elements = session.elements || [];
+  const elements = session?.elements || [];
   const selectedElement = elements[selectedElementIndex];
+
+  // Reset selected element index when session changes
+  useEffect(() => {
+    setSelectedElementIndex(0);
+  }, [session?.id]);
 
   // Keyboard navigation
   const handleKeyDown = useCallback(
@@ -108,6 +91,30 @@ export default function MessageDetailViewer({
     },
     []
   );
+
+  if (!session) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50/20 to-teal-50/10">
+        <svg
+          className="w-20 h-20 text-slate-300 mb-4"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={1.5}
+            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+          />
+        </svg>
+        <p className="text-base font-medium text-slate-600">Select a session to view details</p>
+        <p className="text-sm text-slate-400 mt-2">
+          Choose a session from the list to see message details
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-full flex-col bg-white/50" onKeyDown={handleKeyDown} tabIndex={0}>
