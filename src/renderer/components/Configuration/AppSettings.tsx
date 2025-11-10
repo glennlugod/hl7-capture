@@ -11,6 +11,7 @@ export default function AppSettings(): JSX.Element {
   const [appConfig, setAppConfig] = useState<AppConfig>({
     autoStartCapture: false,
     startMinimized: false,
+    autoStartApp: false,
   });
   const [loading, setLoading] = useState(true);
 
@@ -47,6 +48,17 @@ export default function AppSettings(): JSX.Element {
   const toggleStartMinimized = async () => {
     try {
       const updated: AppConfig = { ...appConfig, startMinimized: !appConfig.startMinimized };
+      setAppConfig(updated);
+      const api = (globalThis as unknown as { electron: ElectronAPI }).electron;
+      await api.saveAppConfig(updated);
+    } catch (err) {
+      console.error("Failed to save app config", err);
+    }
+  };
+
+  const toggleAutoStartApp = async () => {
+    try {
+      const updated: AppConfig = { ...appConfig, autoStartApp: !appConfig.autoStartApp };
       setAppConfig(updated);
       const api = (globalThis as unknown as { electron: ElectronAPI }).electron;
       await api.saveAppConfig(updated);
@@ -93,6 +105,26 @@ export default function AppSettings(): JSX.Element {
               onChange={toggleStartMinimized}
               disabled={loading}
               aria-checked={appConfig.startMinimized}
+            />
+            <span className="slider" />
+          </label>
+        </div>
+      </div>
+      <div className="flex items-center justify-between mt-4">
+        <div>
+          <div className="text-sm font-medium text-slate-800">Auto-start app</div>
+          <div className="text-xs text-slate-500">
+            Start the application automatically when you log in
+          </div>
+        </div>
+        <div>
+          <label className="switch" aria-label="Auto-start app toggle">
+            <input
+              type="checkbox"
+              checked={appConfig.autoStartApp}
+              onChange={toggleAutoStartApp}
+              disabled={loading}
+              aria-checked={appConfig.autoStartApp}
             />
             <span className="slider" />
           </label>

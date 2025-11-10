@@ -30,7 +30,9 @@ const mockElectronAPI = {
   }),
   // App-level config and status (new APIs)
   getCaptureStatus: jest.fn().mockResolvedValue({ isCapturing: false, isPaused: false }),
-  loadAppConfig: jest.fn().mockResolvedValue({ autoStartCapture: false }),
+  loadAppConfig: jest
+    .fn()
+    .mockResolvedValue({ autoStartCapture: false, startMinimized: false, autoStartApp: false }),
   saveAppConfig: jest.fn().mockResolvedValue(undefined),
   saveInterfaceSelection: jest.fn().mockResolvedValue(undefined),
   loadInterfaceSelection: jest.fn().mockResolvedValue(null),

@@ -36,6 +36,8 @@ export interface AppConfig {
   autoStartCapture: boolean;
   // If true, start the application window minimized. Defaults to false.
   startMinimized: boolean;
+  // If true, automatically start the application when Windows starts (all users). Defaults to false.
+  autoStartApp: boolean;
 }
 
 export interface Marker {

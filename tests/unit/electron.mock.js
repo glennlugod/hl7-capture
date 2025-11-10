@@ -13,6 +13,8 @@ globalThis.electron = {
   savePreset: jest.fn().mockResolvedValue(undefined),
   deletePreset: jest.fn().mockResolvedValue(undefined),
   startCapture: jest.fn().mockResolvedValue(undefined),
-  loadAppConfig: jest.fn().mockResolvedValue({ autoStartCapture: false, startMinimized: false }),
+  loadAppConfig: jest
+    .fn()
+    .mockResolvedValue({ autoStartCapture: false, startMinimized: false, autoStartApp: false }),
   saveAppConfig: jest.fn().mockResolvedValue(undefined),
 };

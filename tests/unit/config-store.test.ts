@@ -314,6 +314,7 @@ describe("ConfigStore", () => {
       expect(config).toEqual({
         autoStartCapture: false,
         startMinimized: false,
+        autoStartApp: false,
       });
     });
 
@@ -321,6 +322,7 @@ describe("ConfigStore", () => {
       const testConfig = {
         autoStartCapture: true,
         startMinimized: true,
+        autoStartApp: false,
       };
 
       store.saveAppConfig(testConfig);
@@ -333,6 +335,7 @@ describe("ConfigStore", () => {
         store.saveAppConfig({
           autoStartCapture: "invalid" as unknown as boolean,
           startMinimized: false,
+          autoStartApp: false,
         });
       }).toThrow("Invalid app config");
 
@@ -340,6 +343,7 @@ describe("ConfigStore", () => {
         store.saveAppConfig({
           autoStartCapture: false,
           startMinimized: "invalid" as unknown as boolean,
+          autoStartApp: false,
         });
       }).toThrow("Invalid app config");
     });

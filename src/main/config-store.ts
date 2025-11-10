@@ -25,6 +25,7 @@ const DEFAULT_MARKER_CONFIG: MarkerConfig = {
 const DEFAULT_APP_CONFIG: AppConfig = {
   autoStartCapture: false,
   startMinimized: false,
+  autoStartApp: false,
 };
 
 /**
@@ -117,7 +118,11 @@ export class ConfigStore {
     try {
       this.ensureConfigDirExists();
 
-      if (typeof cfg.autoStartCapture !== "boolean" || typeof cfg.startMinimized !== "boolean") {
+      if (
+        typeof cfg.autoStartCapture !== "boolean" ||
+        typeof cfg.startMinimized !== "boolean" ||
+        typeof cfg.autoStartApp !== "boolean"
+      ) {
         throw new TypeError("Invalid app config");
       }
 

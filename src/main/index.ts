@@ -19,6 +19,40 @@ const iconPath = isDev
   : path.join(__dirname, "../renderer/img/icon.ico");
 
 /**
+ * Enable auto-start for the current user on Windows using Electron's built-in API
+ */
+function enableAutoStart(): void {
+  if (process.platform !== "win32") return;
+
+  try {
+    app.setLoginItemSettings({
+      openAtLogin: true,
+      path: process.execPath,
+    });
+    console.log("Auto-start enabled for current user");
+  } catch (error) {
+    console.error("Failed to enable auto-start:", error);
+  }
+}
+
+/**
+ * Disable auto-start for the current user on Windows
+ */
+function disableAutoStart(): void {
+  if (process.platform !== "win32") return;
+
+  try {
+    app.setLoginItemSettings({
+      openAtLogin: false,
+      path: process.execPath,
+    });
+    console.log("Auto-start disabled for current user");
+  } catch (error) {
+    console.error("Failed to disable auto-start:", error);
+  }
+}
+
+/**
  * Create the Electron browser window
  */
 function createWindow(): void {
@@ -92,6 +126,14 @@ app.on("ready", () => {
     const savedConfig = configStore.load();
     const selectedInterfaceName = configStore.loadSelectedInterfaceName();
     const appCfg = configStore.loadAppConfig();
+
+    // Set login item settings based on saved configuration
+    if (process.platform === "win32") {
+      app.setLoginItemSettings({
+        openAtLogin: appCfg?.autoStartApp ?? false,
+        path: process.execPath,
+      });
+    }
 
     // If application-level autoStartCapture flag is enabled, attempt to start
     // capture using the saved marker configuration. Match the previously
@@ -316,6 +358,13 @@ ipcMain.handle("load-app-config", async () => {
 
 ipcMain.handle("save-app-config", async (_event, cfg) => {
   configStore.saveAppConfig(cfg);
+
+  // Sync auto-start setting with Windows registry
+  if (cfg.autoStartApp) {
+    enableAutoStart();
+  } else {
+    disableAutoStart();
+  }
 });
 
 // Window / Tray IPC
