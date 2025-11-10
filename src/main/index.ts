@@ -22,9 +22,12 @@ const iconPath = isDev
  * Create the Electron browser window
  */
 function createWindow(): void {
+  const appConfig = configStore.loadAppConfig();
+
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
+    show: !appConfig.startMinimized, // Hide window initially if starting minimized
     icon: fs.existsSync(iconPath) ? nativeImage.createFromPath(iconPath) : undefined,
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
@@ -41,6 +44,13 @@ function createWindow(): void {
 
   if (isDev) {
     mainWindow.webContents.openDevTools();
+  }
+
+  // If starting minimized, minimize after loading
+  if (appConfig.startMinimized) {
+    mainWindow.once("ready-to-show", () => {
+      mainWindow?.minimize();
+    });
   }
 
   // Minimize to tray behaviour on Windows

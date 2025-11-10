@@ -6,10 +6,13 @@ if (typeof window === "undefined") {
   global.window = {};
 }
 
-window.electron = {
+// Set electron API on globalThis for compatibility
+globalThis.electron = {
   getNetworkInterfaces: jest.fn().mockResolvedValue([]),
   loadPresets: jest.fn().mockResolvedValue([]),
   savePreset: jest.fn().mockResolvedValue(undefined),
   deletePreset: jest.fn().mockResolvedValue(undefined),
   startCapture: jest.fn().mockResolvedValue(undefined),
+  loadAppConfig: jest.fn().mockResolvedValue({ autoStartCapture: false, startMinimized: false }),
+  saveAppConfig: jest.fn().mockResolvedValue(undefined),
 };

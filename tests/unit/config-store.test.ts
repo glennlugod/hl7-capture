@@ -307,4 +307,41 @@ describe("ConfigStore", () => {
       expect(interfaceName).toBeNull();
     });
   });
+
+  describe("App Config", () => {
+    it("should load default app config when no file exists", () => {
+      const config = store.loadAppConfig();
+      expect(config).toEqual({
+        autoStartCapture: false,
+        startMinimized: false,
+      });
+    });
+
+    it("should save and load app config", () => {
+      const testConfig = {
+        autoStartCapture: true,
+        startMinimized: true,
+      };
+
+      store.saveAppConfig(testConfig);
+      const loadedConfig = store.loadAppConfig();
+      expect(loadedConfig).toEqual(testConfig);
+    });
+
+    it("should throw error on invalid app config", () => {
+      expect(() => {
+        store.saveAppConfig({
+          autoStartCapture: "invalid" as unknown as boolean,
+          startMinimized: false,
+        });
+      }).toThrow("Invalid app config");
+
+      expect(() => {
+        store.saveAppConfig({
+          autoStartCapture: false,
+          startMinimized: "invalid" as unknown as boolean,
+        });
+      }).toThrow("Invalid app config");
+    });
+  });
 });

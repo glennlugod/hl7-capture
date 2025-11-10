@@ -34,6 +34,8 @@ export interface AppConfig {
   // If true, start network capture automatically after loading saved
   // configurations on application startup. Defaults to false.
   autoStartCapture: boolean;
+  // If true, start the application window minimized. Defaults to false.
+  startMinimized: boolean;
 }
 
 export interface Marker {
