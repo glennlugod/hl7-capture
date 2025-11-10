@@ -39,6 +39,42 @@ function createWindow(): void {
 
   mainWindow.loadURL(startUrl);
 
+  // Auto-start should happen after the renderer has finished loading so
+  // that IPC listeners in the preload/renderer are registered and will
+  // receive the initial 'capture-status' events. Use did-finish-load once.
+  mainWindow.webContents.once("did-finish-load", () => {
+    try {
+      const savedConfig = configStore.load();
+      const selectedInterfaceName = configStore.loadSelectedInterfaceName();
+      const appCfg = configStore.loadAppConfig();
+
+      if (appCfg?.autoStartCapture) {
+        const available = captureManager.getNetworkInterfaces();
+        let ifaceToUse: import("../common/types").NetworkInterface | null = null;
+
+        if (selectedInterfaceName) {
+          ifaceToUse = available.find((i) => i.name === selectedInterfaceName) ?? null;
+        }
+
+        if (!ifaceToUse && available.length > 0) {
+          ifaceToUse = available[0];
+        }
+
+        if (ifaceToUse) {
+          captureManager
+            .startCapture(ifaceToUse, savedConfig)
+            .catch((err) => console.error("Auto-start capture failed:", err));
+        } else {
+          console.warn(
+            "Auto-start requested but no network interfaces available to start capture."
+          );
+        }
+      }
+    } catch (err) {
+      console.warn("Failed to auto-start capture:", err);
+    }
+  });
+
   if (isDev) {
     mainWindow.webContents.openDevTools();
   }
@@ -75,6 +111,41 @@ function createWindow(): void {
 app.on("ready", () => {
   createWindow();
   initializeCaptureManager();
+
+  // After initializing capture manager, load saved configuration and
+  // optionally auto-start capture if user enabled it in settings.
+  try {
+    const savedConfig = configStore.load();
+    const selectedInterfaceName = configStore.loadSelectedInterfaceName();
+    const appCfg = configStore.loadAppConfig();
+
+    // If application-level autoStartCapture flag is enabled, attempt to start
+    // capture using the saved marker configuration. Match the previously
+    // selected interface by name or fall back to the first available.
+    if (appCfg?.autoStartCapture) {
+      const available = captureManager.getNetworkInterfaces();
+      let ifaceToUse: import("../common/types").NetworkInterface | null = null;
+
+      if (selectedInterfaceName) {
+        ifaceToUse = available.find((i) => i.name === selectedInterfaceName) ?? null;
+      }
+
+      if (!ifaceToUse && available.length > 0) {
+        ifaceToUse = available[0];
+      }
+
+      if (ifaceToUse) {
+        // Start capture but don't await here to avoid blocking app ready.
+        captureManager
+          .startCapture(ifaceToUse, savedConfig)
+          .catch((err) => console.error("Auto-start capture failed:", err));
+      } else {
+        console.warn("Auto-start requested but no network interfaces available to start capture.");
+      }
+    }
+  } catch (err) {
+    console.warn("Failed to auto-start capture:", err);
+  }
 });
 
 app.on("before-quit", () => {
@@ -142,7 +213,6 @@ app.on("window-all-closed", () => {
     app.quit();
   }
 });
-
 /**
  * App lifecycle: activate (macOS)
  */
@@ -195,6 +265,10 @@ function initializeCaptureManager(): void {
 // Network interface detection
 ipcMain.handle("get-interfaces", async () => {
   return captureManager.getNetworkInterfaces();
+});
+
+ipcMain.handle("get-capture-status", async () => {
+  return captureManager.getStatus();
 });
 
 // Capture control
@@ -259,6 +333,15 @@ ipcMain.handle("load-interface-selection", async () => {
 
 ipcMain.handle("validate-marker-config", async (_event, config) => {
   return captureManager.validateMarkerConfig(config);
+});
+
+// Application config handlers
+ipcMain.handle("load-app-config", async () => {
+  return configStore.loadAppConfig();
+});
+
+ipcMain.handle("save-app-config", async (_event, cfg) => {
+  configStore.saveAppConfig(cfg);
 });
 
 // Window / Tray IPC

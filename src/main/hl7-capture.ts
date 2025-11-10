@@ -471,6 +471,25 @@ export class HL7CaptureManager extends EventEmitter {
   }
 
   /**
+   * Get current capture status for UI initialization
+   */
+  public getStatus(): {
+    isCapturing: boolean;
+    isPaused: boolean;
+    sessionCount: number;
+    elementCount: number;
+    interface: NetworkInterface;
+  } {
+    return {
+      isCapturing: this.isCapturing,
+      isPaused: this.isPaused,
+      sessionCount: this.sessions.size,
+      elementCount: this.getTotalElementCount(),
+      interface: this.currentInterface,
+    };
+  }
+
+  /**
    * Clear all sessions
    */
   public clearSessions(): void {

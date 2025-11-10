@@ -1,6 +1,12 @@
 import { contextBridge, ipcRenderer } from "electron";
 
-import type { MarkerConfig, HL7Element, HL7Session, NetworkInterface } from "../common/types";
+import type {
+  MarkerConfig,
+  HL7Element,
+  HL7Session,
+  NetworkInterface,
+  AppConfig,
+} from "../common/types";
 
 /**
  * HL7 Capture IPC API
@@ -29,6 +35,14 @@ const electronAPI = {
 
   loadMarkerConfig: (): Promise<MarkerConfig> => ipcRenderer.invoke("load-marker-config"),
 
+  getCaptureStatus: (): Promise<{
+    isCapturing: boolean;
+    isPaused: boolean;
+    sessionCount: number;
+    elementCount: number;
+    interface: NetworkInterface;
+  }> => ipcRenderer.invoke("get-capture-status"),
+
   saveInterfaceSelection: (interfaceName: string | null): Promise<void> =>
     ipcRenderer.invoke("save-interface-selection", interfaceName),
 
@@ -37,6 +51,11 @@ const electronAPI = {
 
   validateMarkerConfig: (config: MarkerConfig): Promise<boolean> =>
     ipcRenderer.invoke("validate-marker-config", config),
+
+  // Application-level config
+  loadAppConfig: (): Promise<AppConfig> => ipcRenderer.invoke("load-app-config"),
+
+  saveAppConfig: (cfg: AppConfig): Promise<void> => ipcRenderer.invoke("save-app-config", cfg),
 
   // Window / Tray controls
   minimizeToTray: (): Promise<void> => ipcRenderer.invoke("minimize-to-tray"),

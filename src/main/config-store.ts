@@ -7,7 +7,7 @@ import { app } from "electron";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
-import type { MarkerConfig } from "../common/types";
+import type { MarkerConfig, AppConfig } from "../common/types";
 
 /**
  * Default marker configuration
@@ -21,6 +21,11 @@ const DEFAULT_MARKER_CONFIG: MarkerConfig = {
   lisPort: undefined,
 };
 
+// Default application-level configuration
+const DEFAULT_APP_CONFIG: AppConfig = {
+  autoStartCapture: false,
+};
+
 /**
  * Configuration Store for HL7 Capture
  * Persists and retrieves configuration from the application's user data directory
@@ -29,16 +34,20 @@ export class ConfigStore {
   private readonly configDir: string;
   private readonly configPath: string;
   private readonly interfacePath: string;
+  private readonly appConfigPath: string;
   private config: MarkerConfig;
   private selectedInterfaceName: string | null;
+  private appConfig: AppConfig;
 
   constructor() {
     // Use app.getPath('userData') to store config in the user data directory
     this.configDir = path.join(app.getPath("userData"), "config");
     this.configPath = path.join(this.configDir, "marker-config.json");
+    this.appConfigPath = path.join(this.configDir, "app-config.json");
     this.interfacePath = path.join(this.configDir, "interface-selection.json");
     this.config = { ...DEFAULT_MARKER_CONFIG };
     this.selectedInterfaceName = null;
+    this.appConfig = { ...DEFAULT_APP_CONFIG };
 
     // Ensure config directory exists
     this.ensureConfigDirExists();
@@ -77,6 +86,46 @@ export class ConfigStore {
     }
 
     return DEFAULT_MARKER_CONFIG;
+  }
+
+  /**
+   * Load application-level configuration from disk. Returns defaults when missing.
+   */
+  public loadAppConfig(): AppConfig {
+    try {
+      if (fs.existsSync(this.appConfigPath)) {
+        const raw = fs.readFileSync(this.appConfigPath, "utf-8");
+        const parsed = JSON.parse(raw) as Partial<AppConfig>;
+        this.appConfig = {
+          ...DEFAULT_APP_CONFIG,
+          ...parsed,
+        };
+        return this.appConfig;
+      }
+    } catch (error) {
+      console.warn(`Failed to load app config from ${this.appConfigPath}:`, error);
+    }
+
+    return { ...DEFAULT_APP_CONFIG };
+  }
+
+  /**
+   * Save application-level config to disk
+   */
+  public saveAppConfig(cfg: AppConfig): void {
+    try {
+      this.ensureConfigDirExists();
+
+      if (typeof cfg.autoStartCapture !== "boolean") {
+        throw new TypeError("Invalid app config");
+      }
+
+      this.appConfig = { ...cfg };
+      fs.writeFileSync(this.appConfigPath, JSON.stringify(this.appConfig, null, 2), "utf-8");
+    } catch (error) {
+      console.error(`Failed to save app config to ${this.appConfigPath}:`, error);
+      throw new Error(`Failed to save app config: ${error}`);
+    }
   }
 
   /**
@@ -150,6 +199,11 @@ export class ConfigStore {
 
     // lisPort is optional and can be number | undefined | null
     if (cfg.lisPort !== undefined && cfg.lisPort !== null && typeof cfg.lisPort !== "number") {
+      return false;
+    }
+
+    // autoStartCapture is optional and if present must be boolean
+    if (cfg.autoStartCapture !== undefined && typeof cfg.autoStartCapture !== "boolean") {
       return false;
     }
 

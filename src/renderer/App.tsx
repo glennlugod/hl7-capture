@@ -9,6 +9,32 @@ import SessionList from "./components/SessionList";
 
 import type { HL7Session, MarkerConfig, NetworkInterface } from "../common/types";
 
+type ElectronAPI = {
+  getNetworkInterfaces: () => Promise<NetworkInterface[]>;
+  loadInterfaceSelection: () => Promise<string | null>;
+  loadMarkerConfig: () => Promise<MarkerConfig>;
+  saveInterfaceSelection: (name: string | null) => Promise<void>;
+  pauseCapture: () => Promise<void>;
+  resumeCapture: () => Promise<void>;
+  validateMarkerConfig: (cfg: MarkerConfig) => Promise<boolean>;
+  saveMarkerConfig: (cfg: MarkerConfig) => Promise<void>;
+  startCapture: (iface: NetworkInterface, cfg: MarkerConfig) => Promise<void>;
+  stopCapture: () => Promise<void>;
+  clearSessions: () => Promise<void>;
+  getCaptureStatus: () => Promise<{ isCapturing: boolean; isPaused?: boolean }>;
+  onNewElement: (cb: () => void) => () => void;
+  onSessionComplete: (cb: (s: HL7Session) => void) => () => void;
+  onCaptureStatus: (
+    cb: (status: {
+      isCapturing: boolean;
+      isPaused?: boolean;
+      sessionCount?: number;
+      elementCount?: number;
+    }) => void
+  ) => () => void;
+  onError: (cb: (err: string) => void) => () => void;
+};
+
 export default function App(): JSX.Element {
   const [selectedInterface, setSelectedInterface] = useState<NetworkInterface | null>(null);
   const [interfaces, setInterfaces] = useState<NetworkInterface[]>([]);
@@ -33,20 +59,19 @@ export default function App(): JSX.Element {
   // Listen for HL7 events and capture status
   useEffect(() => {
     // Listen for new HL7 elements
-    const unsubNewElement = window.electron.onNewElement(() => {
+    const api = (globalThis as unknown as { electron: ElectronAPI }).electron;
+    const unsubNewElement = api.onNewElement(() => {
       // Element received, will be part of session
     });
-
-    const unsubSessionComplete = window.electron.onSessionComplete((session: HL7Session) => {
+    const unsubSessionComplete = api.onSessionComplete((session: HL7Session) => {
       setSessions((prev) => [...prev, session]);
     });
-
-    const unsubCaptureStatus = window.electron.onCaptureStatus((status) => {
+    const unsubCaptureStatus = api.onCaptureStatus((status) => {
       setIsCapturing(status.isCapturing);
       setIsPaused(status.isPaused || false);
     });
 
-    const unsubError = window.electron.onError((errorMsg: string) => {
+    const unsubError = api.onError((errorMsg: string) => {
       console.error("Capture error:", errorMsg);
     });
 
@@ -83,13 +108,28 @@ export default function App(): JSX.Element {
     };
   }, []);
 
+  // Initialize capture status in case capture was auto-started by the main process
+  useEffect(() => {
+    (async () => {
+      try {
+        const api = (globalThis as unknown as { electron: ElectronAPI }).electron;
+        const status = await api.getCaptureStatus();
+        setIsCapturing(status.isCapturing);
+        setIsPaused(status.isPaused || false);
+      } catch (err) {
+        console.error("Failed to query capture status", err);
+      }
+    })();
+  }, []);
+
   const loadInterfaces = async (): Promise<NetworkInterface[]> => {
     try {
-      const ifaces = await window.electron.getNetworkInterfaces();
+      const api = (globalThis as unknown as { electron: ElectronAPI }).electron;
+      const ifaces = await api.getNetworkInterfaces();
       setInterfaces(ifaces);
 
       // Load saved interface selection by name
-      const savedInterfaceName = await window.electron.loadInterfaceSelection();
+      const savedInterfaceName = await api.loadInterfaceSelection();
       if (savedInterfaceName !== null) {
         const matchedInterface = ifaces.find((iface) => iface.name === savedInterfaceName);
         if (matchedInterface) {
@@ -110,7 +150,7 @@ export default function App(): JSX.Element {
 
   const loadMarkerConfig = async (): Promise<void> => {
     try {
-      const savedConfig = await window.electron.loadMarkerConfig();
+      const savedConfig = await api.loadMarkerConfig();
       setMarkerConfig(savedConfig);
     } catch (e) {
       console.error("Failed to load saved marker configuration", e);
@@ -122,9 +162,9 @@ export default function App(): JSX.Element {
     setSelectedInterface(newInterface);
     try {
       if (newInterface !== null) {
-        await window.electron.saveInterfaceSelection(newInterface.name);
+        await api.saveInterfaceSelection(newInterface.name);
       } else {
-        await window.electron.saveInterfaceSelection(null);
+        await api.saveInterfaceSelection(null);
       }
     } catch (e) {
       console.error("Failed to save interface selection", e);
@@ -138,7 +178,7 @@ export default function App(): JSX.Element {
 
   const handlePauseCapture = async () => {
     try {
-      await window.electron.pauseCapture();
+      await api.pauseCapture();
       setIsPaused(true);
     } catch (err) {
       console.error(`Failed to pause capture: ${err}`);
@@ -147,7 +187,7 @@ export default function App(): JSX.Element {
 
   const handleResumeCapture = async () => {
     try {
-      await window.electron.resumeCapture();
+      await api.resumeCapture();
       setIsPaused(false);
     } catch (err) {
       console.error(`Failed to resume capture: ${err}`);
@@ -157,14 +197,14 @@ export default function App(): JSX.Element {
   const handleStartCapture = async () => {
     try {
       // Validate configuration
-      const isValid = await window.electron.validateMarkerConfig(markerConfig);
+      const isValid = await api.validateMarkerConfig(markerConfig);
       if (!isValid) {
         console.error("Invalid marker configuration");
         return;
       }
 
       // Save configuration and start capture
-      await window.electron.saveMarkerConfig(markerConfig);
+      await api.saveMarkerConfig(markerConfig);
       // Optimistically update UI so buttons and panels reflect the requested state
       setIsCapturing(true);
       setIsPaused(false);
@@ -175,7 +215,7 @@ export default function App(): JSX.Element {
           setIsCapturing(false);
           return;
         }
-        await window.electron.startCapture(selectedInterface, markerConfig);
+        await api.startCapture(selectedInterface, markerConfig);
       } catch (error_) {
         // Revert optimistic state on failure and surface error
         setIsCapturing(false);
@@ -192,7 +232,7 @@ export default function App(): JSX.Element {
       // Optimistically update UI for immediate feedback
       setIsCapturing(false);
       setIsPaused(false);
-      await window.electron.stopCapture();
+      await api.stopCapture();
     } catch (err) {
       console.error(`Failed to stop capture: ${err}`);
     }
@@ -200,7 +240,7 @@ export default function App(): JSX.Element {
 
   const handleClearSessions = async () => {
     try {
-      await window.electron.clearSessions();
+      await api.clearSessions();
       setSessions([]);
     } catch (err) {
       console.error(`Failed to clear sessions: ${err}`);
@@ -233,7 +273,11 @@ export default function App(): JSX.Element {
       if ((e.ctrlKey || e.metaKey) && e.key === "k") {
         e.preventDefault();
         if (sessions.length > 0) {
-          if (window.confirm("Clear all captured sessions?")) {
+          if (
+            (globalThis as unknown as { confirm: (s: string) => boolean }).confirm(
+              "Clear all captured sessions?"
+            )
+          ) {
             handleClearSessions();
           }
         }
@@ -269,8 +313,12 @@ export default function App(): JSX.Element {
       }
     };
 
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    (globalThis as unknown as { addEventListener: any }).addEventListener("keydown", handleKeyDown);
+    return () =>
+      (globalThis as unknown as { removeEventListener: any }).removeEventListener(
+        "keydown",
+        handleKeyDown
+      );
   }, [sessions, selectedSession, isCapturing]);
 
   const renderConfigPanel = () => (

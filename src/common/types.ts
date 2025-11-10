@@ -24,6 +24,18 @@ export interface MarkerConfig {
   lisPort?: number; // Optional LIS port filter
 }
 
+// Marker-specific configuration should not contain application-level
+// settings such as auto-start. Those live in AppConfig below.
+
+/**
+ * Application-level configuration stored separately from marker settings.
+ */
+export interface AppConfig {
+  // If true, start network capture automatically after loading saved
+  // configurations on application startup. Defaults to false.
+  autoStartCapture: boolean;
+}
+
 export interface Marker {
   id: string;
   name: string;

@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 
 import AdvancedOptions from "./Configuration/AdvancedOptions";
+import AppSettings from "./Configuration/AppSettings";
 import HL7MarkerConfig from "./Configuration/HL7MarkerConfig";
 
 import type { MarkerConfig } from "../../common/types";
@@ -31,6 +32,9 @@ export default function ConfigurationPanel({
         <h3 className="mb-4 text-sm font-semibold text-slate-900">HL7 Markers</h3>
         <HL7MarkerConfig value={markerConfig} onChange={onConfigChange} disabled={isDisabled} />
       </div>
+
+      {/* Application settings */}
+      <AppSettings />
 
       {/* Advanced Options */}
       <div className="rounded-lg border border-slate-200/50 bg-white/60 backdrop-blur-sm p-5 shadow-sm">
