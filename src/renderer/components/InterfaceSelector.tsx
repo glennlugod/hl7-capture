@@ -18,8 +18,13 @@ export default function InterfaceSelector({
   disabled = false,
 }: Readonly<Props>): JSX.Element {
   const getDisplayName = (iface: NetworkInterface): string => {
+    let name = iface.name;
+    const parenMatch = /\((.*)\)/.exec(iface.name);
+    if (parenMatch) {
+      name = parenMatch[1];
+    }
     const idx = iface.index !== undefined && iface.index >= 0 ? `${iface.index}.` : "";
-    return idx ? `${idx} ${iface.name}` : iface.name;
+    return idx ? `${idx} ${name}` : name;
   };
 
   return (
