@@ -78,15 +78,13 @@ export default function MainLayout({
         }`}
       >
         <div className="flex h-14 items-center justify-between border-b border-slate-200/50 bg-gradient-to-r from-slate-50 to-blue-50/30 px-6 shadow-sm">
-          <div className="hidden sm:block">
-            <InterfaceSelector
-              interfaces={interfaces}
-              selected={selectedInterface}
-              onSelect={onInterfaceChange}
-              onRefresh={onRefreshInterfaces}
-              disabled={isCapturing}
-            />
-          </div>
+          <InterfaceSelector
+            interfaces={interfaces}
+            selected={selectedInterface}
+            onSelect={onInterfaceChange}
+            onRefresh={onRefreshInterfaces}
+            disabled={isCapturing}
+          />
           <div className="flex items-center">
             <button
               onClick={() => setIsConfigCollapsed((s) => !s)}
