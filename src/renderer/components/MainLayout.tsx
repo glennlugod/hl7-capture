@@ -54,7 +54,7 @@ export default function MainLayout({
     ? "Expand configuration panel"
     : "Collapse configuration panel";
   const configButtonIcon = isConfigCollapsed ? "▼" : "▲";
-  const configButtonText = isConfigCollapsed ? "Expand" : "Collapse";
+  const configButtonText = "Config";
 
   return (
     <div className="flex h-screen w-screen flex-col bg-gradient-to-br from-slate-50 via-blue-50/30 to-teal-50/20">
@@ -78,30 +78,25 @@ export default function MainLayout({
         }`}
       >
         <div className="flex h-14 items-center justify-between border-b border-slate-200/50 bg-gradient-to-r from-slate-50 to-blue-50/30 px-6 shadow-sm">
-          <h2 className="text-base font-semibold text-slate-900 tracking-tight">Configuration</h2>
-          <div className="flex items-center gap-4">
-            <div className="hidden sm:block">
-              <InterfaceSelector
-                interfaces={interfaces}
-                selected={selectedInterface}
-                onSelect={onInterfaceChange}
-                onRefresh={onRefreshInterfaces}
-                disabled={isCapturing}
-              />
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setIsConfigCollapsed((s) => !s)}
-                className="group flex items-center gap-2 rounded-lg bg-white px-3 py-1.5 text-sm font-medium text-slate-700 shadow-sm ring-1 ring-slate-200 transition-all hover:bg-slate-50 hover:shadow focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
-                aria-label={configButtonAria}
-                aria-expanded={!isConfigCollapsed}
-              >
-                <span className="transition-transform group-hover:scale-110">
-                  {configButtonIcon}
-                </span>
-                <span>{configButtonText}</span>
-              </button>
-            </div>
+          <div className="hidden sm:block">
+            <InterfaceSelector
+              interfaces={interfaces}
+              selected={selectedInterface}
+              onSelect={onInterfaceChange}
+              onRefresh={onRefreshInterfaces}
+              disabled={isCapturing}
+            />
+          </div>
+          <div className="flex items-center">
+            <button
+              onClick={() => setIsConfigCollapsed((s) => !s)}
+              className="group flex items-center gap-2 rounded-lg bg-white px-3 py-1.5 text-sm font-medium text-slate-700 shadow-sm ring-1 ring-slate-200 transition-all hover:bg-slate-50 hover:shadow focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+              aria-label={configButtonAria}
+              aria-expanded={!isConfigCollapsed}
+            >
+              <span className="transition-transform group-hover:scale-110">{configButtonIcon}</span>
+              <span>{configButtonText}</span>
+            </button>
           </div>
         </div>
         {!isConfigCollapsed && (
