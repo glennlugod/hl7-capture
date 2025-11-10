@@ -39,42 +39,6 @@ function createWindow(): void {
 
   mainWindow.loadURL(startUrl);
 
-  // Auto-start should happen after the renderer has finished loading so
-  // that IPC listeners in the preload/renderer are registered and will
-  // receive the initial 'capture-status' events. Use did-finish-load once.
-  mainWindow.webContents.once("did-finish-load", () => {
-    try {
-      const savedConfig = configStore.load();
-      const selectedInterfaceName = configStore.loadSelectedInterfaceName();
-      const appCfg = configStore.loadAppConfig();
-
-      if (appCfg?.autoStartCapture) {
-        const available = captureManager.getNetworkInterfaces();
-        let ifaceToUse: import("../common/types").NetworkInterface | null = null;
-
-        if (selectedInterfaceName) {
-          ifaceToUse = available.find((i) => i.name === selectedInterfaceName) ?? null;
-        }
-
-        if (!ifaceToUse && available.length > 0) {
-          ifaceToUse = available[0];
-        }
-
-        if (ifaceToUse) {
-          captureManager
-            .startCapture(ifaceToUse, savedConfig)
-            .catch((err) => console.error("Auto-start capture failed:", err));
-        } else {
-          console.warn(
-            "Auto-start requested but no network interfaces available to start capture."
-          );
-        }
-      }
-    } catch (err) {
-      console.warn("Failed to auto-start capture:", err);
-    }
-  });
-
   if (isDev) {
     mainWindow.webContents.openDevTools();
   }
