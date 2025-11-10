@@ -27,7 +27,7 @@ describe("InterfaceSelector", () => {
     );
 
     // options present
-    const select = screen.getByLabelText(/Network Interface:/i) as HTMLSelectElement;
+    const select = screen.getByLabelText(/Network Interface/i) as HTMLSelectElement;
     expect(select).toBeInTheDocument();
     // includes the placeholder option + provided interfaces
     expect(select.options.length).toBe(3);

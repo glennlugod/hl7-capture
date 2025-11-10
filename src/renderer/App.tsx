@@ -11,6 +11,7 @@ import type { HL7Session, MarkerConfig, NetworkInterface } from "../common/types
 
 export default function App(): JSX.Element {
   const [selectedInterface, setSelectedInterface] = useState<NetworkInterface | null>(null);
+  const [interfaces, setInterfaces] = useState<NetworkInterface[]>([]);
   const [markerConfig, setMarkerConfig] = useState<MarkerConfig>({
     startMarker: 0x05,
     acknowledgeMarker: 0x06,
@@ -80,6 +81,24 @@ export default function App(): JSX.Element {
         console.warn("Failed to remove capture-error listener:", e);
       }
     };
+  }, []);
+
+  const loadInterfaces = async (): Promise<NetworkInterface[]> => {
+    try {
+      const ifaces = await window.electron.getNetworkInterfaces();
+      setInterfaces(ifaces);
+      if (ifaces.length > 0 && !selectedInterface) {
+        setSelectedInterface(ifaces[0]);
+      }
+      return ifaces;
+    } catch (e) {
+      console.error("Failed loading interfaces", e);
+      return [];
+    }
+  };
+
+  useEffect(() => {
+    loadInterfaces();
   }, []);
 
   const handlePauseCapture = async () => {
@@ -219,20 +238,17 @@ export default function App(): JSX.Element {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [sessions, selectedSession, isCapturing]);
 
-  const renderConfigPanel = (collapsed: boolean) => (
+  const renderConfigPanel = () => (
     <ConfigurationPanel
-      selectedInterface={selectedInterface}
       markerConfig={markerConfig}
-      onInterfaceChange={setSelectedInterface}
       onConfigChange={updateMarkerConfig}
       isCapturing={isCapturing}
-      collapsed={collapsed}
     />
   );
 
   return (
     <MainLayout
-      configPanel={renderConfigPanel}
+      configPanel={renderConfigPanel()}
       sessionList={
         <SessionList
           sessions={sessions}
@@ -250,6 +266,10 @@ export default function App(): JSX.Element {
       onPauseCapture={handlePauseCapture}
       onResumeCapture={handleResumeCapture}
       onClearSessions={handleClearSessions}
+      interfaces={interfaces}
+      selectedInterface={selectedInterface}
+      onInterfaceChange={setSelectedInterface}
+      onRefreshInterfaces={loadInterfaces}
     />
   );
 }

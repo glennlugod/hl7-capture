@@ -7,6 +7,9 @@ import { render } from "@testing-library/react";
 import MainLayout from "../../src/renderer/components/MainLayout";
 
 const defaultProps = {
+  configPanel: <div>Config</div>,
+  sessionList: <div>Sessions</div>,
+  messageDetail: <div>Message</div>,
   isCapturing: false,
   isPaused: false,
   onStartCapture: jest.fn(),
@@ -14,93 +17,40 @@ const defaultProps = {
   onPauseCapture: jest.fn(),
   onResumeCapture: jest.fn(),
   onClearSessions: jest.fn(),
+  interfaces: [],
+  selectedInterface: null,
+  onInterfaceChange: jest.fn(),
+  onRefreshInterfaces: jest.fn(),
 };
 
 describe("MainLayout Component", () => {
   it("renders without crashing", () => {
-    const { container } = render(
-      <MainLayout
-        configPanel={() => <div>Config</div>}
-        sessionList={<div>Sessions</div>}
-        messageDetail={<div>Message</div>}
-        {...defaultProps}
-      />
-    );
+    const { container } = render(<MainLayout {...defaultProps} />);
     expect(container).toBeInTheDocument();
   });
 
-  it("renders configuration panel content (collapsed by default)", () => {
-    const { getByText } = render(
-      <MainLayout
-        configPanel={() => <div>Config</div>}
-        sessionList={<div>Sessions</div>}
-        messageDetail={<div>Message</div>}
-        {...defaultProps}
-      />
-    );
-    // The configuration content is rendered into the DOM even when collapsed (for accessibility/SSR),
-    // but it's not visible in the collapsed state. Assert it exists but may be hidden.
-    const config = getByText("Config");
-    expect(config).toBeInTheDocument();
-  });
-
   it("displays session list", () => {
-    const { getAllByText } = render(
-      <MainLayout
-        configPanel={() => <div>Config</div>}
-        sessionList={<div>Sessions</div>}
-        messageDetail={<div>Message</div>}
-        {...defaultProps}
-      />
-    );
+    const { getAllByText } = render(<MainLayout {...defaultProps} />);
     expect(getAllByText("Sessions").length).toBeGreaterThan(0);
   });
 
   it("displays message detail", () => {
-    const { getByText } = render(
-      <MainLayout
-        configPanel={() => <div>Config</div>}
-        sessionList={<div>Sessions</div>}
-        messageDetail={<div>Message</div>}
-        {...defaultProps}
-      />
-    );
+    const { getByText } = render(<MainLayout {...defaultProps} />);
     expect(getByText("Message")).toBeInTheDocument();
   });
 
   it("displays 'Configuration' header", () => {
-    const { getByRole } = render(
-      <MainLayout
-        configPanel={() => <div>Config</div>}
-        sessionList={<div>Sessions</div>}
-        messageDetail={<div>Message</div>}
-        {...defaultProps}
-      />
-    );
+    const { getByRole } = render(<MainLayout {...defaultProps} />);
     expect(getByRole("heading", { name: "Configuration" })).toBeInTheDocument();
   });
 
   it("displays 'Message Details' header", () => {
-    const { getByText } = render(
-      <MainLayout
-        configPanel={() => <div>Config</div>}
-        sessionList={<div>Sessions</div>}
-        messageDetail={<div>Message</div>}
-        {...defaultProps}
-      />
-    );
+    const { getByText } = render(<MainLayout {...defaultProps} />);
     expect(getByText("Message Details")).toBeInTheDocument();
   });
 
   it("renders expand/collapse button for configuration", () => {
-    const { getByRole } = render(
-      <MainLayout
-        configPanel={() => <div>Config</div>}
-        sessionList={<div>Sessions</div>}
-        messageDetail={<div>Message</div>}
-        {...defaultProps}
-      />
-    );
+    const { getByRole } = render(<MainLayout {...defaultProps} />);
     // Default is collapsed, so button should offer to expand the configuration panel
     const button = getByRole("button", { name: /expand configuration panel/i });
     expect(button).toBeInTheDocument();
@@ -110,7 +60,7 @@ describe("MainLayout Component", () => {
     const onStartCapture = jest.fn();
     render(
       <MainLayout
-        configPanel={() => <div>Config</div>}
+        configPanel={<div>Config</div>}
         sessionList={<div>Sessions</div>}
         messageDetail={<div>Message</div>}
         isCapturing={false}
@@ -120,6 +70,10 @@ describe("MainLayout Component", () => {
         onPauseCapture={jest.fn()}
         onResumeCapture={jest.fn()}
         onClearSessions={jest.fn()}
+        interfaces={[]}
+        selectedInterface={null}
+        onInterfaceChange={jest.fn()}
+        onRefreshInterfaces={jest.fn()}
       />
     );
     expect(onStartCapture).toBeDefined();
@@ -128,7 +82,7 @@ describe("MainLayout Component", () => {
   it("accepts capturing state", () => {
     const { container } = render(
       <MainLayout
-        configPanel={() => <div>Config</div>}
+        configPanel={<div>Config</div>}
         sessionList={<div>Sessions</div>}
         messageDetail={<div>Message</div>}
         isCapturing={true}
@@ -138,6 +92,10 @@ describe("MainLayout Component", () => {
         onPauseCapture={jest.fn()}
         onResumeCapture={jest.fn()}
         onClearSessions={jest.fn()}
+        interfaces={[]}
+        selectedInterface={null}
+        onInterfaceChange={jest.fn()}
+        onRefreshInterfaces={jest.fn()}
       />
     );
     expect(container).toBeInTheDocument();
@@ -146,7 +104,7 @@ describe("MainLayout Component", () => {
   it("accepts paused state", () => {
     const { container } = render(
       <MainLayout
-        configPanel={() => <div>Config</div>}
+        configPanel={<div>Config</div>}
         sessionList={<div>Sessions</div>}
         messageDetail={<div>Message</div>}
         isCapturing={true}
@@ -156,20 +114,17 @@ describe("MainLayout Component", () => {
         onPauseCapture={jest.fn()}
         onResumeCapture={jest.fn()}
         onClearSessions={jest.fn()}
+        interfaces={[]}
+        selectedInterface={null}
+        onInterfaceChange={jest.fn()}
+        onRefreshInterfaces={jest.fn()}
       />
     );
     expect(container).toBeInTheDocument();
   });
 
   it("AC #2: should render panel resize handle for resizable panels", () => {
-    const { container } = render(
-      <MainLayout
-        configPanel={() => <div>Config</div>}
-        sessionList={<div>Sessions</div>}
-        messageDetail={<div>Message</div>}
-        {...defaultProps}
-      />
-    );
+    const { container } = render(<MainLayout {...defaultProps} />);
     // exact classes may change; the resize handle has a gradient background class in layout
     const resizeHandle = container.querySelector("[class*='bg-gradient-to-b']");
     expect(resizeHandle).toBeTruthy();

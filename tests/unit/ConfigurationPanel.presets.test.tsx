@@ -2,7 +2,7 @@ import "@testing-library/jest-dom";
 
 import React from "react";
 
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 
 import ConfigurationPanel from "../../src/renderer/components/ConfigurationPanel";
 
@@ -27,7 +27,6 @@ describe("ConfigurationPanel presets and start", () => {
     await act(async () => {
       render(
         <ConfigurationPanel
-          selectedInterface={{ index: -1, name: "eth0" }}
           markerConfig={{
             startMarker: 0x05,
             acknowledgeMarker: 0x06,
@@ -35,15 +34,10 @@ describe("ConfigurationPanel presets and start", () => {
             deviceIP: "",
             lisIP: "",
           }}
-          onInterfaceChange={jest.fn()}
           onConfigChange={jest.fn()}
         />
       );
     });
-
-    await waitFor(() =>
-      expect((globalThis as any).electron.getNetworkInterfaces).toHaveBeenCalled()
-    );
 
     // ConfigurationPanel no longer includes a Start Capture button; ensure it's absent
     expect(screen.queryByText("Start Capture")).toBeNull();

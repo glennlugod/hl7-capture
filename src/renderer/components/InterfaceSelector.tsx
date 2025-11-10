@@ -23,47 +23,43 @@ export default function InterfaceSelector({
   };
 
   return (
-    <div className="interface-selector">
-      <div className="interface-selection">
-        <label htmlFor="interface-select">Network Interface:</label>
-        <div className="flex items-center gap-2">
-          <select
-            id="interface-select"
-            value={selected?.name ?? ""}
-            onChange={(e) => {
-              const name = e.target.value;
-              const iface = interfaces.find((i) => i.name === name) || null;
-              onSelect(iface);
-            }}
-            disabled={disabled}
-            aria-label="Network Interface"
-          >
-            <option value="">Select an interface</option>
-            {interfaces.map((iface) => (
-              <option key={iface.name} value={iface.name}>
-                {getDisplayName(iface)}
-              </option>
-            ))}
-          </select>
+    <div className="flex items-center gap-2">
+      <select
+        id="interface-select"
+        className="rounded-lg bg-white px-3 py-1.5 text-sm font-medium text-slate-700 shadow-sm ring-1 ring-slate-200 transition-all hover:bg-slate-50 hover:shadow focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+        value={selected?.name ?? ""}
+        onChange={(e) => {
+          const name = e.target.value;
+          const iface = interfaces.find((i) => i.name === name) || null;
+          onSelect(iface);
+        }}
+        disabled={disabled}
+        aria-label="Network Interface"
+      >
+        <option value="">Select an interface</option>
+        {interfaces.map((iface) => (
+          <option key={iface.name} value={iface.name}>
+            {getDisplayName(iface)}
+          </option>
+        ))}
+      </select>
 
-          {onRefresh && (
-            <button
-              type="button"
-              onClick={async () => {
-                try {
-                  await onRefresh();
-                } catch (e) {
-                  // eslint-disable-next-line no-console
-                  console.error("Refresh failed", e);
-                }
-              }}
-              className="ml-2 px-2 py-1 rounded bg-slate-200"
-            >
-              Refresh
-            </button>
-          )}
-        </div>
-      </div>
+      {onRefresh && (
+        <button
+          type="button"
+          onClick={async () => {
+            try {
+              await onRefresh();
+            } catch (e) {
+              // eslint-disable-next-line no-console
+              console.error("Refresh failed", e);
+            }
+          }}
+          className="rounded-lg bg-white px-3 py-1.5 text-sm font-medium text-slate-700 shadow-sm ring-1 ring-slate-200 transition-all hover:bg-slate-50 hover:shadow focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+        >
+          Refresh
+        </button>
+      )}
     </div>
   );
 }

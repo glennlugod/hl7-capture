@@ -3,7 +3,7 @@ import "@testing-library/jest-dom";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React from "react";
 
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 
 import ConfigurationPanel from "../../src/renderer/components/ConfigurationPanel";
 
@@ -29,7 +29,6 @@ describe("ConfigurationPanel override flow", () => {
     await act(async () => {
       render(
         <ConfigurationPanel
-          selectedInterface={{ index: -1, name: "eth0" }}
           markerConfig={{
             startMarker: 0x05,
             acknowledgeMarker: 0x06,
@@ -37,15 +36,10 @@ describe("ConfigurationPanel override flow", () => {
             deviceIP: "",
             lisIP: "",
           }}
-          onInterfaceChange={jest.fn()}
           onConfigChange={jest.fn()}
         />
       );
     });
-
-    await waitFor(() =>
-      expect((globalThis as any).electron.getNetworkInterfaces).toHaveBeenCalled()
-    );
 
     // ConfigurationPanel does not include the Start Capture button (that's
     // owned by ControlPanel/App). Ensure it's absent and that no save was
