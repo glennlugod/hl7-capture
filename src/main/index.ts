@@ -1,6 +1,7 @@
 import { app, BrowserWindow, ipcMain } from "electron";
 import path from "node:path";
 
+import { configStore } from "./config-store";
 import { HL7CaptureManager } from "./hl7-capture";
 
 import type { NetworkInterface } from "../common/types";
@@ -155,6 +156,19 @@ ipcMain.handle("clear-sessions", async () => {
 
 ipcMain.handle("save-marker-config", async (_event, config) => {
   captureManager.saveMarkerConfig(config);
+  configStore.save(config);
+});
+
+ipcMain.handle("load-marker-config", async () => {
+  return configStore.load();
+});
+
+ipcMain.handle("save-interface-selection", async (_event, interfaceName: string | null) => {
+  configStore.saveSelectedInterfaceName(interfaceName);
+});
+
+ipcMain.handle("load-interface-selection", async () => {
+  return configStore.loadSelectedInterfaceName();
 });
 
 ipcMain.handle("validate-marker-config", async (_event, config) => {

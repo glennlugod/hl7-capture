@@ -87,7 +87,18 @@ export default function App(): JSX.Element {
     try {
       const ifaces = await window.electron.getNetworkInterfaces();
       setInterfaces(ifaces);
-      if (ifaces.length > 0 && !selectedInterface) {
+
+      // Load saved interface selection by name
+      const savedInterfaceName = await window.electron.loadInterfaceSelection();
+      if (savedInterfaceName !== null) {
+        const matchedInterface = ifaces.find((iface) => iface.name === savedInterfaceName);
+        if (matchedInterface) {
+          setSelectedInterface(matchedInterface);
+        } else if (ifaces.length > 0) {
+          // Fallback to first interface if saved one doesn't exist
+          setSelectedInterface(ifaces[0]);
+        }
+      } else if (ifaces.length > 0 && !selectedInterface) {
         setSelectedInterface(ifaces[0]);
       }
       return ifaces;
@@ -97,8 +108,32 @@ export default function App(): JSX.Element {
     }
   };
 
+  const loadMarkerConfig = async (): Promise<void> => {
+    try {
+      const savedConfig = await window.electron.loadMarkerConfig();
+      setMarkerConfig(savedConfig);
+    } catch (e) {
+      console.error("Failed to load saved marker configuration", e);
+      // Continue with default config if load fails
+    }
+  };
+
+  const handleInterfaceChange = async (newInterface: NetworkInterface | null) => {
+    setSelectedInterface(newInterface);
+    try {
+      if (newInterface !== null) {
+        await window.electron.saveInterfaceSelection(newInterface.name);
+      } else {
+        await window.electron.saveInterfaceSelection(null);
+      }
+    } catch (e) {
+      console.error("Failed to save interface selection", e);
+    }
+  };
+
   useEffect(() => {
     loadInterfaces();
+    loadMarkerConfig();
   }, []);
 
   const handlePauseCapture = async () => {
@@ -268,7 +303,7 @@ export default function App(): JSX.Element {
       onClearSessions={handleClearSessions}
       interfaces={interfaces}
       selectedInterface={selectedInterface}
-      onInterfaceChange={setSelectedInterface}
+      onInterfaceChange={handleInterfaceChange}
       onRefreshInterfaces={loadInterfaces}
     />
   );

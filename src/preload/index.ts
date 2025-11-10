@@ -27,6 +27,14 @@ const electronAPI = {
   saveMarkerConfig: (config: MarkerConfig): Promise<void> =>
     ipcRenderer.invoke("save-marker-config", config),
 
+  loadMarkerConfig: (): Promise<MarkerConfig> => ipcRenderer.invoke("load-marker-config"),
+
+  saveInterfaceSelection: (interfaceName: string | null): Promise<void> =>
+    ipcRenderer.invoke("save-interface-selection", interfaceName),
+
+  loadInterfaceSelection: (): Promise<string | null> =>
+    ipcRenderer.invoke("load-interface-selection"),
+
   validateMarkerConfig: (config: MarkerConfig): Promise<boolean> =>
     ipcRenderer.invoke("validate-marker-config", config),
 
