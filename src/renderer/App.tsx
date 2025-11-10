@@ -32,25 +32,54 @@ export default function App(): JSX.Element {
   // Listen for HL7 events and capture status
   useEffect(() => {
     // Listen for new HL7 elements
-    window.electron.onNewElement(() => {
+    const unsubNewElement = window.electron.onNewElement(() => {
       // Element received, will be part of session
     });
 
-    // Listen for completed sessions
-    window.electron.onSessionComplete((session: HL7Session) => {
+    const unsubSessionComplete = window.electron.onSessionComplete((session: HL7Session) => {
       setSessions((prev) => [...prev, session]);
     });
 
-    // Listen for capture status updates
-    window.electron.onCaptureStatus((status) => {
+    const unsubCaptureStatus = window.electron.onCaptureStatus((status) => {
       setIsCapturing(status.isCapturing);
       setIsPaused(status.isPaused || false);
     });
 
-    // Listen for errors
-    window.electron.onError((errorMsg: string) => {
+    const unsubError = window.electron.onError((errorMsg: string) => {
       console.error("Capture error:", errorMsg);
     });
+
+    return () => {
+      // Cleanup IPC listeners to avoid duplicate callbacks (React StrictMode mounts twice in dev)
+      try {
+        unsubNewElement?.();
+      } catch (e) {
+        // Log but don't rethrow during cleanup
+        // eslint-disable-next-line no-console
+        console.warn("Failed to remove hl7-element-received listener:", e);
+      }
+
+      try {
+        unsubSessionComplete?.();
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.warn("Failed to remove session-complete listener:", e);
+      }
+
+      try {
+        unsubCaptureStatus?.();
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.warn("Failed to remove capture-status listener:", e);
+      }
+
+      try {
+        unsubError?.();
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.warn("Failed to remove capture-error listener:", e);
+      }
+    };
   }, []);
 
   const handlePauseCapture = async () => {

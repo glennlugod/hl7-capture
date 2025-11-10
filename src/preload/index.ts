@@ -31,16 +31,20 @@ const electronAPI = {
     ipcRenderer.invoke("validate-marker-config", config),
 
   // Event listeners
-  onNewElement: (callback: (element: HL7Element) => void): void => {
-    ipcRenderer.on("hl7-element-received", (_event, element) => {
+  onNewElement: (callback: (element: HL7Element) => void): (() => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, element: HL7Element) => {
       callback(element);
-    });
+    };
+    ipcRenderer.on("hl7-element-received", listener);
+    return () => ipcRenderer.removeListener("hl7-element-received", listener);
   },
 
-  onSessionComplete: (callback: (session: HL7Session) => void): void => {
-    ipcRenderer.on("session-complete", (_event, session) => {
+  onSessionComplete: (callback: (session: HL7Session) => void): (() => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, session: HL7Session) => {
       callback(session);
-    });
+    };
+    ipcRenderer.on("session-complete", listener);
+    return () => ipcRenderer.removeListener("session-complete", listener);
   },
 
   onCaptureStatus: (
@@ -50,16 +54,28 @@ const electronAPI = {
       sessionCount: number;
       elementCount: number;
     }) => void
-  ): void => {
-    ipcRenderer.on("capture-status", (_event, status) => {
+  ): (() => void) => {
+    const listener = (
+      _event: Electron.IpcRendererEvent,
+      status: {
+        isCapturing: boolean;
+        isPaused?: boolean;
+        sessionCount: number;
+        elementCount: number;
+      }
+    ) => {
       callback(status);
-    });
+    };
+    ipcRenderer.on("capture-status", listener);
+    return () => ipcRenderer.removeListener("capture-status", listener);
   },
 
-  onError: (callback: (error: string) => void): void => {
-    ipcRenderer.on("capture-error", (_event, error) => {
+  onError: (callback: (error: string) => void): (() => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, error: string) => {
       callback(error);
-    });
+    };
+    ipcRenderer.on("capture-error", listener);
+    return () => ipcRenderer.removeListener("capture-error", listener);
   },
 };
 
