@@ -38,6 +38,11 @@ const electronAPI = {
   validateMarkerConfig: (config: MarkerConfig): Promise<boolean> =>
     ipcRenderer.invoke("validate-marker-config", config),
 
+  // Window / Tray controls
+  minimizeToTray: (): Promise<void> => ipcRenderer.invoke("minimize-to-tray"),
+
+  restoreFromTray: (): Promise<void> => ipcRenderer.invoke("restore-from-tray"),
+
   // Event listeners
   onNewElement: (callback: (element: HL7Element) => void): (() => void) => {
     const listener = (_event: Electron.IpcRendererEvent, element: HL7Element) => {

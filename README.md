@@ -87,6 +87,12 @@ npm run lint          # Check for linting errors
 npm run format        # Format code with Prettier
 ```
 
+### Minimize to System Tray (Windows)
+
+When running on Windows, the application will minimize to the system tray instead of the taskbar. Minimize the app window to hide it to the tray. Double-click the tray icon or choose "Show" from the tray menu to restore the window. Choose "Quit" from the tray menu to exit the application.
+
+The renderer can also invoke tray actions using the preload API exposed as `window.electron.minimizeToTray()` and `window.electron.restoreFromTray()`.
+
 ### Usage
 
 ### 1. Select Network Interface

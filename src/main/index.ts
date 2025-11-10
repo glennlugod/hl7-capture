@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain } from "electron";
+import { app, BrowserWindow, ipcMain, Menu, nativeImage, Tray } from "electron";
 import path from "node:path";
 
 import { configStore } from "./config-store";
@@ -8,6 +8,7 @@ import type { NetworkInterface } from "../common/types";
 
 let mainWindow: BrowserWindow | null;
 let captureManager: HL7CaptureManager;
+let appTray: Tray | null = null;
 
 const isDev = process.env.NODE_ENV === "development" || process.env.VITE_DEV_SERVER_URL;
 
@@ -35,6 +36,27 @@ function createWindow(): void {
     mainWindow.webContents.openDevTools();
   }
 
+  // Minimize to tray behaviour on Windows
+  mainWindow.on("minimize", (event: Electron.Event) => {
+    // Only apply for non-macOS platforms (Windows/Linux)
+    if (process.platform === "darwin") return;
+    event.preventDefault();
+    mainWindow?.hide();
+    ensureTray();
+  });
+
+  // When the window is shown again, remove the tray (we don't need it visible)
+  mainWindow.on("show", () => {
+    if (appTray) {
+      try {
+        appTray.destroy();
+      } catch (e) {
+        console.warn("Error destroying tray:", e);
+      }
+      appTray = null;
+    }
+  });
+
   mainWindow.on("closed", () => {
     mainWindow = null;
   });
@@ -47,6 +69,60 @@ app.on("ready", () => {
   createWindow();
   initializeCaptureManager();
 });
+
+app.on("before-quit", () => {
+  if (appTray) {
+    try {
+      appTray.destroy();
+    } catch (e) {
+      console.warn("Error destroying tray during quit:", e);
+    }
+    appTray = null;
+  }
+});
+
+/**
+ * Create or update the application tray icon/menu
+ */
+function ensureTray(): void {
+  if (appTray) return;
+
+  // A tiny 16x16 PNG (blue dot) encoded in base64 to avoid adding binary assets.
+  // This keeps the repo text-only while providing an icon during development.
+  const base64Png =
+    "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAQAAAC1+jfqAAAAKUlEQVR4AWP4z8DAwMDDgYGBgYGBgYGBgYGBgYGAQYABBgAABa0A/Qgq+XQAAAAASUVORK5CYII=";
+
+  const image = nativeImage.createFromBuffer(Buffer.from(base64Png, "base64"));
+
+  appTray = new Tray(image);
+  const contextMenu = Menu.buildFromTemplate([
+    {
+      label: "Show",
+      click: () => {
+        if (mainWindow) {
+          mainWindow.show();
+          mainWindow.focus();
+        }
+      },
+    },
+    {
+      label: "Quit",
+      click: () => {
+        app.quit();
+      },
+    },
+  ]);
+
+  appTray.setToolTip("HL7 Capture");
+  appTray.setContextMenu(contextMenu);
+
+  appTray.on("double-click", () => {
+    if (mainWindow) {
+      mainWindow.show();
+      mainWindow.focus();
+    }
+  });
+}
 
 /**
  * App lifecycle: window-all-closed
@@ -173,4 +249,20 @@ ipcMain.handle("load-interface-selection", async () => {
 
 ipcMain.handle("validate-marker-config", async (_event, config) => {
   return captureManager.validateMarkerConfig(config);
+});
+
+// Window / Tray IPC
+ipcMain.handle("minimize-to-tray", async () => {
+  if (process.platform === "darwin") return;
+  if (mainWindow) {
+    mainWindow.hide();
+    ensureTray();
+  }
+});
+
+ipcMain.handle("restore-from-tray", async () => {
+  if (mainWindow) {
+    mainWindow.show();
+    mainWindow.focus();
+  }
 });
