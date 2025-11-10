@@ -98,9 +98,9 @@ export default function MainLayout({
           <PanelGroup direction="horizontal">
             {/* Session List Panel - Modern card style */}
             <Panel
-              defaultSize={400}
-              minSize={300}
-              maxSize={600}
+              defaultSize={40}
+              minSize={30}
+              maxSize={60}
               className="flex flex-col border-r border-slate-200/60 bg-white/80 backdrop-blur-sm shadow-sm"
             >
               <div className="flex h-14 items-center border-b border-slate-200/50 bg-gradient-to-r from-slate-50 to-blue-50/30 px-6 shadow-sm">
@@ -114,7 +114,7 @@ export default function MainLayout({
 
             {/* Message Detail Panel - Modern glass effect */}
             <Panel
-              defaultSize={70}
+              defaultSize={60}
               minSize={50}
               className="flex flex-col bg-white/80 backdrop-blur-sm"
             >
