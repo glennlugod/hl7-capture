@@ -16,7 +16,7 @@ import type {
   HL7Element,
   PcapPacket,
   NormalizedPacket,
-  // NormalizedPacket,
+  CaptureStatus,
 } from "../common/types";
 
 // Local lightweight types for external packet sources and packet shapes
@@ -44,6 +44,8 @@ export class HL7CaptureManager extends EventEmitter {
   private sessionBuffer: Buffer = Buffer.alloc(0);
   // Optional external packet source (e.g., DumpcapAdapter)
   private externalPacketSource: PacketSource | null = null;
+  // Count of raw packets processed (for status reporting)
+  private packetCount: number = 0;
 
   constructor() {
     super();
@@ -241,12 +243,14 @@ export class HL7CaptureManager extends EventEmitter {
       this.isCapturing = true;
       this.sessions.clear();
       this.sessionCounter = 0;
+      this.packetCount = 0;
 
       // Emit status update
       this.emit("status", {
         isCapturing: true,
         sessionCount: 0,
         elementCount: 0,
+        packetCount: this.packetCount,
         interface: this.currentInterface,
       });
 
@@ -320,6 +324,7 @@ export class HL7CaptureManager extends EventEmitter {
         isCapturing: true,
         sessionCount: this.sessions.size,
         elementCount: this.getTotalElementCount(),
+        packetCount: this.packetCount,
         interface: this.currentInterface,
       });
     });
@@ -331,6 +336,7 @@ export class HL7CaptureManager extends EventEmitter {
         isCapturing: false,
         sessionCount: this.sessions.size,
         elementCount: this.getTotalElementCount(),
+        packetCount: this.packetCount,
         interface: this.currentInterface,
       });
     });
@@ -421,6 +427,7 @@ export class HL7CaptureManager extends EventEmitter {
       isCapturing: false,
       sessionCount: this.sessions.size,
       elementCount: this.getTotalElementCount(),
+      packetCount: this.packetCount,
       interface: this.currentInterface,
     });
   }
@@ -440,6 +447,7 @@ export class HL7CaptureManager extends EventEmitter {
       isPaused: true,
       sessionCount: this.sessions.size,
       elementCount: this.getTotalElementCount(),
+      packetCount: this.packetCount,
       interface: this.currentInterface,
     });
   }
@@ -459,6 +467,7 @@ export class HL7CaptureManager extends EventEmitter {
       isPaused: false,
       sessionCount: this.sessions.size,
       elementCount: this.getTotalElementCount(),
+      packetCount: this.packetCount,
       interface: this.currentInterface,
     });
   }
@@ -473,18 +482,13 @@ export class HL7CaptureManager extends EventEmitter {
   /**
    * Get current capture status for UI initialization
    */
-  public getStatus(): {
-    isCapturing: boolean;
-    isPaused: boolean;
-    sessionCount: number;
-    elementCount: number;
-    interface: NetworkInterface;
-  } {
+  public getStatus(): CaptureStatus {
     return {
       isCapturing: this.isCapturing,
       isPaused: this.isPaused,
       sessionCount: this.sessions.size,
       elementCount: this.getTotalElementCount(),
+      packetCount: this.packetCount,
       interface: this.currentInterface,
     };
   }
@@ -495,11 +499,13 @@ export class HL7CaptureManager extends EventEmitter {
   public clearSessions(): void {
     this.sessions.clear();
     this.sessionCounter = 0;
+    this.packetCount = 0;
 
     this.emit("status", {
       isCapturing: this.isCapturing,
       sessionCount: 0,
       elementCount: 0,
+      packetCount: this.packetCount,
       interface: this.currentInterface,
     });
   }
@@ -554,6 +560,9 @@ export class HL7CaptureManager extends EventEmitter {
     console.log(data);
 
     if (!this.isCapturing) return;
+
+    // Count this packet for status reporting
+    this.packetCount++;
 
     // Check for HL7 markers
     if (data.length === 1) {
@@ -689,6 +698,7 @@ export class HL7CaptureManager extends EventEmitter {
       isCapturing: this.isCapturing,
       sessionCount: this.sessions.size,
       elementCount: this.getTotalElementCount(),
+      packetCount: this.packetCount,
       interface: this.currentInterface,
     });
 
