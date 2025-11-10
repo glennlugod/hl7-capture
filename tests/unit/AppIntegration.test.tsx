@@ -6,6 +6,11 @@ import { act, render, screen, waitFor } from "@testing-library/react";
 
 import App from "../../src/renderer/App";
 
+// Provide a global `api` declaration so files that reference `api` without
+// importing it (some versions of App.tsx) compile in the test environment.
+// Use `any` so tests can call mocked methods on the global without TS errors.
+declare const api: any;
+
 // Mock the electron API
 const mockElectronAPI = {
   getNetworkInterfaces: jest.fn().mockResolvedValue([]),
@@ -23,6 +28,10 @@ const mockElectronAPI = {
     lisIP: "",
     lisPort: undefined,
   }),
+  // App-level config and status (new APIs)
+  getCaptureStatus: jest.fn().mockResolvedValue({ isCapturing: false, isPaused: false }),
+  loadAppConfig: jest.fn().mockResolvedValue({ autoStartCapture: false }),
+  saveAppConfig: jest.fn().mockResolvedValue(undefined),
   saveInterfaceSelection: jest.fn().mockResolvedValue(undefined),
   loadInterfaceSelection: jest.fn().mockResolvedValue(null),
   startCapture: jest.fn(),
@@ -38,10 +47,13 @@ describe("App Integration - Layout and Components", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (globalThis as unknown as { electron: unknown }).electron = mockElectronAPI;
+    // Also provide a runtime global named `api` for any direct references
+    (globalThis as unknown as { api?: unknown }).api = mockElectronAPI;
   });
 
   afterEach(() => {
     delete (globalThis as unknown as { electron?: unknown }).electron;
+    delete (globalThis as unknown as { api?: unknown }).api;
   });
 
   describe("AC #5: Component Integration into Layout", () => {
