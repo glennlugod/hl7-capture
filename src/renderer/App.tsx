@@ -36,6 +36,8 @@ type ElectronAPI = {
 };
 
 export default function App(): JSX.Element {
+  const api = (globalThis as unknown as { electron: ElectronAPI }).electron;
+
   const [selectedInterface, setSelectedInterface] = useState<NetworkInterface | null>(null);
   const [interfaces, setInterfaces] = useState<NetworkInterface[]>([]);
   const [markerConfig, setMarkerConfig] = useState<MarkerConfig>({
@@ -59,7 +61,6 @@ export default function App(): JSX.Element {
   // Listen for HL7 events and capture status
   useEffect(() => {
     // Listen for new HL7 elements
-    const api = (globalThis as unknown as { electron: ElectronAPI }).electron;
     const unsubNewElement = api.onNewElement(() => {
       // Element received, will be part of session
     });
@@ -112,7 +113,6 @@ export default function App(): JSX.Element {
   useEffect(() => {
     (async () => {
       try {
-        const api = (globalThis as unknown as { electron: ElectronAPI }).electron;
         const status = await api.getCaptureStatus();
         setIsCapturing(status.isCapturing);
         setIsPaused(status.isPaused || false);
@@ -124,7 +124,6 @@ export default function App(): JSX.Element {
 
   const loadInterfaces = async (): Promise<NetworkInterface[]> => {
     try {
-      const api = (globalThis as unknown as { electron: ElectronAPI }).electron;
       const ifaces = await api.getNetworkInterfaces();
       setInterfaces(ifaces);
 
