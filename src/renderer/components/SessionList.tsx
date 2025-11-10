@@ -1,6 +1,6 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from "react";
 
-import { HL7Session } from '../../common/types'
+import { HL7Session } from "../../common/types";
 
 interface SessionListProps {
   sessions: HL7Session[];
@@ -103,7 +103,7 @@ export default function SessionList({
   onSelectSession,
   autoScroll,
   onAutoScrollChange,
-}: SessionListProps): JSX.Element {
+}: Readonly<SessionListProps>): JSX.Element {
   const listRef = useRef<HTMLDivElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const [focusedIndex, setFocusedIndex] = useState<number>(-1);

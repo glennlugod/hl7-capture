@@ -24,7 +24,10 @@
     ],
     "indent": [
       "error",
-      2
+      2,
+      {
+        "SwitchCase": 1 // This indents 'case' clauses by one level relative to the switch statement
+      }
     ],
     "no-console": [
       "warn",

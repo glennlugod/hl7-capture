@@ -1,6 +1,6 @@
-import React, { useCallback, useRef, useState } from 'react'
+import React, { useCallback, useRef, useState } from "react";
 
-import { HL7Session } from '../../common/types'
+import { HL7Session } from "../../common/types";
 
 interface MessageDetailViewerProps {
   session: HL7Session | null;
@@ -10,7 +10,7 @@ interface MessageDetailViewerProps {
 export default function MessageDetailViewer({
   session,
   onNavigateMessage,
-}: MessageDetailViewerProps): JSX.Element {
+}: Readonly<MessageDetailViewerProps>): JSX.Element {
   const [activeTab, setActiveTab] = useState<"hex" | "decoded">("hex");
   const [selectedElementIndex, setSelectedElementIndex] = useState<number>(0);
   const tabsRef = useRef<HTMLDivElement>(null);
@@ -80,26 +80,27 @@ export default function MessageDetailViewer({
   // Tab keyboard navigation
   const handleTabKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLButtonElement>, tabName: "hex" | "decoded") => {
+      console.log("Tab keydown:", e.key, tabName);
       switch (e.key) {
         case "ArrowLeft":
           e.preventDefault();
           setActiveTab("hex");
-          (tabsRef.current?.querySelector('[data-tab="hex"]') as HTMLElement)?.focus();
+          (tabsRef.current?.querySelector("[data-tab='hex']") as HTMLElement)?.focus();
           break;
         case "ArrowRight":
           e.preventDefault();
           setActiveTab("decoded");
-          (tabsRef.current?.querySelector('[data-tab="decoded"]') as HTMLElement)?.focus();
+          (tabsRef.current?.querySelector("[data-tab='decoded']") as HTMLElement)?.focus();
           break;
         case "Home":
           e.preventDefault();
           setActiveTab("hex");
-          (tabsRef.current?.querySelector('[data-tab="hex"]') as HTMLElement)?.focus();
+          (tabsRef.current?.querySelector("[data-tab='hex']") as HTMLElement)?.focus();
           break;
         case "End":
           e.preventDefault();
           setActiveTab("decoded");
-          (tabsRef.current?.querySelector('[data-tab="decoded"]') as HTMLElement)?.focus();
+          (tabsRef.current?.querySelector("[data-tab='decoded']") as HTMLElement)?.focus();
           break;
         default:
           return;
