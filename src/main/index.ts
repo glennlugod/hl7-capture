@@ -1,4 +1,5 @@
 import { app, BrowserWindow, ipcMain, Menu, nativeImage, Tray } from "electron";
+import fs from "node:fs";
 import path from "node:path";
 
 import { configStore } from "./config-store";
@@ -12,6 +13,11 @@ let appTray: Tray | null = null;
 
 const isDev = process.env.NODE_ENV === "development" || process.env.VITE_DEV_SERVER_URL;
 
+// Prefer the repo public icon during development, and the renderer bundle icon in production.
+const iconPath = isDev
+  ? path.join(process.cwd(), "public", "img", "icon.ico")
+  : path.join(__dirname, "../renderer/img/icon.ico");
+
 /**
  * Create the Electron browser window
  */
@@ -19,6 +25,7 @@ function createWindow(): void {
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
+    icon: fs.existsSync(iconPath) ? nativeImage.createFromPath(iconPath) : undefined,
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
@@ -87,14 +94,17 @@ app.on("before-quit", () => {
 function ensureTray(): void {
   if (appTray) return;
 
-  // A tiny 16x16 PNG (blue dot) encoded in base64 to avoid adding binary assets.
-  // This keeps the repo text-only while providing an icon during development.
-  const base64Png =
-    "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAQAAAC1+jfqAAAAKUlEQVR4AWP4z8DAwMDDgYGBgYGBgYGBgYGBgYGAQYABBgAABa0A/Qgq+XQAAAAASUVORK5CYII=";
+  let trayImage: Electron.NativeImage | undefined;
+  if (fs.existsSync(iconPath)) {
+    trayImage = nativeImage.createFromPath(iconPath);
+  } else {
+    // Fallback embedded 16x16 PNG
+    const base64Png =
+      "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAQAAAC1+jfqAAAAKUlEQVR4AWP4z8DAwMDDgYGBgYGBgYGBgYGBgYGAQYABBgAABa0A/Qgq+XQAAAAASUVORK5CYII=";
+    trayImage = nativeImage.createFromBuffer(Buffer.from(base64Png, "base64"));
+  }
 
-  const image = nativeImage.createFromBuffer(Buffer.from(base64Png, "base64"));
-
-  appTray = new Tray(image);
+  appTray = new Tray(trayImage);
   const contextMenu = Menu.buildFromTemplate([
     {
       label: "Show",
