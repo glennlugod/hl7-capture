@@ -1,6 +1,6 @@
 # Story: Session Persistence
 
-Status: drafted
+Status: ready-for-dev
 
 ## Story
 
@@ -167,3 +167,17 @@ Expected new files:
 - [Source: tech-spec.md#Implementation-Details] - HL7Session data structure and fields
 - [Source: tech-spec.md#Development-Setup] - Project setup and prerequisites
 - [Source: docs/sprint-status.yaml] - Story tracking and project level (Level 0, greenfield)
+
+## Dev Agent Record
+
+### Context Reference
+
+- `docs/stories/story-session-persistence.context.xml` - Complete technical context including acceptance criteria, artifacts, dependencies, constraints, and test ideas
+
+### Status
+
+**Ready for Development**
+
+- Story drafted: 2025-11-11
+- Context assembled: 2025-11-11
+- Next: Implement per Phase 1-6 breakdown (estimated 8 hours total)
