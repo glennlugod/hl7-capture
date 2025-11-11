@@ -22,7 +22,7 @@
 # SM reviews completed work before marking as 'done'
 # Tech-Spec Update: Presets story removed (single persistent configuration model)
 
-generated: 2025-11-08
+generated: 2025-11-11
 project: hl7-capture
 project_key: hl7-capture
 tracking_system: file-system
@@ -75,3 +75,16 @@ development_status:
     start_date: 2025-11-08
     completion_date: 2025-11-08
     points: 3
+
+  # Additional stories discovered in docs/stories (preserve existing statuses if present)
+  story-dumpcap-integration: done
+  story-configuration-panel: done
+  story-hl7-device-capture: done
+  story-interface-selector: done
+  story-marker-config-form: done
+
+  # Session Persistence & Submission Features (NEW)
+  story-session-persistence: backlog
+  story-session-cleanup-worker: backlog
+  story-session-submission-worker: backlog
+  story-session-submission-tracking: backlog
