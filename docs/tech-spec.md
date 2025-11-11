@@ -33,29 +33,74 @@
 
 ---
 
+<!-- Auto-generated tech-spec (updated) -->
+
+# hl7-capture - Technical Specification
+
+**Author:** Glenn
+**Date:** 2025-11-11
+**Project Level:** 0
+**Change Type:** Replace unreliable native capture library with external capture tool (dumpcap)
+**Development Context:** Greenfield (level 0) — integrate `dumpcap` as the external packet capture backend; keep existing HL7 parsing/session logic.
+
+---
+
+## Context
+
+### Available Documents
+
+- `docs/bmm-workflow-status.yaml` — project workflow status and metadata (project_level: 0, field_type: greenfield)
+- `docs/` folder contains planning and UX docs (stories, design notes, integration docs). No dedicated product brief or research docs were found for this atomic change.
+
+Summary: Project is greenfield-level-0; tech-spec is tracked in `docs/tech-spec.md` (this file). Existing documentation provides UI stories and integration notes useful for implementation.
+
+### Project Stack (discovered)
+
+- Electron + React renderer (TypeScript)
+- Node.js main process (TypeScript)
+- Vite for renderer dev server
+- Jest for tests
+
+Notes: Package manifest and tooling are standard for an Electron + React TypeScript project. (If you want, I can list exact dependency versions from `package.json`.)
+
+### Existing Codebase Structure
+
+- Greenfield project scaffold present in repo with `src/main`, `src/preload`, `src/renderer`, and supporting scripts in `scripts/`.
+- Key areas:
+  - `src/main/hl7-capture.ts` — HL7 capture manager (refactor target)
+  - `src/main/dumpcap-adapter.ts` — new adapter (to be added)
+  - `scripts/mllp-sim.js` — HL7 simulator for integration testing
+
+Existing structure summary: Greenfield project with Electron/React layout; no heavy brownfield constraints.
+
+---
+
 ## The Change
 
 ### Problem Statement
 
-The `cap` npm library integration is unreliable for capturing network traffic across platforms (especially Windows). This causes missed or malformed packets and makes HL7 session reconstruction fragile.
+The native `cap` capture integration has proven unreliable on some platforms (notably Windows). This causes missed or malformed packets and degrades HL7 session reconstruction. We will adopt `dumpcap` (Wireshark) as an external, robust capture backend to provide stable packet delivery.
 
 ### Proposed Solution
 
-Replace direct use of the `cap` library for live capture with `dumpcap` (the Wireshark capture engine), invoked as an external process. Capture will be written to stdout (pcapng or pcap) or to a rotating capture file and then streamed into the app. The application will parse forwarded packet payloads to detect HL7 markers and maintain sessions as before.
+Invoke `dumpcap` as an external process (spawn) to capture TCP traffic. Stream pcap/pcapng frames from `dumpcap` (stdout) or read rotating pcap files, parse packets to extract IPv4/TCP payloads, and forward payload buffers to the existing `HL7CaptureManager` via an EventEmitter API.
 
 ### Scope
 
 In scope:
 
-- Add a `dumpcap` invocation utility in the main process to call dumpcap with safe arguments
-- Accept pcap/pcapng stream or temporary file output and parse TCP payloads for HL7 messages
-- Keep existing HL7 parsing/session logic in `src/main/hl7-capture.ts` and adapt it to accept packet frames from an external source
-- Provide documentation for installing Wireshark/dumpcap and required privileges on Windows
+- Implement `src/main/dumpcap-adapter.ts` to locate and spawn `dumpcap`, stream parse pcap frames, and emit packet events.
+- Refactor `src/main/hl7-capture.ts` to accept an external packet source (attach/detach API) without changing HL7 parsing logic.
+- Add unit and integration tests for adapter and capture manager integration.
+- Document dumpcap/Npcap installation and developer run scripts.
+- Persist captured HL7 sessions for a configurable number of days and allow retention to be set in the app UI.
+- Run a background cleanup worker that periodically removes sessions older than the configured retention window.
+- Run a background submission worker that POSTs captured sessions to a configurable REST API endpoint (separate thread/process) and tracks submission state (pending/submitted/failed).
 
 Out of scope:
 
-- Replacing the existing HL7 parsing logic (only adapt input source to be dumpcap)
-- Building a cross-platform installer for dumpcap or Wireshark
+- Rewriting HL7 parsing/session algorithms.
+- Building or packaging `dumpcap` with the application; user must install Wireshark/dumpcap (documented prerequisites).
 
 ---
 
@@ -63,31 +108,34 @@ Out of scope:
 
 ### Source Tree Changes
 
-- `src/main/hl7-capture.ts` — refactor to separate packet source layer from parsing/session logic
-- `src/main/dumpcap-adapter.ts` — new module to spawn dumpcap and stream packets into the main capture manager
-- `scripts/` — update or add helper scripts to run dumpcap in development (example command)
-- `docs/` — update `tech-spec.md` (this file) and add usage docs for dumpcap
+- Add `src/main/dumpcap-adapter.ts` — adapter to spawn and stream parse dumpcap output.
+- Refactor `src/main/hl7-capture.ts` to provide `attachPacketSource(source: EventEmitter)` and `detachPacketSource()`.
+- Update `tests/` with unit fixtures (pcap files) and an integration test that validates end-to-end HL7 reconstruction using `scripts/mllp-sim.js` and a pcap fixture.
 
 ### Technical Approach
 
-1. Create an adapter module `dumpcap-adapter.ts` that:
-   - Detects `dumpcap` in PATH or common installation locations
-   - Spawns dumpcap with arguments to capture TCP traffic and write raw packets to stdout in pcapng/pcap format or to a temporary file
-   - Parses the pcap stream (using a lightweight pcap parser such as `pcap-parser` or `pcapjs`) or invokes a minimal parsing layer to extract IPv4/TCP payloads
-   - Emits packet buffers with sourceIP, destIP, and payload to the `HL7CaptureManager` via an event or direct method
+1. `dumpcap-adapter.ts` responsibilities:
 
-2. Refactor `HL7CaptureManager` to accept an optional external packet source (EventEmitter) and add an API:
-   - `attachPacketSource(source: EventEmitter)` — listen for `packet` events {sourceIP, destIP, data}
-   - `detachPacketSource()` — stop listening
+- Detect `dumpcap` binary on PATH or common Wireshark install locations (Windows Program Files, etc.).
+- Spawn `dumpcap` using Node's `child_process.spawn()` with an explicit argv array (no shell) to avoid injection.
+- Support `-w -` (stdout pcap) or temporary file output with rotation.
+- Connect stdout to a streaming pcap parser (e.g., `pcap-parser` or `pcapjs`) to decode frames and extract IPv4/TCP payloads.
+- Emit `{ sourceIP, destIP, payload }` on `packet` events.
 
-3. Do not rely on the native `cap` module at runtime. The recommended approach is to use `dumpcap` as the single supported capture backend. If `dumpcap` is not available on a host, use recorded pcap files for analysis or install `dumpcap`/Npcap where possible. Historical references to `cap` in this repository are deprecated.
+2. `HL7CaptureManager` updates:
 
-4. Secure spawn and argument handling to avoid shell injection; use direct argument arrays and validate interface names.
+- Add `attachPacketSource(source: EventEmitter)` to listen for `packet` events and feed frames into existing parsing/state machine.
+- Keep existing session lifecycle and marker handling intact.
+
+3. Security and robustness:
+
+- Validate interface arguments and run dumpcap with minimized privileges where possible.
+- Provide clear error handling and recovery for adapter failures (restart policies logged to help troubleshoot capture issues).
 
 ### Integration Points
 
-- New module `dumpcap-adapter.ts` integrates with `HL7CaptureManager` in `hl7-capture.ts` via events
-- UI: Add a small configuration option to select capture method (Dumpcap / cap) in the renderer capture panel (future small UI change)
+- Adapter emits `packet` events consumed by `HL7CaptureManager`.
+- Minor UI toggle (future) to select capture backend (Dumpcap / Cap); default to Dumpcap if available.
 
 ---
 
@@ -95,76 +143,94 @@ Out of scope:
 
 ### Relevant Existing Code
 
-- `src/main/hl7-capture.ts` — existing capture manager and HL7 session handling
-- `scripts/mllp-sim.js` — simulator for HL7 messages (useful for local testing)
+- `src/main/hl7-capture.ts` — capture manager and session handling
+- `scripts/mllp-sim.js` — HL7 MLLP simulator (useful for integration tests)
 
 ### Dependencies
 
-**Framework/Libraries:**
+Framework/Libraries:
 
-- Node.js runtime (Electron's main process)
-- Optional: `pcap-parser` or `pcapjs` (choose minimal, well-maintained library) to parse pcap streams
+- Node.js runtime (Electron main process)
+- Add dependency: `pcap-parser` (or similar) for streaming pcap parsing in Node.js
 
-**External:**
+External:
 
-- `dumpcap` (part of Wireshark distribution) available on PATH after installation
+- `dumpcap` (Wireshark) — user-installed runtime dependency
 
 ### Configuration Changes
 
-- Document required permissions on Windows (Npcap WinPcap component or run dumpcap with elevated privileges). See `scripts/setup-npcap.js` for setup references.
+- Document Windows Npcap setup and `dumpcap` installation steps in `README.md` and `docs/`.
 
-### Existing Conventions (Brownfield)
+### Existing Conventions (Greenfield)
 
-- N/A — project is greenfield-level-0 but follows Electron/Node project conventions
+- Follow project TypeScript, linting, and test conventions in the repo; create test files adjacent to source for easy discovery.
 
 ### Test Framework & Standards
 
-- Jest is used for unit/integration tests; add tests for adapter module and HL7CaptureManager integration
+- Use Jest for unit and integration tests; mock pcap streams for unit tests and use real pcap fixtures for integration tests when possible.
 
 ---
 
 ## Implementation Stack
 
-- Node.js spawn API for invoking dumpcap
-- pcap parsing library (`pcap-parser` or `pcapjs`) to decode packet headers and extract TCP payloads
-- EventEmitter-based integration between adapter and `HL7CaptureManager`
+- Node's `child_process.spawn` for safe process invocation.
+- `pcap-parser` (or well-maintained alternative) to decode pcap/pcapng streams.
+- EventEmitter-based integration to keep adapter and capture manager loosely coupled.
 
 ---
 
+## Session Persistence & Submission
+
+This project will persist captured HL7 sessions to local storage for a configurable retention period (days). Two background workers will operate independently of the main capture loop:
+
+- Cleanup Worker: runs periodically (configurable interval) and removes sessions whose timestamp is older than the retained-days configuration. Uses `persistedUntil` timestamp on sessions to determine expiry.
+- Submission Worker: runs periodically (or event-driven) and POSTs session payloads to a configured REST API endpoint. Submission operates on a separate thread/worker to avoid blocking capture. Each session will track `submissionStatus` (`pending` | `submitted` | `failed`), `submissionAttempts`, and `submittedAt` for auditing and retry logic.
+
+Configuration:
+
+- Retention days (integer) — configurable from UI.
+- Submission endpoint URL and optional auth header/token — configurable from UI/settings or environment.
+- Submission concurrency and retry policy — number of retries and backoff strategy.
+
+Security/Privacy:
+
+- Submission worker must respect privacy settings and only send data when allowed. If sensitive data must be redacted, the tech-spec will define redaction rules.
+
+Storage:
+
+- Sessions may be persisted as individual JSON files under a `sessions/` folder inside the configured `output_folder`, or in a lightweight embedded store (e.g., LevelDB/SQLite). The design will choose file-backed JSON for simplicity unless scale requires DB.
+
 ## Technical Details
 
-1. Example dumpcap invocation (Windows PowerShell safe args):
+1. Recommended dumpcap invocation (PowerShell-safe args):
 
 ```powershell
 # Capture TCP packets on interface index 1 and write to stdout in pcapng
 dumpcap -i 1 -f "tcp" -w -
 ```
 
-Or write to rotating files:
+Or use rotating files:
 
 ```powershell
 dumpcap -i 1 -f "tcp" -b filesize:10240 -w capture.pcapng
 ```
 
-Note: Using `-w -` writes binary pcap to stdout which the adapter can parse directly.
-
 2. Parsing approach:
 
-- Use a stream pcap parser to read pcapng/pcap frames from stdout
-- For each packet, decode IPv4 and TCP headers to obtain source/destination IPs and TCP payload
-- Forward payload Buffer to capture manager
+- Feed stdout to a streaming pcap parser; for each frame, decode IPv4 and TCP headers to obtain source/destination IPs and TCP payload Buffer.
+- Forward payload Buffer to `HL7CaptureManager` which will reconstruct HL7 messages based on markers.
 
-3. Handling privileges on Windows:
+3. Windows privileges:
 
-- `dumpcap` requires elevated privileges to capture on interfaces unless Npcap is installed with the option to allow non-admin capture. Document these steps and link to `scripts/setup-npcap.js` for automations.
+- Document Npcap installation and the option to allow non-admin capture where appropriate. Provide guidance and a helper script `scripts/setup-npcap.js`.
 
 ---
 
 ## Development Setup
 
-1. Install Wireshark (or dumpcap) and ensure `dumpcap` is on PATH
-2. Ensure Npcap is installed on Windows with option "Support raw 802.11 traffic" if needed
-3. Start app and select Dumpcap capture method (or default to dumpcap if available)
+1. Install Wireshark (or `dumpcap`) and ensure `dumpcap` is on PATH.
+2. Optionally install Npcap on Windows with non-admin capture if desired.
+3. Run the app and select Dumpcap backend (or default to Dumpcap if detected).
 
 ---
 
@@ -172,29 +238,27 @@ Note: Using `-w -` writes binary pcap to stdout which the adapter can parse dire
 
 ### Setup Steps
 
-1. Add new file `src/main/dumpcap-adapter.ts`
-2. Implement stream parsing of dumpcap stdout and emit `packet` events
-3. Refactor `src/main/hl7-capture.ts` to accept external packet source events
-4. Add unit tests (Jest) for adapter and integration test that uses `scripts/mllp-sim.js` to send HL7 messages to an interface
+1. Add `src/main/dumpcap-adapter.ts`.
+2. Implement stream parsing of dumpcap stdout and emit `packet` events.
+3. Refactor `src/main/hl7-capture.ts` to accept external packet source events.
+4. Add unit and integration tests to `tests/`.
 
 ### Implementation Steps
 
-1. Implement `dumpcap-adapter.ts` with safe spawn and detection logic
-2. Implement packet parsing using `pcap-parser` and decode IPv4/TCP frames
-3. Expose startup/shutdown APIs for adapter
-4. Wire adapter into `HL7CaptureManager.startCapture()` when method is `dumpcap`
+1. Implement `dumpcap-adapter.ts` with safe spawn and detection logic.
+2. Implement packet parsing using `pcap-parser` and decode IPv4/TCP frames.
+3. Expose startup/shutdown APIs for adapter.
+4. Wire adapter into `HL7CaptureManager.startCapture()` when method is `dumpcap`.
 
 ### Testing Strategy
 
-- Unit test adapter parsing using recorded pcap test fixtures
-- Integration test: Run `dumpcap` in a test environment (or read pcap file) and validate `HL7CaptureManager` receives messages
-- Use existing `scripts/mllp-sim.js` to simulate device messages
+- Unit test adapter parsing using recorded pcap test fixtures.
+- Integration test: Validate that `HL7CaptureManager` reconstructs HL7 messages when adapter feeds packets (use `scripts/mllp-sim.js` or pcap fixtures).
 
 ### Acceptance Criteria
 
-- Dumpcap can be invoked from the application and stream packets into `HL7CaptureManager`
-- Existing HL7 messages captured by `scripts/mllp-sim.js` are reconstructed accurately and session `start`, `message`, `ack`, and `end` elements are emitted
-- Fallback to `cap` is available and documented
+- Adapter can be invoked and stream packets into `HL7CaptureManager`.
+- HL7 messages from simulator are reconstructed with correct session start/ack/message/end events.
 
 ---
 
@@ -203,7 +267,7 @@ Note: Using `-w -` writes binary pcap to stdout which the adapter can parse dire
 ### File Paths Reference
 
 - `src/main/hl7-capture.ts` — HL7 capture manager (refactor target)
-- `src/main/dumpcap-adapter.ts` — new adapter
+- `src/main/dumpcap-adapter.ts` — adapter (new)
 - `scripts/setup-npcap.js` — Windows Npcap setup
 - `scripts/mllp-sim.js` — HL7 message simulator
 
@@ -220,22 +284,11 @@ Note: Using `-w -` writes binary pcap to stdout which the adapter can parse dire
 - `README.md` — add dumpcap setup and run instructions
 - `docs/tech-spec.md` — (this file)
 
-### Dumpcap / Npcap Developer Notes
-
-- For Windows development, install Npcap (https://npcap.com/) and ensure `dumpcap.exe` is available on PATH or note the installation folder.
-- Use the provided helper script to run dumpcap safely from PowerShell during development:
-
-```powershell
-.\scripts\run-dumpcap-dev.ps1 -Interface 1 -Filter "tcp"
-```
-
-- The helper locates `dumpcap.exe` on PATH or common Wireshark install locations and streams binary pcap data to stdout for local adapters to consume.
-
 ---
 
 ## UX/UI Considerations
 
-- Add configuration switch to the capture UI to choose capture backend (Dumpcap / Cap)
+- Add a small configuration toggle to the capture UI
 
 ---
 
@@ -243,179 +296,17 @@ Note: Using `-w -` writes binary pcap to stdout which the adapter can parse dire
 
 ### Deployment Steps
 
-1. Document prerequisites (Wireshark/dumpcap installation) in README
-2. Ship app update that uses dumpcap adapter by default when dumpcap is available
-
-### Rollback Plan
-
-- If dumpcap integration causes issues, provide a runtime toggle to revert to `cap` capture
+1. Document prerequisites (Wireshark/dumpcap installation) in README.
+2. Ship app update that uses dumpcap adapter by default when dumpcap is available on host.
 
 ### Monitoring
 
-- Add logging for adapter startup/shutdown and packet errors. Track dropped packets or parse failures
+- Add logging for adapter startup/shutdown and packet parse errors. Track dropped packets or parse failures.
 
 ---
 
-End of spec
+End of updated tech-spec
 
-# Technical Specification: HL7-Capture - Network Traffic Capture Desktop Application
-
-**Project:** hl7-capture  
-**Level:** 0 (Atomic Change)  
-**Type:** Greenfield  
-**Date Generated:** 2025-11-04  
-**Author:** Glenn
-
----
-
-## 1. Context & Project Setup
-
-### 1.1 Project Overview
-
-hl7-capture is a new greenfield project starting from scratch. This technical specification defines the first atomic change: building an Electron-based desktop application that captures network traffic on a specified interface and displays captured packets with basic visualization.
-
-### 1.2 Available Documentation
-
-- **Product Brief:** None yet (optional for Level 0)
-- **Research Documents:** None yet (optional for Level 0)
-- **Brownfield Analysis:** N/A - Greenfield project
-- **Existing Codebase:** None - Starting fresh
-
-### 1.3 Technology Stack
-
-This specification establishes the foundational tech stack for hl7-capture:
-
-**Runtime & Platform:**
-
-- **Node.js:** 20.10.0 LTS (recommended for Electron + network operations)
-- **OS Compatibility:** Windows, macOS, Linux (Electron cross-platform support)
-- **Architecture:** 64-bit (standard Electron requirement)
-
-**Core Frameworks & Libraries:**
-
-- **Electron:** 27.0.0 - Desktop application framework
-- **Electron Forge:** 6.2.1 - Build, package, and publish Electron apps
-- **TypeScript:** 5.3.3 - Type-safe development
-- **React:** 18.2.0 - UI framework (recommended for Electron apps)
-- **Vite:** 5.0.0 - Fast build tool and dev server for React
-
-**Network Capture:**
-
-- **pcap.js:** 1.0.1+ OR **node-pcap:** 1.1.0+ - Raw packet capture (Linux/macOS)
-- **WinPcap** / **npcap:** 1.x (Windows driver, installed separately by user)
-- **libpcap (Linux):** Version 1.10.0+ (system library)
-
-**UI & Visualization:**
-
-- **electron-react-devtools:** 1.1.1 - Development tools
-- **date-fns:** 3.0.0+ - Date/time formatting for packet timestamps
-- **recharts:** 2.10.0+ OR **visx:** 3.10.0+ - Optional charting (for traffic graphs)
-
-**Development & Testing:**
-
-- **Jest:** 29.7.0 - Unit testing
-- **@testing-library/react:** 14.1.0 - React component testing
-- **ESLint:** 8.53.0 - Code linting
-- **Prettier:** 3.1.0 - Code formatting
-
-**Build & Deployment:**
-
-- **npm:** 10.2.0+ (comes with Node.js 20.10)
-
-### 1.4 Established Conventions (Greenfield)
-
-Since this is a greenfield project, we establish these conventions for consistency:
-
-**Code Style:**
-
-- Language: TypeScript (strict mode enabled)
-- Indentation: 2 spaces
-- Quotes: Double quotes
-- Semicolons: Enabled
-- Line length: 100 characters (soft limit, 120 hard limit)
-- Import organization: External → Internal → Relative
-- Arrow functions preferred over `function` keyword
-
-**File Organization:**
-
-```
-hl7-capture/
-├── src/
-│   ├── main/                 # Electron main process
-│   │   └── index.ts
-│   ├── preload/              # Preload scripts (IPC bridge)
-│   │   └── index.ts
-│   ├── renderer/             # React frontend
-│   │   ├── App.tsx
-│   │   ├── components/       # Reusable React components
-│   │   ├── pages/            # Page-level components
-│   │   ├── services/         # API/service layer
-│   │   ├── utils/            # Utilities and helpers
-│   │   ├── types/            # TypeScript type definitions
-│   │   └── index.tsx         # React entry point
-│   ├── common/               # Shared code (main + renderer)
-│   │   ├── types.ts          # Shared TypeScript types
-│   │   └── constants.ts      # Shared constants
-│   └── native/               # Native bindings (if needed)
-├── tests/
-│   ├── unit/                 # Unit tests
-│   ├── integration/          # Integration tests
-│   └── __mocks__/            # Test mocks
-├── public/                   # Static assets
-├── forge.config.ts           # Electron Forge config
-├── vite.config.ts            # Vite config
-├── tsconfig.json             # TypeScript config
-├── package.json
-├── README.md
-└── docs/
-    └── DEVELOPMENT.md        # Setup and contribution guide
-```
-
-**Test Patterns:**
-
-- Test files: `*.test.ts` or `*.spec.ts` placed alongside source
-- Test organization: Tests mirror src structure
-- Mocking: Jest mock functions and manual mocks in `__mocks__` folder
-- Assertion style: expect() - BDD style
-- Coverage target: 80%+ for business logic
-
-**Error Handling:**
-
-- Use Error subclasses for specific errors
-- Log errors with context
-- User-facing errors: Clear, non-technical messages
-- System errors: Full stack traces in development, sanitized in production
-
-**Logging:**
-
-- Use `console.log()` for development (development: debug level, production: info level)
-- Consider winston or pino if multiple log levels needed
-- Log structure: timestamp, level, message, context
-
----
-
-## 2. The Change: Network Traffic Capture Feature
-
-### 2.1 Problem Statement
-
-Medical device engineers and LIS (Laboratory Information System) integrators need to capture and analyze HL7 communication between medical devices and LIS systems. Currently, they use generic packet capture tools (Wireshark, tcpdump) that are not optimized for HL7 protocol specifics. A specialized desktop application that captures, parses, and displays HL7 medical device communication would significantly improve troubleshooting and integration workflows.
-
-### 2.2 Solution Overview
-
-Build **hl7-capture**: A specialized Electron desktop application for capturing and analyzing HL7 medical device communication:
-
-1. Allow user to configure capture parameters:
-   - Source IP (medical device)
-   - Destination IP (LIS/PC)
-   - Protocol markers (start, acknowledge, end)
-2. Capture only TCP traffic between configured IPs
-3. Parse HL7 communication protocol:
-   - Detect device start transmission (0x05)
-   - Track HL7 messages (0x02...CR LF)
-   - Identify PC acknowledgments (0x06)
-   - Recognize end transmission (0x04)
-4. Display captured HL7 sessions in organized view
-5. Show individual HL7 messages with metadata
 6. Support protocol marker customization for variants
 
 ### 2.3 Scope: IN
@@ -467,24 +358,24 @@ Build **hl7-capture**: A specialized Electron desktop application for capturing 
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    Electron Main Process                     │
-│  (Node.js runtime - runs on system, full OS access)          │
-│                                                               │
-│  • Manage app lifecycle                                       │
-│  • Initialize window                                          │
-│  • Handle IPC from renderer                                   │
-│  • Manage packet capture (pcap library)                       │
-│  • Keep captured packets in memory                            │
+│                    Electron Main Process                    │
+│  (Node.js runtime - runs on system, full OS access)         │
+│                                                             │
+│  • Manage app lifecycle                                     │
+│  • Initialize window                                        │
+│  • Handle IPC from renderer                                 │
+│  • Manage packet capture (pcap library)                     │
+│  • Keep captured packets in memory                          │
 └─────────────────────────────────────────────────────────────┘
                               ↕ (IPC Bridge)
 ┌─────────────────────────────────────────────────────────────┐
-│              Electron Renderer Process (React)               │
-│  (Chromium - sandboxed, safe, UI layer)                       │
-│                                                               │
-│  • React UI components                                        │
-│  • User interactions (select interface, start/stop)           │
-│  • Display captured packets                                   │
-│  • Communicate with main process via IPC                      │
+│              Electron Renderer Process (React)              │
+│  (Chromium - sandboxed, safe, UI layer)                     │
+│                                                             │
+│  • React UI components                                      │
+│  • User interactions (select interface, start/stop)         │
+│  • Display captured packets                                 │
+│  • Communicate with main process via IPC                    │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -575,11 +466,19 @@ interface HL7Element {
 
 interface HL7Session {
   id: string;
+  sessionId: number; // Numeric session counter
   startTime: number;
+  endTime?: number; // Timestamp when session completed
   deviceIP: string;
-  pcIP: number;
+  lisIP: string;
   elements: HL7Element[];
+  messages: string[]; // Decoded HL7 messages only
   isComplete: boolean; // true when 0x04 received
+  // Persistence & submission metadata
+  persistedUntil?: number; // unix ms timestamp; used by cleanup worker
+  submissionStatus?: "pending" | "submitted" | "failed";
+  submittedAt?: number; // unix ms timestamp of successful submission
+  submissionAttempts?: number; // number of POST attempts
 }
 ```
 
