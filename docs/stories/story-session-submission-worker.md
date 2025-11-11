@@ -1,6 +1,6 @@
 # Story: Session Submission Worker (REST)
 
-Status: drafted
+Status: ready-for-dev
 
 ## Story
 
@@ -159,3 +159,15 @@ so that captured sessions can be centrally collected for auditing or automated p
 - `docs/stories/story-session-cleanup-worker.md` — Cleanup worker (complementary)
 - `src/common/types.ts` → `HL7Session` interface
 - `src/main/hl7-capture.ts` → `HL7CaptureManager` class
+
+---
+
+## Dev Agent Record
+
+### Status
+
+**Marked:** ready-for-dev  
+**Generated:** 2025-11-12  
+**Context Reference:** `docs/stories/story-session-submission-worker.context.xml`
+
+This story has been fully drafted with all 6 acceptance criteria, 7 implementation phases (~9 hours total), and comprehensive dev notes. Developer pickup ready with complete technical context XML including HTTP client design, concurrency patterns, IPC integration, and testing strategy.

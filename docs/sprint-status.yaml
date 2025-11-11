@@ -86,5 +86,5 @@ development_status:
   # Session Persistence & Submission Features (NEW)
   story-session-persistence: ready-for-dev
   story-session-cleanup-worker: ready-for-dev
-  story-session-submission-worker: drafted
+  story-session-submission-worker: ready-for-dev
   story-session-submission-tracking: backlog

@@ -1,0 +1,155 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<context>
+  <metadata>
+    <story_key>story-session-submission-worker</story_key>
+    <story_title>Session Submission Worker (REST)</story_title>
+    <generated>2025-11-12</generated>
+    <status>ready-for-dev</status>
+    <project>hl7-capture</project>
+    <project_level>0</project_level>
+  </metadata>
+  <story>
+    <as_a>systems integrator</as_a>
+    <i_want>the application to POST persisted HL7 sessions to a configurable REST API endpoint using a background worker</i_want>
+    <so_that>captured sessions can be centrally collected for auditing or automated processing</so_that>
+  </story>
+  <acceptance_criteria>
+    <criterion id="1">
+      <title>Submission Queue Management</title>
+      <requirement>Background worker discovers sessions with submissionStatus: pending from sessions directory; queues them for submission in FIFO order</requirement>
+      <test_approach>Create multiple sessions with pending status, verify queue order; simulate in-progress submission, verify pending sessions still available next cycle</test_approach>
+    </criterion>
+    <criterion id="2">
+      <title>Configurable Endpoint and Authentication</title>
+      <requirement>Settings expose submissionEndpoint (URL string) and optional submissionAuthHeader (Bearer token or basic auth); worker reads config on startup and on config changes</requirement>
+      <test_approach>Verify settings render in UI; change endpoint URL and verify next submission uses new URL; test with/without auth header</test_approach>
+    </criterion>
+    <criterion id="3">
+      <title>Concurrency and Retry Policy</title>
+      <requirement>Worker supports configurable concurrency level (default: 2, range 1-10) with exponential backoff retry (default: 3 attempts, 1/2/4 second delays)</requirement>
+      <test_approach>Mock HTTP responses (200, 500), verify backoff delays; verify max 2 concurrent requests; verify 3 total attempts with exponential spacing</test_approach>
+    </criterion>
+    <criterion id="4">
+      <title>Non-Blocking Submission</title>
+      <requirement>Submission worker runs on timer (default: every 5 minutes) and off main capture loop; failures do not block capture, persistence, or cleanup</requirement>
+      <test_approach>Measure main loop latency during large submission; verify capture continues unaffected; verify capture loop timing independent of submission latency</test_approach>
+    </criterion>
+    <criterion id="5">
+      <title>Idempotency and Audit Trail</title>
+      <requirement>Each session POST includes sessionId for server-side deduplication; on success: submissionStatus=submitted, submittedAt=now; on permanent failure: submissionStatus=failed, submissionAttempts incremented</requirement>
+      <test_approach>POST same session twice, verify server deduplicates by sessionId; verify state fields updated correctly; verify state persists across app restart</test_approach>
+    </criterion>
+    <criterion id="6">
+      <title>Observability and IPC Events</title>
+      <requirement>Expose IPC events onSubmissionProgress (in-flight count, queue size) and onSubmissionResult (success/failure with sessionId, attempt count, error message)</requirement>
+      <test_approach>Listen to IPC events; verify progress events during submission; verify result events contain all required fields; verify event timing</test_approach>
+    </criterion>
+  </acceptance_criteria>
+  <artifacts>
+    <docs>
+      <doc>
+        <path>docs/tech-spec.md</path>
+        <title>Technical Specification - Session Persistence &amp; Submission</title>
+        <section>Session Persistence &amp; Submission, Submission Worker Design</section>
+      </doc>
+      <doc>
+        <path>docs/stories/story-session-persistence.md</path>
+        <title>Session Persistence Story (Prerequisite)</title>
+        <section>Session Storage and State Management</section>
+      </doc>
+      <doc>
+        <path>docs/stories/story-session-cleanup-worker.md</path>
+        <title>Session Cleanup Worker (Complementary)</title>
+        <section>Cleanup Architecture and State Handling</section>
+      </doc>
+    </docs>
+    <code>
+      <item>
+        <path>src/main/hl7-capture.ts</path>
+        <kind>class</kind>
+        <symbol>HL7CaptureManager</symbol>
+        <reason>Instantiate and lifecycle management (startup/shutdown) of submission worker</reason>
+      </item>
+      <item>
+        <path>src/main/config-store.ts</path>
+        <kind>module</kind>
+        <symbol>config access</symbol>
+        <reason>Read submissionEndpoint, submissionAuthHeader, concurrency, retry, interval settings</reason>
+      </item>
+      <item>
+        <path>src/common/types.ts</path>
+        <kind>interface</kind>
+        <symbol>HL7Session</symbol>
+        <reason>Session with submissionStatus, submittedAt, submissionAttempts fields</reason>
+      </item>
+      <item>
+        <path>src/preload/index.ts</path>
+        <kind>module</kind>
+        <symbol>window.electron IPC bridge</symbol>
+        <reason>Expose onSubmissionProgress, onSubmissionResult events; triggerSubmissionNow() handler</reason>
+      </item>
+      <item>
+        <path>src/renderer/pages/Settings.tsx</path>
+        <kind>component</kind>
+        <symbol>Submission Configuration UI</symbol>
+        <reason>UI controls for endpoint URL, auth header, concurrency, retry policy</reason>
+      </item>
+    </code>
+    <interfaces>
+      <interface>
+        <name>SubmissionWorker Class</name>
+        <kind>class interface</kind>
+        <signature>constructor(config: { sessionsDir: string; endpoint: string; authHeader?: string; concurrency: number; maxRetries: number; submissionIntervalMinutes: number }); start(): void; stop(): Promise&lt;void&gt;; triggerNow(): Promise&lt;void&gt;</signature>
+        <path>src/main/submission-worker.ts</path>
+      </interface>
+      <interface>
+        <name>SubmissionProgress Event</name>
+        <kind>event payload</kind>
+        <signature>{ inFlight: number; queueSize: number; activeWorker: boolean }</signature>
+        <path>IPC event: onSubmissionProgress</path>
+      </interface>
+      <interface>
+        <name>SubmissionResult Event</name>
+        <kind>event payload</kind>
+        <signature>{ sessionId: string; success: boolean; submissionAttempts: number; error?: string; submittedAt?: number }</signature>
+        <path>IPC event: onSubmissionResult</path>
+      </interface>
+    </interfaces>
+    <constraints>
+      <constraint>FIFO queue implementation using simple array (no external queue libs)</constraint>
+      <constraint>Concurrency limiting (max 2 concurrent requests by default)</constraint>
+      <constraint>Exponential backoff: [1s, 2s, 4s] for attempts [1, 2, 3]</constraint>
+      <constraint>HTTP timeout: 30 seconds default</constraint>
+      <constraint>Async submission off main capture loop; non-blocking</constraint>
+      <constraint>TypeScript strict mode, Promise-based async only</constraint>
+      <constraint>Dependency: story-session-persistence must complete first</constraint>
+      <constraint>Complementary: story-session-cleanup-worker must handle submitted/failed sessions</constraint>
+      <constraint>Idempotency: Server deduplicates by sessionId; worker allows duplicate submission attempts on network error</constraint>
+    </constraints>
+  </artifacts>
+  <tests>
+    <standards>Unit tests use Jest with mocked HTTP client (jest.mock fetch). Integration tests use actual Node.js HTTP server. Target 85%+ code coverage.</standards>
+    <locations>tests/unit/submission-worker.test.ts, tests/integration/submission-worker.integration.test.ts</locations>
+    <ideas>
+      <test ac_id="1">Test FIFO queue discovery; create 5 pending sessions, verify submission order matches creation order</test>
+      <test ac_id="2">Verify settings render; change endpoint URL; trigger submission and verify new URL used; test auth header presence/absence</test>
+      <test ac_id="3">Mock HTTP 500 responses; verify exponential backoff delays (1s, 2s, 4s); verify max 2 concurrent; verify 3 total attempts</test>
+      <test ac_id="4">Measure main loop latency during submission; verify capture loop unaffected; verify timing independent of submission I/O</test>
+      <test ac_id="5">POST session twice; verify deduplication by sessionId; verify submissionStatus=submitted, submittedAt updated; restart app and verify state persists</test>
+      <test ac_id="6">Listen to onSubmissionProgress during submission; verify counts accurate; listen to onSubmissionResult and verify all fields present</test>
+      <integration>Start mock HTTP server; create 10 pending sessions; trigger worker; verify all received by server with sessionIds; verify retry on 500 responses</integration>
+    </ideas>
+  </tests>
+  <implementation_summary>
+    <phases>
+      <phase n="1" hours="2">HTTP client and queue structure (submission-worker.ts)</phase>
+      <phase n="2" hours="1.5">Queue and concurrency management (FIFO, limits, backoff)</phase>
+      <phase n="3" hours="1.5">Session state updates and persistence (atomic writes)</phase>
+      <phase n="4" hours="1">IPC integration (progress/result events)</phase>
+      <phase n="5" hours="1">Configuration and lifecycle (config-store, dynamic updates)</phase>
+      <phase n="6" hours="2">Unit tests (8+ test cases)</phase>
+      <phase n="7" hours="1.5">Integration tests (mock HTTP server, retry validation)</phase>
+    </phases>
+    <total_effort_hours>10</total_effort_hours>
+  </implementation_summary>
+</context>
