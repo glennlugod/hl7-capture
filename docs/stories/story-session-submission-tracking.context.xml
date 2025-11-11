@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<context>
+  <metadata>
+    <story_key>story-session-submission-tracking</story_key>
+    <story_title>Session Submission Tracking (UI)</story_title>
+    <generated>2025-11-12</generated>
+    <status>ready-for-dev</status>
+    <project>hl7-capture</project>
+    <project_level>0</project_level>
+  </metadata>
+  <story>
+    <as_a>support engineer</as_a>
+    <i_want>the application UI to show which persisted sessions have been submitted and which are pending or failed</i_want>
+    <so_that>I can monitor submission progress and retry or inspect failed submissions</so_that>
+  </story>
+  <acceptance_criteria>
+    <criterion id="1">
+      <title>Submission Status Fields Display</title>
+      <requirement>Each persisted session record displays submissionStatus (pending|submitted|failed|ignored), submissionAttempts (count), and submittedAt (timestamp); status fields visible in main list and detail view</requirement>
+      <test_approach>Create sessions with all statuses, verify status fields rendered; verify timestamps formatted correctly; verify attempts count displays</test_approach>
+    </criterion>
+    <criterion id="2">
+      <title>UI List with Status Filters</title>
+      <requirement>Sessions view includes filter dropdown: All | Pending | Submitted | Failed | Ignored; each filter updates list to show matching sessions; filter state persists during session</requirement>
+      <test_approach>Click each filter, verify list updates; verify filter toggle; test filter state remains on page refresh</test_approach>
+    </criterion>
+    <criterion id="3">
+      <title>Status Badges and Visual Indicators</title>
+      <requirement>Each list entry shows status badge (color-coded: pending=yellow, submitted=green, failed=red, ignored=gray) with icon; last attempt timestamp displayed human-readable (e.g., "2 hours ago")</requirement>
+      <test_approach>Verify badge colors match status; verify timestamps human-readable; verify icon visibility; test color contrast accessibility</test_approach>
+    </criterion>
+    <criterion id="4">
+      <title>Retry and Manual Controls</title>
+      <requirement>User can select failed session and trigger retrySubmission(sessionId) IPC handler; session shows retry button; user can mark session as ignore (sets submissionStatus: ignored) to prevent further submission attempts</requirement>
+      <test_approach>Select failed session, click retry, verify IPC handler called; verify submission attempted; verify ignore toggle prevents future submissions</test_approach>
+    </criterion>
+    <criterion id="5">
+      <title>Real-time Status Updates</title>
+      <requirement>Renderer listens to onSubmissionProgress (queue depth, in-flight count) and onSubmissionResult (per-session result) IPC events; UI updates in real-time without page refresh; progress indicator shows submission activity</requirement>
+      <test_approach>Trigger submission, listen to IPC events, verify UI updates immediately; verify progress bar/spinner shows; verify results appear without page refresh</test_approach>
+    </criterion>
+    <criterion id="6">
+      <title>Session Detail View</title>
+      <requirement>Click session row to open detail panel showing: sessionId, capture timestamps, message count, submission history (status, attempts, timestamps, last error), action buttons (retry, ignore, delete)</requirement>
+      <test_approach>Open detail view, verify all metadata visible; verify action buttons present; test retry/ignore/delete actions update detail view</test_approach>
+    </criterion>
+  </acceptance_criteria>
+  <artifacts>
+    <docs>
+      <doc>
+        <path>docs/tech-spec.md</path>
+        <title>Technical Specification - Session Persistence &amp; Submission</title>
+        <section>Session Persistence &amp; Submission, UI Requirements</section>
+      </doc>
+      <doc>
+        <path>docs/stories/story-session-persistence.md</path>
+        <title>Session Persistence Story (Prerequisite)</title>
+        <section>Session Storage Architecture</section>
+      </doc>
+      <doc>
+        <path>docs/stories/story-session-submission-worker.md</path>
+        <title>Session Submission Worker (Prerequisite)</title>
+        <section>IPC Events: onSubmissionProgress, onSubmissionResult</section>
+      </doc>
+      <doc>
+        <path>docs/DESIGN_SYSTEM.md</path>
+        <title>Design System and Tailwind CSS Patterns</title>
+        <section>Color palette, badge styles, responsive patterns</section>
+      </doc>
+    </docs>
+    <code>
+      <item>
+        <path>src/renderer/pages/Sessions.tsx</path>
+        <kind>component</kind>
+        <symbol>Sessions page (parent)</symbol>
+        <reason>Add IPC event listeners (useEffect) for real-time updates</reason>
+      </item>
+      <item>
+        <path>src/renderer/components/SessionList.tsx</path>
+        <kind>component</kind>
+        <symbol>SessionList</symbol>
+        <reason>Update list items to show submission status, badges, filters</reason>
+      </item>
+      <item>
+        <path>src/renderer/components/SessionDetail.tsx</path>
+        <kind>component</kind>
+        <symbol>SessionDetail (new or update)</symbol>
+        <reason>Detail panel with submission metadata and action buttons</reason>
+      </item>
+      <item>
+        <path>src/main/hl7-capture.ts</path>
+        <kind>class</kind>
+        <symbol>HL7CaptureManager</symbol>
+        <reason>Add IPC handlers: retrySubmission, ignoreSession, deleteSession</reason>
+      </item>
+      <item>
+        <path>src/preload/index.ts</path>
+        <kind>module</kind>
+        <symbol>IPC bridge</symbol>
+        <reason>Expose new IPC handlers and existing submission events</reason>
+      </item>
+      <item>
+        <path>src/common/types.ts</path>
+        <kind>interface</kind>
+        <symbol>HL7Session</symbol>
+        <reason>Session with submissionStatus, submittedAt, submissionAttempts, submissionError</reason>
+      </item>
+    </code>
+    <interfaces>
+      <interface>
+        <name>Session Submission Fields</name>
+        <kind>data interface</kind>
+        <signature>submissionStatus: 'pending' | 'submitted' | 'failed' | 'ignored'; submissionAttempts: number; submittedAt?: number; submissionError?: string</signature>
+        <path>src/common/types.ts → HL7Session</path>
+      </interface>
+      <interface>
+        <name>SubmissionProgress Event</name>
+        <kind>IPC event</kind>
+        <signature>{ inFlight: number; queueSize: number; activeWorker: boolean }</signature>
+        <path>IPC event: onSubmissionProgress</path>
+      </interface>
+      <interface>
+        <name>SubmissionResult Event</name>
+        <kind>IPC event</kind>
+        <signature>{ sessionId: string; success: boolean; submissionAttempts: number; error?: string; submittedAt?: number }</signature>
+        <path>IPC event: onSubmissionResult</path>
+      </interface>
+      <interface>
+        <name>IPC Handlers</name>
+        <kind>handler functions</kind>
+        <signature>retrySubmission(sessionId: string): Promise&lt;boolean&gt;; ignoreSession(sessionId: string): Promise&lt;void&gt;; deleteSession(sessionId: string): Promise&lt;void&gt;</signature>
+        <path>src/main/hl7-capture.ts</path>
+      </interface>
+    </interfaces>
+    <constraints>
+      <constraint>React hooks only (useState, useEffect, useCallback) - no Redux/Zustand</constraint>
+      <constraint>Tailwind CSS for styling - no CSS-in-JS</constraint>
+      <constraint>TypeScript strict mode for all components</constraint>
+      <constraint>Timestamp formatting: use date-fns formatDistanceToNow() or Intl.RelativeTimeFormat</constraint>
+      <constraint>Filter state management: localStorage or URL query params (discuss with team)</constraint>
+      <constraint>IPC event cleanup on component unmount to prevent memory leaks</constraint>
+      <constraint>Accessibility: ARIA labels, color-blind friendly color palette (not red/green alone)</constraint>
+      <constraint>Responsive: mobile (375px), tablet (768px), desktop (1024px+)</constraint>
+      <constraint>Dependency: All 3 previous stories (persistence, cleanup, submission-worker) must be complete first</constraint>
+    </constraints>
+  </artifacts>
+  <tests>
+    <standards>Unit tests use Jest with React Testing Library (RTL). Integration tests render actual components with mocked IPC. Target 80%+ code coverage for UI components.</standards>
+    <locations>tests/unit/submission-tracking.test.ts, tests/integration/submission-tracking.integration.test.ts</locations>
+    <ideas>
+      <test ac_id="1">Render SessionList with mixed status sessions; verify all status fields visible with correct values</test>
+      <test ac_id="2">Click each filter dropdown option; verify list re-renders with matching sessions only; verify filter persists</test>
+      <test ac_id="3">Verify status badge colors (pending=yellow, submitted=green, failed=red); verify timestamps formatted as "X time ago"</test>
+      <test ac_id="4">Click retry button on failed session; verify retrySubmission IPC called; verify ignore toggle works</test>
+      <test ac_id="5">Simulate onSubmissionProgress event; verify progress bar updates; simulate onSubmissionResult; verify session status updates without page refresh</test>
+      <test ac_id="6">Click session row; verify detail panel opens; verify all metadata visible; click delete with confirmation</test>
+      <integration>Render Sessions page, create sessions with all statuses, trigger filter operations, simulate IPC events, verify all AC flow end-to-end</integration>
+    </ideas>
+  </tests>
+  <implementation_summary>
+    <phases>
+      <phase n="1" hours="1.5">Session list component updates (filters, badges)</phase>
+      <phase n="2" hours="1.5">Session detail panel (metadata, actions)</phase>
+      <phase n="3" hours="1.5">IPC integration (retry, ignore, delete handlers)</phase>
+      <phase n="4" hours="1">Real-time event listeners (useEffect for IPC)</phase>
+      <phase n="5" hours="1">Styling and UX polish (Tailwind, responsive)</phase>
+      <phase n="6" hours="1.5">Unit tests (filter, badge, IPC logic)</phase>
+      <phase n="7" hours="1">Integration tests (component + IPC event flow)</phase>
+    </phases>
+    <total_effort_hours>9</total_effort_hours>
+  </implementation_summary>
+</context>

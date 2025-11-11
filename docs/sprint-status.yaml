@@ -87,4 +87,4 @@ development_status:
   story-session-persistence: ready-for-dev
   story-session-cleanup-worker: ready-for-dev
   story-session-submission-worker: ready-for-dev
-  story-session-submission-tracking: drafted
+  story-session-submission-tracking: ready-for-dev

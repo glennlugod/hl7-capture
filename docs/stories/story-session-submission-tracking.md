@@ -1,6 +1,6 @@
 # Story: Session Submission Tracking (UI)
 
-Status: drafted
+Status: ready-for-dev
 
 ## Story
 
@@ -175,3 +175,15 @@ so that I can monitor submission progress and retry or inspect failed submission
 - `src/renderer/pages/Sessions.tsx` → Sessions page component
 - `src/common/types.ts` → `HL7Session` interface
 - `src/preload/index.ts` → IPC bridge
+
+---
+
+## Dev Agent Record
+
+### Status
+
+**Marked:** ready-for-dev  
+**Generated:** 2025-11-12  
+**Context Reference:** `docs/stories/story-session-submission-tracking.context.xml`
+
+This story has been fully drafted with all 6 acceptance criteria, 7 implementation phases (~7.5 hours total), and comprehensive dev notes. Developer pickup ready with complete technical context XML including UI component architecture, React hooks patterns, IPC integration, and testing strategy for React Testing Library.
