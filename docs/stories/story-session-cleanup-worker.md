@@ -1,6 +1,6 @@
 # Story: Session Cleanup Worker
 
-Status: drafted
+Status: ready-for-dev
 
 ## Story
 
@@ -138,3 +138,15 @@ so that storage usage is bounded and old diagnostic data is automatically purged
 - `docs/stories/story-session-persistence.md` — Session persistence implementation (prerequisite)
 - `src/common/types.ts` → `HL7Session` interface
 - `src/main/hl7-capture.ts` → `HL7CaptureManager` class
+
+---
+
+## Dev Agent Record
+
+### Status
+
+**Marked:** ready-for-dev  
+**Generated:** 2025-11-12  
+**Context Reference:** `docs/stories/story-session-cleanup-worker.context.xml`
+
+This story has been fully drafted with all 5 acceptance criteria, 6 implementation phases (~6.5 hours total), and comprehensive dev notes. Developer pickup ready with complete technical context XML including code references, interfaces, constraints, and testing guidance.

@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<context>
+  <metadata>
+    <story_key>story-session-cleanup-worker</story_key>
+    <story_title>Session Cleanup Worker</story_title>
+    <generated>2025-11-12</generated>
+    <status>ready-for-dev</status>
+    <project>hl7-capture</project>
+    <project_level>0</project_level>
+  </metadata>
+  <story>
+    <as_a>operations engineer</as_a>
+    <i_want>the application to periodically remove persisted sessions that have expired according to retention policy</i_want>
+    <so_that>storage usage is bounded and old diagnostic data is automatically purged</so_that>
+  </story>
+  <acceptance_criteria>
+    <criterion id="1">
+      <title>Periodic Cleanup Execution</title>
+      <requirement>Background cleanup worker starts with app, runs on configurable interval (default 24 hours), deletes session files whose persistedUntil timestamp is in past</requirement>
+      <test_approach>Mock system clock, create session with past timestamp, verify deletion after interval; test custom interval config</test_approach>
+    </criterion>
+    <criterion id="2">
+      <title>Atomic and Safe Deletion</title>
+      <requirement>File deletions atomic (move to trash then delete), failures logged, trash folder maintained for recovery</requirement>
+      <test_approach>Simulate disk full/permission errors during deletion, verify files moved to trash; verify log entries; cleanup of trash on subsequent runs</test_approach>
+    </criterion>
+    <criterion id="3">
+      <title>Configurable Interval and Dry-Run Mode</title>
+      <requirement>Settings expose cleanupIntervalHours (1-168 range) and dryRunMode toggle; dry-run previews deletions without performing</requirement>
+      <test_approach>Enable dry-run, verify no files deleted but summary shows what would be; disable dry-run and verify actual deletion</test_approach>
+    </criterion>
+    <criterion id="4">
+      <title>IPC Interface and Observability</title>
+      <requirement>Main process exposes runCleanupNow() IPC handler for on-demand cleanup; worker reports onCleanupSummary event with { filesDeleted, bytesFreed, filesInTrash, startTime, endTime }</requirement>
+      <test_approach>Call IPC handler, verify cleanup executed immediately; verify summary event emitted with accurate metrics</test_approach>
+    </criterion>
+    <criterion id="5">
+      <title>Configuration Awareness</title>
+      <requirement>Worker respects enablePersistence toggle (skip if false) and reads retentionDays from config; updates retentionDays without restart</requirement>
+      <test_approach>Disable persistence, verify worker skips cleanup; change retentionDays, verify next cleanup uses new value</test_approach>
+    </criterion>
+  </acceptance_criteria>
+  <artifacts>
+    <docs>
+      <doc>
+        <path>docs/tech-spec.md</path>
+        <title>Technical Specification - Session Persistence &amp; Submission</title>
+        <section>Session Persistence &amp; Submission</section>
+      </doc>
+      <doc>
+        <path>docs/stories/story-session-persistence.md</path>
+        <title>Session Persistence Story (Prerequisite)</title>
+        <section>Persistence Architecture and Storage Design</section>
+      </doc>
+    </docs>
+    <code>
+      <item>
+        <path>src/main/hl7-capture.ts</path>
+        <kind>class</kind>
+        <symbol>HL7CaptureManager</symbol>
+        <reason>Instantiate and lifecycle management (startup/shutdown) of cleanup worker</reason>
+      </item>
+      <item>
+        <path>src/main/config-store.ts</path>
+        <kind>module</kind>
+        <symbol>config access</symbol>
+        <reason>Read enablePersistence, retentionDays, cleanupIntervalHours from configuration</reason>
+      </item>
+      <item>
+        <path>src/common/types.ts</path>
+        <kind>interface</kind>
+        <symbol>HL7Session</symbol>
+        <reason>Session data structure with persistedUntil timestamp field</reason>
+      </item>
+      <item>
+        <path>src/preload/index.ts</path>
+        <kind>module</kind>
+        <symbol>window.electron IPC bridge</symbol>
+        <reason>Add IPC handlers: runCleanupNow, onCleanupSummary event emission</reason>
+      </item>
+    </code>
+    <interfaces>
+      <interface>
+        <name>CleanupWorker Class</name>
+        <kind>class interface</kind>
+        <signature>constructor(config: { sessionsDir: string; cleanupIntervalHours: number; retentionDays: number; dryRunMode: boolean; trashDir: string }); start(): void; stop(): void; runNow(): Promise&lt;CleanupSummary&gt;</signature>
+        <path>src/main/cleanup-worker.ts</path>
+      </interface>
+      <interface>
+        <name>CleanupSummary Event</name>
+        <kind>event payload</kind>
+        <signature>{ filesDeleted: number; bytesFreed: number; filesInTrash: number; startTime: number; endTime: number; dryRun: boolean }</signature>
+        <path>IPC event: onCleanupSummary</path>
+      </interface>
+    </interfaces>
+    <constraints>
+      <constraint>Atomic writes using temp file then fs.renameSync() for trash operations</constraint>
+      <constraint>Async cleanup off main capture loop; non-blocking</constraint>
+      <constraint>TypeScript strict mode, Promise-based async only</constraint>
+      <constraint>No external DB libraries - fs module only</constraint>
+      <constraint>Dependency: story-session-persistence must be completed first</constraint>
+      <constraint>Single-threaded in main process (future optimization: worker thread)</constraint>
+      <constraint>Trash folder cleanup (remove entries older than 7 days)</constraint>
+    </constraints>
+  </artifacts>
+  <tests>
+    <standards>Unit tests use Jest with mocked filesystem (memfs optional). Integration tests use actual temp directories. Target 85%+ code coverage.</standards>
+    <locations>tests/unit/cleanup-worker.test.ts, tests/integration/cleanup-worker.integration.test.ts</locations>
+    <ideas>
+      <test ac_id="1">Test periodic execution with mocked timers; verify interval respected</test>
+      <test ac_id="2">Test atomic deletion: move to trash then delete; simulate disk full; verify error handling and trash structure</test>
+      <test ac_id="3">Test dry-run mode enabled: verify no files deleted, summary shows what would delete; then disable and verify actual deletion</test>
+      <test ac_id="4">Call IPC runCleanupNow(); verify cleanup executed immediately; verify onCleanupSummary event with accurate metrics</test>
+      <test ac_id="5">Disable enablePersistence, verify worker skips; change retentionDays, verify next cleanup uses new value without restart</test>
+      <integration>Create session files with past/future timestamps; trigger cleanup; verify expired deleted, recent preserved; verify trash contents and metrics</integration>
+    </ideas>
+  </tests>
+  <implementation_summary>
+    <phases>
+      <phase n="1" hours="2">Core cleanup logic (cleanup-worker.ts)</phase>
+      <phase n="2" hours="1.5">Trash management (atomic moves, recovery)</phase>
+      <phase n="3" hours="1">IPC integration (runCleanupNow, summary event)</phase>
+      <phase n="4" hours="1">Configuration wiring (config-store integration)</phase>
+      <phase n="5" hours="1.5">Unit tests (6+ test cases)</phase>
+      <phase n="6" hours="1">Integration tests (end-to-end validation)</phase>
+    </phases>
+    <total_effort_hours>8</total_effort_hours>
+  </implementation_summary>
+</context>
