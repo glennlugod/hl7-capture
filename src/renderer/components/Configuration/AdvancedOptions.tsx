@@ -1,6 +1,6 @@
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useState } from "react";
 
-import { isValidBufferSize, isValidSnaplen } from '../../../lib/utils/markerValidation'
+import { isValidBufferSize, isValidSnaplen } from "../../../lib/utils/markerValidation";
 
 interface AdvancedConfig {
   snaplen: number;

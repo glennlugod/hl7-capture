@@ -1037,7 +1037,7 @@ export class HL7CaptureManager extends EventEmitter {
     submissionConcurrency: number;
     submissionMaxRetries: number;
     submissionIntervalMinutes: number;
-  } {
+    } {
     return {
       submissionEndpoint: this.submissionEndpoint,
       submissionAuthHeader: this.submissionAuthHeader,

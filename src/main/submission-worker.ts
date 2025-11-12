@@ -11,11 +11,6 @@ interface SubmissionConfig {
   maxRetries: number;
   submissionIntervalMinutes: number;
 }
-interface SubmissionProgress {
-  inFlight: number;
-  queueSize: number;
-  activeWorker: boolean;
-}
 interface SubmissionResult {
   sessionId: string;
   success: boolean;
@@ -40,7 +35,7 @@ export class SubmissionWorker extends EventEmitter {
       return;
     }
     this.isRunning = true;
-    console.log(`SubmissionWorker started`);
+    console.log("SubmissionWorker started");
     await this._runSubmission();
     const intervalMs = this.config.submissionIntervalMinutes * 60 * 1000;
     this.timer = setInterval(() => {
@@ -106,7 +101,7 @@ export class SubmissionWorker extends EventEmitter {
           const session: HL7Session = JSON.parse(raw);
           if (session.submissionStatus === "pending") pending.push(session);
         } catch (err) {
-          console.warn(`Failed to read session file`, err);
+          console.warn("Failed to read session file", err);
         }
       }
       for (const session of pending) {
@@ -195,7 +190,7 @@ export class SubmissionWorker extends EventEmitter {
       await fs.promises.writeFile(tmpPath, content, "utf-8");
       await fs.promises.rename(tmpPath, filePath);
     } catch (err) {
-      console.error(`Failed to update`, err);
+      console.error("Failed to update", err);
       throw err;
     }
   }

@@ -16,11 +16,11 @@ export default function MarkerConfigForm({ initial = "", onChange }: Props): JSX
       // call preload IPC
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-ignore
-      const ok = await (globalThis as any).electron.validateMarkerConfig({ markers: value });
+      const ok = await (globalThis as Window).electron.validateMarkerConfig({ markers: value });
       setValid(Boolean(ok));
       if (!ok) setError("Validation failed");
-    } catch (e: any) {
-      setError(String(e?.message ?? e));
+    } catch (e: unknown) {
+      setError(String((e as Error)?.message ?? e));
       setValid(false);
     }
   };
