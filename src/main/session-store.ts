@@ -1,8 +1,8 @@
-import fs from 'node:fs'
-import path from 'node:path'
-import { promisify } from 'node:util'
+import fs from "node:fs";
+import path from "node:path";
+import { promisify } from "node:util";
 
-import { HL7Session } from '../common/types'
+import { HL7Session } from "../common/types";
 
 const writeFile = promisify(fs.writeFile);
 const readdir = promisify(fs.readdir);
@@ -196,5 +196,172 @@ export class SessionStore {
       }
       throw error;
     }
+  }
+
+  /**
+   * Phase 2: Crash Recovery & Data Migration
+   * Detect and recover from incomplete writes (orphaned .tmp files)
+   */
+
+  /**
+   * Scan for orphaned .tmp files from crashed writes
+   * Returns list of incomplete write operations
+   */
+  async findOrphanedTempFiles(): Promise<string[]> {
+    const orphanedFiles: string[] = [];
+
+    try {
+      const files = await readdir(this.sessionDir);
+      for (const file of files) {
+        if (file.endsWith(".tmp")) {
+          orphanedFiles.push(file);
+        }
+      }
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+        throw error;
+      }
+    }
+
+    return orphanedFiles;
+  }
+
+  /**
+   * Attempt to recover incomplete write
+   * Recovery strategy: Clean up temp file (data was not fully written)
+   */
+  async recoverFromCrash(tempFileName: string): Promise<"cleaned" | "recovered"> {
+    const tempFilePath = path.join(this.sessionDir, tempFileName);
+    const sessionFilePath = tempFilePath.replace(/\.tmp$/, "");
+
+    try {
+      // Check if final file already exists (write completed after crash)
+      try {
+        await stat(sessionFilePath);
+        // Final file exists, just clean up temp file
+        try {
+          await unlink(tempFilePath);
+        } catch {
+          // Ignore if temp file doesn't exist
+        }
+        return "recovered";
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+          throw error;
+        }
+      }
+
+      // Final file doesn't exist, check if temp file has valid content
+      try {
+        const content = await readFile(tempFilePath, "utf-8");
+        const data = JSON.parse(content);
+
+        // Temp file has valid JSON, try to complete the write
+        if (data && typeof data === "object") {
+          await fsRename(tempFilePath, sessionFilePath);
+          return "recovered";
+        }
+      } catch {
+        // Temp file is corrupted or incomplete, just delete it
+      }
+
+      // Clean up orphaned temp file (even if corrupted)
+      try {
+        await unlink(tempFilePath);
+      } catch {
+        // Ignore if already deleted
+      }
+      return "cleaned";
+    } catch (error) {
+      console.error(`Failed to recover from crash (${tempFileName}):`, error);
+      return "cleaned";
+    }
+  }
+
+  /**
+   * Phase 2: Execute full crash recovery
+   * Called on app startup to clean up from any previous crashes
+   * Returns recovery statistics
+   */
+  async performCrashRecovery(): Promise<{ recovered: number; cleaned: number }> {
+    const stats = { recovered: 0, cleaned: 0 };
+
+    try {
+      const orphanedFiles = await this.findOrphanedTempFiles();
+
+      for (const tempFile of orphanedFiles) {
+        const result = await this.recoverFromCrash(tempFile);
+        if (result === "recovered") {
+          stats.recovered++;
+        } else {
+          stats.cleaned++;
+        }
+      }
+    } catch (error) {
+      console.error("Crash recovery encountered error:", error);
+    }
+
+    return stats;
+  }
+
+  /**
+   * Phase 2: Data migration helper
+   * Validate and optionally upgrade session schema to new version
+   * Current version: 1.0.0
+   */
+  async migrateSessionSchema(session: HL7Session): Promise<HL7Session> {
+    const sessionWithMetadata = session as unknown as Record<string, unknown>;
+    const metadata = sessionWithMetadata._metadata as Record<string, unknown> | undefined;
+
+    // If no metadata, this is a pre-metadata session, add it
+    if (!metadata) {
+      const migratedData: Record<string, unknown> = { ...session };
+      migratedData._metadata = {
+        version: this.version,
+        savedAt: Date.now(),
+        retentionDays: 30, // Default retention for legacy sessions
+      };
+      return migratedData as unknown as HL7Session;
+    }
+
+    // Validate schema version compatibility
+    const storedVersion = (metadata.version as string) || "1.0.0";
+    if (storedVersion !== this.version) {
+      // Log version mismatch but allow loading (forward compatible for minor versions)
+      console.warn(
+        `Session schema version mismatch: stored=${storedVersion}, current=${this.version}`
+      );
+    }
+
+    return session;
+  }
+
+  /**
+   * Load and migrate all sessions with schema upgrade support
+   * Used during app startup to ensure all sessions are up-to-date
+   */
+  async loadAndMigrateAllSessions(): Promise<HL7Session[]> {
+    const sessions = await this.loadAllSessions();
+    const migratedSessions: HL7Session[] = [];
+
+    for (const session of sessions) {
+      try {
+        const migrated = await this.migrateSessionSchema(session);
+        migratedSessions.push(migrated);
+
+        // Save migrated session back to disk if schema changed
+        if (JSON.stringify(session) !== JSON.stringify(migrated)) {
+          const migratedWithMeta = migrated as unknown as Record<string, unknown>;
+          const meta = migratedWithMeta._metadata as Record<string, unknown> | undefined;
+          const retentionDays = (meta?.retentionDays as number) || 30;
+          await this.saveSession(migrated, retentionDays);
+        }
+      } catch (error) {
+        console.error(`Failed to migrate session ${session.id}:`, error);
+        // Continue migration for other sessions
+      }
+    }
+
+    return migratedSessions;
   }
 }

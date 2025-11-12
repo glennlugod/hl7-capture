@@ -374,4 +374,201 @@ describe("SessionStore", () => {
       expect(sessionStore.getSessionDir()).toBe(testDir);
     });
   });
+
+  describe("Phase 2: Crash Recovery", () => {
+    it("should find orphaned .tmp files from crashed writes", async () => {
+      // Create a fake .tmp file to simulate crashed write
+      const tmpFile = path.join(testDir, "sess-crash-001.json.tmp");
+      fs.writeFileSync(tmpFile, JSON.stringify({ incomplete: true }));
+
+      const orphaned = await sessionStore.findOrphanedTempFiles();
+
+      expect(orphaned).toContain("sess-crash-001.json.tmp");
+    });
+
+    it("should recover by cleaning up orphaned .tmp file", async () => {
+      const tmpFile = path.join(testDir, "sess-crash-002.json.tmp");
+      // Write invalid/incomplete JSON to trigger cleanup instead of recovery
+      fs.writeFileSync(tmpFile, "{ incomplete");
+
+      const result = await sessionStore.recoverFromCrash("sess-crash-002.json.tmp");
+
+      expect(result).toBe("cleaned");
+      expect(fs.existsSync(tmpFile)).toBe(false);
+    });
+
+    it("should recover by completing partial write from valid .tmp file", async () => {
+      const session: HL7Session = {
+        id: "sess-recover-001",
+        sessionId: 100,
+        startTime: Date.now(),
+        deviceIP: "192.168.1.10",
+        lisIP: "192.168.1.1",
+        elements: [],
+        messages: ["Recovered message"],
+        isComplete: true,
+      };
+
+      const tmpFile = path.join(testDir, "sess-recover-001.json.tmp");
+      fs.writeFileSync(tmpFile, JSON.stringify(session, null, 2));
+
+      const result = await sessionStore.recoverFromCrash("sess-recover-001.json.tmp");
+
+      expect(result).toBe("recovered");
+      expect(fs.existsSync(tmpFile)).toBe(false);
+      expect(fs.existsSync(path.join(testDir, "sess-recover-001.json"))).toBe(true);
+    });
+
+    it("should perform full crash recovery and return statistics", async () => {
+      // Create multiple scenarios
+      const session1: HL7Session = {
+        id: "sess-multi-001",
+        sessionId: 101,
+        startTime: Date.now(),
+        deviceIP: "192.168.1.10",
+        lisIP: "192.168.1.1",
+        elements: [],
+        messages: [],
+        isComplete: true,
+      };
+
+      // Valid partial write
+      const tmpFile1 = path.join(testDir, "sess-multi-001.json.tmp");
+      fs.writeFileSync(tmpFile1, JSON.stringify(session1, null, 2));
+
+      // Orphaned corrupted file
+      const tmpFile2 = path.join(testDir, "sess-multi-002.json.tmp");
+      fs.writeFileSync(tmpFile2, "{ invalid json");
+
+      const stats = await sessionStore.performCrashRecovery();
+
+      expect(stats.recovered).toBe(1);
+      expect(stats.cleaned).toBe(1);
+      expect(fs.existsSync(tmpFile1)).toBe(false);
+      expect(fs.existsSync(tmpFile2)).toBe(false);
+    });
+
+    it("should handle crash recovery on empty directory", async () => {
+      const stats = await sessionStore.performCrashRecovery();
+
+      expect(stats.recovered).toBe(0);
+      expect(stats.cleaned).toBe(0);
+    });
+  });
+
+  describe("Phase 2: Schema Migration", () => {
+    it("should add metadata to legacy sessions without it", async () => {
+      const legacySession: HL7Session = {
+        id: "sess-legacy-001",
+        sessionId: 110,
+        startTime: Date.now(),
+        deviceIP: "192.168.1.10",
+        lisIP: "192.168.1.1",
+        elements: [],
+        messages: [],
+        isComplete: true,
+      };
+
+      const migrated = await sessionStore.migrateSessionSchema(legacySession);
+
+      expect(migrated).toBeDefined();
+      const migratedWithMeta = migrated as unknown as Record<string, unknown>;
+      expect(migratedWithMeta._metadata).toBeDefined();
+      const meta = migratedWithMeta._metadata as Record<string, unknown>;
+      expect(meta.version).toBe("1.0.0");
+      expect(meta.retentionDays).toBe(30);
+    });
+
+    it("should preserve metadata on current version sessions", async () => {
+      const session: HL7Session = {
+        id: "sess-versioned-001",
+        sessionId: 111,
+        startTime: Date.now(),
+        deviceIP: "192.168.1.10",
+        lisIP: "192.168.1.1",
+        elements: [],
+        messages: [],
+        isComplete: true,
+      };
+
+      const sessionWithMeta = session as unknown as Record<string, unknown>;
+      sessionWithMeta._metadata = {
+        version: "1.0.0",
+        savedAt: Date.now(),
+        retentionDays: 7,
+      };
+
+      const migrated = await sessionStore.migrateSessionSchema(session);
+      const migratedWithMeta = migrated as unknown as Record<string, unknown>;
+      const meta = migratedWithMeta._metadata as Record<string, unknown>;
+
+      expect(meta.version).toBe("1.0.0");
+      expect(meta.retentionDays).toBe(7);
+    });
+
+    it("should load and migrate all sessions on startup", async () => {
+      // Save sessions with and without metadata
+      const session1: HL7Session = {
+        id: "sess-startup-001",
+        sessionId: 112,
+        startTime: Date.now(),
+        deviceIP: "192.168.1.10",
+        lisIP: "192.168.1.1",
+        elements: [],
+        messages: [],
+        isComplete: true,
+      };
+
+      const session2: HL7Session = {
+        id: "sess-startup-002",
+        sessionId: 113,
+        startTime: Date.now(),
+        deviceIP: "192.168.1.11",
+        lisIP: "192.168.1.1",
+        elements: [],
+        messages: [],
+        isComplete: true,
+      };
+
+      // Save first without metadata by writing directly
+      const session1Path = path.join(testDir, "sess-startup-001.json");
+      fs.writeFileSync(session1Path, JSON.stringify(session1, null, 2));
+
+      // Save second with our store (will add metadata)
+      await sessionStore.saveSession(session2, 30);
+
+      const migrated = await sessionStore.loadAndMigrateAllSessions();
+
+      expect(migrated).toHaveLength(2);
+      for (const session of migrated) {
+        const sessionWithMeta = session as unknown as Record<string, unknown>;
+        expect(sessionWithMeta._metadata).toBeDefined();
+      }
+    });
+
+    it("should continue migration on corrupted file", async () => {
+      const session: HL7Session = {
+        id: "sess-recover-valid",
+        sessionId: 114,
+        startTime: Date.now(),
+        deviceIP: "192.168.1.10",
+        lisIP: "192.168.1.1",
+        elements: [],
+        messages: [],
+        isComplete: true,
+      };
+
+      await sessionStore.saveSession(session, 30);
+
+      // Write corrupted file
+      const badFile = path.join(testDir, "sess-corrupted.json");
+      fs.writeFileSync(badFile, "{ invalid");
+
+      // Should skip corrupted file and migrate valid one
+      const migrated = await sessionStore.loadAndMigrateAllSessions();
+
+      expect(migrated.length).toBeGreaterThanOrEqual(1);
+      expect(migrated.some((s) => s.id === "sess-recover-valid")).toBe(true);
+    });
+  });
 });
