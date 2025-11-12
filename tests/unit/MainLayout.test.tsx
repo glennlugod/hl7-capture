@@ -40,8 +40,11 @@ describe("MainLayout Component", () => {
   });
 
   it("displays 'Configuration' header", () => {
-    const { getByRole } = render(<MainLayout {...defaultProps} />);
-    expect(getByRole("heading", { name: "Configuration" })).toBeInTheDocument();
+    const { getByLabelText } = render(<MainLayout {...defaultProps} />);
+    // Component exposes a toggle button for the configuration panel with an
+    // aria-label indicating expand/collapse. Test for its presence instead of
+    // a visible heading which may be hidden in responsive layouts.
+    expect(getByLabelText(/expand configuration panel/i)).toBeInTheDocument();
   });
 
   it("displays 'Message Details' header", () => {
