@@ -87,4 +87,4 @@ development_status:
   story-session-persistence: done
   story-session-cleanup-worker: done
   story-session-submission-worker: done
-  story-session-submission-tracking: in-progress
+  story-session-submission-tracking: done
