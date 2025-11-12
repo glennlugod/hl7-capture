@@ -637,6 +637,7 @@ export class HL7CaptureManager extends EventEmitter {
       elements: [element],
       messages: [],
       isComplete: false,
+      submissionStatus: "pending",
     };
 
     this.sessions.set(sessionKey, session);

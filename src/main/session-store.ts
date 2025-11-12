@@ -344,7 +344,16 @@ export class SessionStore {
         savedAt: Date.now(),
         retentionDays: 30, // Default retention for legacy sessions
       };
+      // Ensure submissionStatus is set for legacy sessions
+      if (!migratedData.submissionStatus) {
+        migratedData.submissionStatus = "pending";
+      }
       return migratedData as unknown as HL7Session;
+    }
+
+    // Ensure submissionStatus is set for all sessions
+    if (!sessionWithMetadata.submissionStatus) {
+      sessionWithMetadata.submissionStatus = "pending";
     }
 
     // Validate schema version compatibility
