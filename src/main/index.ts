@@ -475,6 +475,32 @@ ipcMain.handle(
   }
 );
 
+// Phase 6: Submission Tracking UI IPC Handlers
+ipcMain.handle("retry-submission", async (_event, sessionId: string) => {
+  try {
+    const success = await captureManager.retrySubmission(sessionId);
+    return success;
+  } catch (error) {
+    throw new Error(`Failed to retry submission for ${sessionId}: ${error}`);
+  }
+});
+
+ipcMain.handle("ignore-session", async (_event, sessionId: string) => {
+  try {
+    await captureManager.ignoreSession(sessionId);
+  } catch (error) {
+    throw new Error(`Failed to ignore session ${sessionId}: ${error}`);
+  }
+});
+
+ipcMain.handle("delete-session", async (_event, sessionId: string) => {
+  try {
+    await captureManager.deleteSession(sessionId);
+  } catch (error) {
+    throw new Error(`Failed to delete session ${sessionId}: ${error}`);
+  }
+});
+
 ipcMain.handle("save-marker-config", async (_event, config) => {
   captureManager.saveMarkerConfig(config);
   configStore.save(config);

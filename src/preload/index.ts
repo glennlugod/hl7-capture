@@ -105,6 +105,16 @@ const electronAPI = {
       intervalMinutes
     ),
 
+  // Phase 6: Submission Tracking UI (NEW)
+  retrySubmission: (sessionId: string): Promise<boolean> =>
+    ipcRenderer.invoke("retry-submission", sessionId),
+
+  ignoreSession: (sessionId: string): Promise<void> =>
+    ipcRenderer.invoke("ignore-session", sessionId),
+
+  deleteSession: (sessionId: string): Promise<void> =>
+    ipcRenderer.invoke("delete-session", sessionId),
+
   // Window / Tray controls
   minimizeToTray: (): Promise<void> => ipcRenderer.invoke("minimize-to-tray"),
 

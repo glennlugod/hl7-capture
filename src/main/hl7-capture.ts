@@ -1046,4 +1046,83 @@ export class HL7CaptureManager extends EventEmitter {
       submissionIntervalMinutes: this.submissionIntervalMinutes,
     };
   }
+
+  /**
+   * Phase 6: Retry submission for a failed session
+   * Resets submissionStatus to 'pending' and submissionAttempts to 0, then triggers submission
+   */
+  public async retrySubmission(sessionId: string): Promise<boolean> {
+    try {
+      if (!this.sessionStore) {
+        throw new Error("Session store not initialized");
+      }
+
+      const session = await this.sessionStore.loadSession(sessionId);
+      if (!session) {
+        throw new Error(`Session ${sessionId} not found`);
+      }
+
+      // Reset submission state
+      session.submissionStatus = "pending";
+      session.submissionAttempts = 0;
+      session.submissionError = undefined;
+
+      // Save back to disk
+      await this.sessionStore.updateSession(session, this.retentionDays);
+
+      // Trigger submission worker if configured
+      if (this.submissionWorker && this.submissionEndpoint) {
+        await this.submissionWorker.triggerNow();
+      }
+
+      return true;
+    } catch (err) {
+      console.error(`Failed to retry submission for ${sessionId}:`, err);
+      throw err;
+    }
+  }
+
+  /**
+   * Phase 6: Mark session as ignored (prevents further submission attempts)
+   */
+  public async ignoreSession(sessionId: string): Promise<void> {
+    try {
+      if (!this.sessionStore) {
+        throw new Error("Session store not initialized");
+      }
+
+      const session = await this.sessionStore.loadSession(sessionId);
+      if (!session) {
+        throw new Error(`Session ${sessionId} not found`);
+      }
+
+      // Mark as ignored
+      session.submissionStatus = "ignored";
+
+      // Save back to disk
+      await this.sessionStore.updateSession(session, this.retentionDays);
+    } catch (err) {
+      console.error(`Failed to ignore session ${sessionId}:`, err);
+      throw err;
+    }
+  }
+
+  /**
+   * Phase 6: Delete session permanently
+   */
+  public async deleteSession(sessionId: string): Promise<void> {
+    try {
+      if (!this.sessionStore) {
+        throw new Error("Session store not initialized");
+      }
+
+      await this.sessionStore.deleteSession(sessionId);
+
+      // Also remove from in-memory cache if present
+      this.sessions.delete(sessionId);
+    } catch (err) {
+      console.error(`Failed to delete session ${sessionId}:`, err);
+      throw err;
+    }
+  }
 }

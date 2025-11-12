@@ -199,6 +199,29 @@ export class SessionStore {
   }
 
   /**
+   * Phase 6: Load a single session by ID
+   */
+  async loadSession(sessionId: string): Promise<HL7Session | null> {
+    const sessionFilePath = path.join(this.sessionDir, `${sessionId}.json`);
+    try {
+      const data = await readFile(sessionFilePath, "utf-8");
+      return JSON.parse(data);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+        return null;
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Phase 6: Update a single session (used for retry, ignore operations)
+   */
+  async updateSession(session: HL7Session, retentionDays: number): Promise<void> {
+    await this.saveSession(session, retentionDays);
+  }
+
+  /**
    * Phase 2: Crash Recovery & Data Migration
    * Detect and recover from incomplete writes (orphaned .tmp files)
    */
