@@ -26,6 +26,9 @@ const DEFAULT_APP_CONFIG: AppConfig = {
   autoStartCapture: false,
   startMinimized: false,
   autoStartApp: false,
+  // Phase 3: Session Persistence defaults
+  enablePersistence: true,
+  retentionDays: 30,
 };
 
 /**

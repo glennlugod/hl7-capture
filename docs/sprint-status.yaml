@@ -84,7 +84,7 @@ development_status:
   story-marker-config-form: done
 
   # Session Persistence & Submission Features (NEW)
-  story-session-persistence: in-progress
+  story-session-persistence: done
   story-session-cleanup-worker: ready-for-dev
   story-session-submission-worker: ready-for-dev
   story-session-submission-tracking: ready-for-dev

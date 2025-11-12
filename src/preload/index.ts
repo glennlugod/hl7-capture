@@ -57,6 +57,18 @@ const electronAPI = {
 
   saveAppConfig: (cfg: AppConfig): Promise<void> => ipcRenderer.invoke("save-app-config", cfg),
 
+  // Phase 3: Session Persistence (NEW)
+  getPersistedSessions: (): Promise<HL7Session[]> => ipcRenderer.invoke("get-persisted-sessions"),
+
+  deletePersistedSession: (sessionId: string): Promise<void> =>
+    ipcRenderer.invoke("delete-persisted-session", sessionId),
+
+  getPersistenceConfig: (): Promise<{ enablePersistence: boolean; retentionDays: number }> =>
+    ipcRenderer.invoke("get-persistence-config"),
+
+  updatePersistenceConfig: (enablePersistence: boolean, retentionDays: number): Promise<void> =>
+    ipcRenderer.invoke("update-persistence-config", enablePersistence, retentionDays),
+
   // Window / Tray controls
   minimizeToTray: (): Promise<void> => ipcRenderer.invoke("minimize-to-tray"),
 

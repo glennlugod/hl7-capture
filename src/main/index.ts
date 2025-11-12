@@ -1,5 +1,6 @@
 import { app, BrowserWindow, ipcMain, Menu, nativeImage, Tray } from "electron";
 import fs from "node:fs";
+import * as os from "node:os";
 import path from "node:path";
 
 import { configStore } from "./config-store";
@@ -119,6 +120,20 @@ function createWindow(): void {
 app.on("ready", () => {
   createWindow();
   initializeCaptureManager();
+
+  // Phase 3: Initialize session persistence on app startup
+  try {
+    const appCfg = configStore.loadAppConfig();
+    const sessionDir = path.join(os.homedir(), ".hl7-capture", "sessions");
+    const enablePersistence = appCfg?.enablePersistence ?? true;
+    const retentionDays = appCfg?.retentionDays ?? 30;
+
+    captureManager
+      .initializePersistence(sessionDir, enablePersistence, retentionDays)
+      .catch((err) => console.error("Failed to initialize session persistence:", err));
+  } catch (err) {
+    console.warn("Failed to initialize session persistence:", err);
+  }
 
   // After initializing capture manager, load saved configuration and
   // optionally auto-start capture if user enabled it in settings.
@@ -329,6 +344,38 @@ ipcMain.handle("get-sessions", async () => {
 ipcMain.handle("clear-sessions", async () => {
   captureManager.clearSessions();
 });
+
+// Phase 3: Session persistence handlers
+ipcMain.handle("get-persisted-sessions", async () => {
+  try {
+    return await captureManager.getPersistedSessions();
+  } catch (error) {
+    throw new Error(`Failed to get persisted sessions: ${error}`);
+  }
+});
+
+ipcMain.handle("delete-persisted-session", async (_event, sessionId: string) => {
+  try {
+    await captureManager.deletePersistedSession(sessionId);
+  } catch (error) {
+    throw new Error(`Failed to delete persisted session: ${error}`);
+  }
+});
+
+ipcMain.handle("get-persistence-config", async () => {
+  return captureManager.getPersistenceConfig();
+});
+
+ipcMain.handle(
+  "update-persistence-config",
+  async (_event, enablePersistence: boolean, retentionDays: number) => {
+    try {
+      await captureManager.updatePersistenceConfig(enablePersistence, retentionDays);
+    } catch (error) {
+      throw new Error(`Failed to update persistence config: ${error}`);
+    }
+  }
+);
 
 ipcMain.handle("save-marker-config", async (_event, config) => {
   captureManager.saveMarkerConfig(config);

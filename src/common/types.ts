@@ -38,6 +38,11 @@ export interface AppConfig {
   startMinimized: boolean;
   // If true, automatically start the application when Windows starts (all users). Defaults to false.
   autoStartApp: boolean;
+  // Phase 3: Session Persistence Configuration
+  // If true, automatically persist completed sessions to disk. Defaults to true.
+  enablePersistence?: boolean;
+  // Retention period in days (1-365). Sessions older than this are deleted. Defaults to 30.
+  retentionDays?: number;
 }
 
 export interface Marker {

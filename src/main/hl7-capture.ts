@@ -6,8 +6,10 @@
 import { execSync } from "node:child_process";
 import { EventEmitter } from "node:events";
 import * as os from "node:os";
+import * as path from "node:path";
 
 import { DumpcapAdapter } from "./dumpcap-adapter";
+import { SessionStore } from "./session-store";
 
 import type {
   NetworkInterface,
@@ -46,6 +48,11 @@ export class HL7CaptureManager extends EventEmitter {
   private externalPacketSource: PacketSource | null = null;
   // Count of raw packets processed (for status reporting)
   private packetCount: number = 0;
+
+  // Phase 3: Session Persistence
+  private sessionStore: SessionStore | null = null;
+  private enablePersistence: boolean = true;
+  private retentionDays: number = 30;
 
   constructor() {
     super();
@@ -705,5 +712,113 @@ export class HL7CaptureManager extends EventEmitter {
     // Clear active session
     this.activeSessionKey = null;
     this.sessionBuffer = Buffer.alloc(0);
+
+    // Phase 3: Persist session asynchronously (fire-and-forget)
+    if (this.enablePersistence && this.sessionStore && session) {
+      this.sessionStore.saveSession(session, this.retentionDays).catch((error) => {
+        console.error(`Failed to persist session ${session.id}:`, error);
+      });
+    }
+  }
+
+  /**
+   * Phase 3: Initialize session persistence
+   * Call during app startup with session directory and config
+   */
+  public async initializePersistence(
+    sessionDir: string,
+    enablePersistence: boolean,
+    retentionDays: number
+  ): Promise<void> {
+    this.enablePersistence = enablePersistence;
+    this.retentionDays = Math.max(1, Math.min(365, retentionDays)); // Clamp to 1-365
+
+    if (!enablePersistence) {
+      console.log("Session persistence disabled");
+      return;
+    }
+
+    try {
+      this.sessionStore = new SessionStore(sessionDir);
+      await this.sessionStore.initialize();
+
+      // Perform crash recovery on startup
+      const stats = await this.sessionStore.performCrashRecovery();
+      console.log(`Crash recovery: ${stats.recovered} recovered, ${stats.cleaned} cleaned`);
+
+      // Load and migrate sessions from previous app runs
+      const migratedSessions = await this.sessionStore.loadAndMigrateAllSessions();
+      console.log(`Loaded ${migratedSessions.length} persisted sessions`);
+
+      // Restore sessions to memory
+      for (const session of migratedSessions) {
+        this.sessions.set(session.id, session);
+      }
+
+      console.log("Session persistence initialized successfully");
+    } catch (error) {
+      console.error("Failed to initialize session persistence:", error);
+      this.sessionStore = null;
+      this.enablePersistence = false;
+    }
+  }
+
+  /**
+   * Phase 3: Get persisted sessions from disk
+   */
+  public async getPersistedSessions(): Promise<HL7Session[]> {
+    if (!this.sessionStore) {
+      return [];
+    }
+
+    try {
+      return await this.sessionStore.loadAllSessions();
+    } catch (error) {
+      console.error("Failed to load persisted sessions:", error);
+      return [];
+    }
+  }
+
+  /**
+   * Phase 3: Delete persisted session by ID
+   */
+  public async deletePersistedSession(sessionId: string): Promise<void> {
+    if (!this.sessionStore) {
+      throw new Error("Session persistence not initialized");
+    }
+
+    try {
+      await this.sessionStore.deleteSession(sessionId);
+    } catch (error) {
+      console.error(`Failed to delete persisted session ${sessionId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Phase 3: Get current persistence configuration
+   */
+  public getPersistenceConfig(): { enablePersistence: boolean; retentionDays: number } {
+    return {
+      enablePersistence: this.enablePersistence,
+      retentionDays: this.retentionDays,
+    };
+  }
+
+  /**
+   * Phase 3: Update persistence configuration
+   */
+  public async updatePersistenceConfig(
+    enablePersistence: boolean,
+    retentionDays: number
+  ): Promise<void> {
+    this.enablePersistence = enablePersistence;
+    this.retentionDays = Math.max(1, Math.min(365, retentionDays));
+
+    // If persistence is being enabled for first time, initialize it
+    if (enablePersistence && !this.sessionStore) {
+      const sessionDir = path.join(os.homedir(), ".hl7-capture", "sessions");
+      await this.initializePersistence(sessionDir, enablePersistence, this.retentionDays);
+    }
   }
 }
