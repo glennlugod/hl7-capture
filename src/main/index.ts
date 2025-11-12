@@ -148,6 +148,30 @@ app.on("ready", () => {
     console.warn("Failed to initialize cleanup worker:", err);
   }
 
+  // Phase 5: Initialize submission worker on app startup
+  try {
+    const appCfg = configStore.loadAppConfig();
+    const submissionEndpoint = appCfg?.submissionEndpoint ?? "";
+    const submissionAuthHeader = appCfg?.submissionAuthHeader ?? "";
+    const submissionConcurrency = appCfg?.submissionConcurrency ?? 2;
+    const submissionMaxRetries = appCfg?.submissionMaxRetries ?? 3;
+    const submissionIntervalMinutes = appCfg?.submissionIntervalMinutes ?? 5;
+
+    if (submissionEndpoint) {
+      captureManager
+        .initializeSubmissionWorker(
+          submissionEndpoint,
+          submissionAuthHeader,
+          submissionConcurrency,
+          submissionMaxRetries,
+          submissionIntervalMinutes
+        )
+        .catch((err) => console.error("Failed to initialize submission worker:", err));
+    }
+  } catch (err) {
+    console.warn("Failed to initialize submission worker:", err);
+  }
+
   // After initializing capture manager, load saved configuration and
   // optionally auto-start capture if user enabled it in settings.
   try {
@@ -410,6 +434,43 @@ ipcMain.handle(
       await captureManager.updateCleanupConfig(cleanupIntervalHours, dryRunMode);
     } catch (error) {
       throw new Error(`Failed to update cleanup config: ${error}`);
+    }
+  }
+);
+
+// Phase 5: Submission Worker IPC Handlers
+ipcMain.handle("trigger-submission-now", async () => {
+  try {
+    await captureManager.triggerSubmissionNow();
+  } catch (error) {
+    throw new Error(`Failed to trigger submission: ${error}`);
+  }
+});
+
+ipcMain.handle("get-submission-config", async () => {
+  return captureManager.getSubmissionConfig();
+});
+
+ipcMain.handle(
+  "update-submission-config",
+  async (
+    _event,
+    endpoint: string,
+    authHeader: string,
+    concurrency: number,
+    maxRetries: number,
+    intervalMinutes: number
+  ) => {
+    try {
+      captureManager.updateSubmissionConfig(
+        endpoint,
+        authHeader,
+        concurrency,
+        maxRetries,
+        intervalMinutes
+      );
+    } catch (error) {
+      throw new Error(`Failed to update submission config: ${error}`);
     }
   }
 );

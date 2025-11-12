@@ -48,6 +48,17 @@ export interface AppConfig {
   cleanupIntervalHours?: number;
   // If true, preview cleanup without actually deleting files. Defaults to false.
   dryRunMode?: boolean;
+  // Phase 5: Submission Worker Configuration
+  // REST API endpoint URL for session submission. Empty string disables submissions.
+  submissionEndpoint?: string;
+  // Optional authentication header (e.g., "Bearer token" or "Basic base64"). Empty string = no auth.
+  submissionAuthHeader?: string;
+  // Concurrency level for submission (1-10). Defaults to 2.
+  submissionConcurrency?: number;
+  // Maximum submission attempts with exponential backoff (1-10). Defaults to 3.
+  submissionMaxRetries?: number;
+  // Submission interval in minutes (1-60). Defaults to 5.
+  submissionIntervalMinutes?: number;
 }
 
 export interface Marker {

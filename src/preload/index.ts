@@ -78,6 +78,33 @@ const electronAPI = {
   updateCleanupConfig: (cleanupIntervalHours: number, dryRunMode: boolean): Promise<void> =>
     ipcRenderer.invoke("update-cleanup-config", cleanupIntervalHours, dryRunMode),
 
+  // Phase 5: Submission Worker (NEW)
+  triggerSubmissionNow: (): Promise<void> => ipcRenderer.invoke("trigger-submission-now"),
+
+  getSubmissionConfig: (): Promise<{
+    submissionEndpoint: string;
+    submissionAuthHeader: string;
+    submissionConcurrency: number;
+    submissionMaxRetries: number;
+    submissionIntervalMinutes: number;
+  }> => ipcRenderer.invoke("get-submission-config"),
+
+  updateSubmissionConfig: (
+    endpoint: string,
+    authHeader: string,
+    concurrency: number,
+    maxRetries: number,
+    intervalMinutes: number
+  ): Promise<void> =>
+    ipcRenderer.invoke(
+      "update-submission-config",
+      endpoint,
+      authHeader,
+      concurrency,
+      maxRetries,
+      intervalMinutes
+    ),
+
   // Window / Tray controls
   minimizeToTray: (): Promise<void> => ipcRenderer.invoke("minimize-to-tray"),
 

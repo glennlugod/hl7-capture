@@ -11,6 +11,7 @@ import * as path from "node:path";
 import { CleanupWorker } from "./cleanup-worker";
 import { DumpcapAdapter } from "./dumpcap-adapter";
 import { SessionStore } from "./session-store";
+import { SubmissionWorker } from "./submission-worker";
 
 import type {
   NetworkInterface,
@@ -59,6 +60,14 @@ export class HL7CaptureManager extends EventEmitter {
   private cleanupWorker: CleanupWorker | null = null;
   private cleanupIntervalHours: number = 24;
   private dryRunMode: boolean = false;
+
+  // Phase 5: Submission Worker
+  private submissionWorker: SubmissionWorker | null = null;
+  private submissionEndpoint: string = "";
+  private submissionAuthHeader: string = "";
+  private submissionConcurrency: number = 2;
+  private submissionMaxRetries: number = 3;
+  private submissionIntervalMinutes: number = 5;
 
   constructor() {
     super();
@@ -921,6 +930,120 @@ export class HL7CaptureManager extends EventEmitter {
     return {
       cleanupIntervalHours: this.cleanupIntervalHours,
       dryRunMode: this.dryRunMode,
+    };
+  }
+
+  /**
+   * Phase 5: Initialize submission worker with current configuration
+   */
+  public async initializeSubmissionWorker(
+    endpoint: string,
+    authHeader?: string,
+    concurrency?: number,
+    maxRetries?: number,
+    intervalMinutes?: number
+  ): Promise<void> {
+    try {
+      const sessionsDir = path.join(os.homedir(), ".hl7-capture", "sessions");
+
+      this.submissionEndpoint = endpoint;
+      this.submissionAuthHeader = authHeader || "";
+      this.submissionConcurrency = concurrency || 2;
+      this.submissionMaxRetries = maxRetries || 3;
+      this.submissionIntervalMinutes = intervalMinutes || 5;
+
+      this.submissionWorker = new SubmissionWorker({
+        sessionsDir,
+        endpoint: this.submissionEndpoint,
+        authHeader: this.submissionAuthHeader,
+        concurrency: this.submissionConcurrency,
+        maxRetries: this.submissionMaxRetries,
+        submissionIntervalMinutes: this.submissionIntervalMinutes,
+      });
+
+      this.submissionWorker.on("onSubmissionProgress", (progress) => {
+        this.emit("submission-progress", progress);
+      });
+
+      this.submissionWorker.on("onSubmissionResult", (result) => {
+        this.emit("submission-result", result);
+      });
+
+      await this.submissionWorker.start();
+      console.log("SubmissionWorker initialized and started");
+    } catch (err) {
+      console.error("Failed to initialize SubmissionWorker:", err);
+      this.submissionWorker = null;
+      throw err;
+    }
+  }
+
+  /**
+   * Phase 5: Stop submission worker gracefully
+   */
+  public stopSubmissionWorker(): void {
+    if (this.submissionWorker) {
+      this.submissionWorker.stop();
+      this.submissionWorker = null;
+      console.log("SubmissionWorker stopped");
+    }
+  }
+
+  /**
+   * Phase 5: Trigger immediate submission cycle
+   */
+  public async triggerSubmissionNow(): Promise<void> {
+    if (!this.submissionWorker) {
+      throw new Error("SubmissionWorker not initialized");
+    }
+    await this.submissionWorker.triggerNow();
+  }
+
+  /**
+   * Phase 5: Update submission worker configuration dynamically
+   */
+  public updateSubmissionConfig(
+    endpoint: string,
+    authHeader?: string,
+    concurrency?: number,
+    maxRetries?: number,
+    intervalMinutes?: number
+  ): void {
+    if (!this.submissionWorker) {
+      throw new Error("SubmissionWorker not initialized");
+    }
+
+    this.submissionEndpoint = endpoint;
+    this.submissionAuthHeader = authHeader || "";
+    this.submissionConcurrency = concurrency || 2;
+    this.submissionMaxRetries = maxRetries || 3;
+    this.submissionIntervalMinutes = intervalMinutes || 5;
+
+    this.submissionWorker.updateConfig({
+      endpoint: this.submissionEndpoint,
+      authHeader: this.submissionAuthHeader,
+      concurrency: this.submissionConcurrency,
+      maxRetries: this.submissionMaxRetries,
+      submissionIntervalMinutes: this.submissionIntervalMinutes,
+    });
+  }
+
+  /**
+   * Phase 5: Get submission worker configuration
+   */
+  public getSubmissionConfig(): {
+    submissionEndpoint: string;
+    submissionAuthHeader: string;
+    submissionConcurrency: number;
+    submissionMaxRetries: number;
+    submissionIntervalMinutes: number;
+  } {
+    return {
+      submissionEndpoint: this.submissionEndpoint,
+      submissionAuthHeader: this.submissionAuthHeader,
+      submissionConcurrency: this.submissionConcurrency,
+      submissionMaxRetries: this.submissionMaxRetries,
+      submissionIntervalMinutes: this.submissionIntervalMinutes,
     };
   }
 }

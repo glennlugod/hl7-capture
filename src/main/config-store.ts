@@ -32,6 +32,12 @@ const DEFAULT_APP_CONFIG: AppConfig = {
   // Phase 4: Cleanup Worker defaults
   cleanupIntervalHours: 24,
   dryRunMode: false,
+  // Phase 5: Submission Worker defaults
+  submissionEndpoint: "",
+  submissionAuthHeader: "",
+  submissionConcurrency: 2,
+  submissionMaxRetries: 3,
+  submissionIntervalMinutes: 5,
 };
 
 /**
