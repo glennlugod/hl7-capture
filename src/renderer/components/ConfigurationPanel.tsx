@@ -3,6 +3,7 @@ import React, { useState } from "react";
 import AdvancedOptions from "./Configuration/AdvancedOptions";
 import AppSettings from "./Configuration/AppSettings";
 import HL7MarkerConfig from "./Configuration/HL7MarkerConfig";
+import SubmissionConfig from "./Configuration/SubmissionConfig";
 
 import type { MarkerConfig } from "../../common/types";
 
@@ -35,6 +36,9 @@ export default function ConfigurationPanel({
 
       {/* Application settings */}
       <AppSettings />
+
+      {/* Submission Settings */}
+      <SubmissionConfig />
 
       {/* Advanced Options */}
       <div className="rounded-lg border border-slate-200/50 bg-white/60 backdrop-blur-sm p-5 shadow-sm">

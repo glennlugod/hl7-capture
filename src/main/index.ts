@@ -6,7 +6,7 @@ import path from "node:path";
 import { configStore } from "./config-store";
 import { HL7CaptureManager } from "./hl7-capture";
 
-import type { NetworkInterface } from "../common/types";
+import type { NetworkInterface, AppConfig } from "../common/types";
 
 let mainWindow: BrowserWindow | null;
 let captureManager: HL7CaptureManager;
@@ -296,6 +296,16 @@ app.on("activate", () => {
 function initializeCaptureManager(): void {
   captureManager = new HL7CaptureManager();
 
+  // Initialize submission config from persisted settings
+  const appConfig = configStore.loadAppConfig();
+  captureManager.updateSubmissionConfig(
+    appConfig.submissionEndpoint || "",
+    appConfig.submissionAuthHeader || "",
+    appConfig.submissionConcurrency || 2,
+    appConfig.submissionMaxRetries || 3,
+    appConfig.submissionIntervalMinutes || 5
+  );
+
   // Listen for new HL7 elements
   captureManager.on("element", (element) => {
     if (mainWindow) {
@@ -462,7 +472,14 @@ ipcMain.handle("trigger-submission-now", async () => {
 });
 
 ipcMain.handle("get-submission-config", async () => {
-  return captureManager.getSubmissionConfig();
+  const appConfig = configStore.loadAppConfig();
+  return {
+    submissionEndpoint: appConfig.submissionEndpoint || "",
+    submissionAuthHeader: appConfig.submissionAuthHeader || "",
+    submissionConcurrency: appConfig.submissionConcurrency || 2,
+    submissionMaxRetries: appConfig.submissionMaxRetries || 3,
+    submissionIntervalMinutes: appConfig.submissionIntervalMinutes || 5,
+  };
 });
 
 ipcMain.handle(
@@ -476,6 +493,18 @@ ipcMain.handle(
     intervalMinutes: number
   ) => {
     try {
+      const appConfig = configStore.loadAppConfig();
+      const updatedConfig: AppConfig = {
+        ...appConfig,
+        submissionEndpoint: endpoint,
+        submissionAuthHeader: authHeader,
+        submissionConcurrency: concurrency,
+        submissionMaxRetries: maxRetries,
+        submissionIntervalMinutes: intervalMinutes,
+      };
+      configStore.saveAppConfig(updatedConfig);
+
+      // Also update the capture manager's worker
       captureManager.updateSubmissionConfig(
         endpoint,
         authHeader,

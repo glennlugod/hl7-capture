@@ -1009,23 +1009,21 @@ export class HL7CaptureManager extends EventEmitter {
     maxRetries?: number,
     intervalMinutes?: number
   ): void {
-    if (!this.submissionWorker) {
-      throw new Error("SubmissionWorker not initialized");
-    }
-
     this.submissionEndpoint = endpoint;
     this.submissionAuthHeader = authHeader || "";
     this.submissionConcurrency = concurrency || 2;
     this.submissionMaxRetries = maxRetries || 3;
     this.submissionIntervalMinutes = intervalMinutes || 5;
 
-    this.submissionWorker.updateConfig({
-      endpoint: this.submissionEndpoint,
-      authHeader: this.submissionAuthHeader,
-      concurrency: this.submissionConcurrency,
-      maxRetries: this.submissionMaxRetries,
-      submissionIntervalMinutes: this.submissionIntervalMinutes,
-    });
+    if (this.submissionWorker) {
+      this.submissionWorker.updateConfig({
+        endpoint: this.submissionEndpoint,
+        authHeader: this.submissionAuthHeader,
+        concurrency: this.submissionConcurrency,
+        maxRetries: this.submissionMaxRetries,
+        submissionIntervalMinutes: this.submissionIntervalMinutes,
+      });
+    }
   }
 
   /**
@@ -1037,7 +1035,7 @@ export class HL7CaptureManager extends EventEmitter {
     submissionConcurrency: number;
     submissionMaxRetries: number;
     submissionIntervalMinutes: number;
-    } {
+  } {
     return {
       submissionEndpoint: this.submissionEndpoint,
       submissionAuthHeader: this.submissionAuthHeader,
