@@ -29,6 +29,9 @@ const DEFAULT_APP_CONFIG: AppConfig = {
   // Phase 3: Session Persistence defaults
   enablePersistence: true,
   retentionDays: 30,
+  // Phase 4: Cleanup Worker defaults
+  cleanupIntervalHours: 24,
+  dryRunMode: false,
 };
 
 /**

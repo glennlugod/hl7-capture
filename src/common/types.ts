@@ -43,6 +43,11 @@ export interface AppConfig {
   enablePersistence?: boolean;
   // Retention period in days (1-365). Sessions older than this are deleted. Defaults to 30.
   retentionDays?: number;
+  // Phase 4: Cleanup Worker Configuration
+  // Interval in hours (1-168) for periodic cleanup execution. Defaults to 24.
+  cleanupIntervalHours?: number;
+  // If true, preview cleanup without actually deleting files. Defaults to false.
+  dryRunMode?: boolean;
 }
 
 export interface Marker {

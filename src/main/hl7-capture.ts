@@ -8,6 +8,7 @@ import { EventEmitter } from "node:events";
 import * as os from "node:os";
 import * as path from "node:path";
 
+import { CleanupWorker } from "./cleanup-worker";
 import { DumpcapAdapter } from "./dumpcap-adapter";
 import { SessionStore } from "./session-store";
 
@@ -53,6 +54,11 @@ export class HL7CaptureManager extends EventEmitter {
   private sessionStore: SessionStore | null = null;
   private enablePersistence: boolean = true;
   private retentionDays: number = 30;
+
+  // Phase 4: Cleanup Worker
+  private cleanupWorker: CleanupWorker | null = null;
+  private cleanupIntervalHours: number = 24;
+  private dryRunMode: boolean = false;
 
   constructor() {
     super();
@@ -820,5 +826,101 @@ export class HL7CaptureManager extends EventEmitter {
       const sessionDir = path.join(os.homedir(), ".hl7-capture", "sessions");
       await this.initializePersistence(sessionDir, enablePersistence, this.retentionDays);
     }
+  }
+
+  /**
+   * Phase 4: Initialize cleanup worker for expired session cleanup
+   */
+  public async initializeCleanupWorker(
+    cleanupIntervalHours: number,
+    dryRunMode: boolean
+  ): Promise<void> {
+    this.cleanupIntervalHours = Math.max(1, Math.min(168, cleanupIntervalHours)); // Clamp 1-168
+    this.dryRunMode = dryRunMode;
+
+    if (!this.enablePersistence) {
+      console.log("Session persistence disabled, skipping cleanup worker");
+      return;
+    }
+
+    try {
+      const sessionDir = path.join(os.homedir(), ".hl7-capture", "sessions");
+      const trashDir = path.join(os.homedir(), ".hl7-capture", "trash");
+
+      this.cleanupWorker = new CleanupWorker({
+        sessionsDir: sessionDir,
+        trashDir,
+        cleanupIntervalHours: this.cleanupIntervalHours,
+        retentionDays: this.retentionDays,
+        dryRunMode: this.dryRunMode,
+        onCleanupSummary: (summary) => {
+          // Emit cleanup summary event
+          this.emit("cleanup-summary", summary);
+        },
+      });
+
+      await this.cleanupWorker.start();
+      console.log("Cleanup worker initialized successfully");
+    } catch (error) {
+      console.error("Failed to initialize cleanup worker:", error);
+      this.cleanupWorker = null;
+    }
+  }
+
+  /**
+   * Phase 4: Stop cleanup worker
+   */
+  public stopCleanupWorker(): void {
+    if (this.cleanupWorker) {
+      this.cleanupWorker.stop();
+      this.cleanupWorker = null;
+      console.log("Cleanup worker stopped");
+    }
+  }
+
+  /**
+   * Phase 4: Run cleanup immediately
+   */
+  public async runCleanupNow(): Promise<void> {
+    if (!this.cleanupWorker) {
+      throw new Error("Cleanup worker not initialized");
+    }
+
+    try {
+      const summary = await this.cleanupWorker.runCleanupNow();
+      this.emit("cleanup-summary", summary);
+    } catch (error) {
+      console.error("Manual cleanup failed:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Phase 4: Update cleanup worker configuration
+   */
+  public async updateCleanupConfig(
+    cleanupIntervalHours: number,
+    dryRunMode: boolean
+  ): Promise<void> {
+    this.cleanupIntervalHours = Math.max(1, Math.min(168, cleanupIntervalHours));
+    this.dryRunMode = dryRunMode;
+
+    if (this.cleanupWorker) {
+      await this.cleanupWorker.updateConfig({
+        cleanupIntervalHours: this.cleanupIntervalHours,
+        dryRunMode: this.dryRunMode,
+        retentionDays: this.retentionDays,
+      });
+    }
+  }
+
+  /**
+   * Phase 4: Get cleanup worker configuration
+   */
+  public getCleanupConfig(): { cleanupIntervalHours: number; dryRunMode: boolean } {
+    return {
+      cleanupIntervalHours: this.cleanupIntervalHours,
+      dryRunMode: this.dryRunMode,
+    };
   }
 }

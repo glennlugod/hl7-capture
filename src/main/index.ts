@@ -135,6 +135,19 @@ app.on("ready", () => {
     console.warn("Failed to initialize session persistence:", err);
   }
 
+  // Phase 4: Initialize cleanup worker on app startup
+  try {
+    const appCfg = configStore.loadAppConfig();
+    const cleanupIntervalHours = appCfg?.cleanupIntervalHours ?? 24;
+    const dryRunMode = appCfg?.dryRunMode ?? false;
+
+    captureManager
+      .initializeCleanupWorker(cleanupIntervalHours, dryRunMode)
+      .catch((err) => console.error("Failed to initialize cleanup worker:", err));
+  } catch (err) {
+    console.warn("Failed to initialize cleanup worker:", err);
+  }
+
   // After initializing capture manager, load saved configuration and
   // optionally auto-start capture if user enabled it in settings.
   try {
@@ -373,6 +386,30 @@ ipcMain.handle(
       await captureManager.updatePersistenceConfig(enablePersistence, retentionDays);
     } catch (error) {
       throw new Error(`Failed to update persistence config: ${error}`);
+    }
+  }
+);
+
+// Phase 4: Cleanup worker handlers
+ipcMain.handle("run-cleanup-now", async () => {
+  try {
+    await captureManager.runCleanupNow();
+  } catch (error) {
+    throw new Error(`Failed to run cleanup: ${error}`);
+  }
+});
+
+ipcMain.handle("get-cleanup-config", async () => {
+  return captureManager.getCleanupConfig();
+});
+
+ipcMain.handle(
+  "update-cleanup-config",
+  async (_event, cleanupIntervalHours: number, dryRunMode: boolean) => {
+    try {
+      await captureManager.updateCleanupConfig(cleanupIntervalHours, dryRunMode);
+    } catch (error) {
+      throw new Error(`Failed to update cleanup config: ${error}`);
     }
   }
 );

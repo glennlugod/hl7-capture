@@ -69,6 +69,15 @@ const electronAPI = {
   updatePersistenceConfig: (enablePersistence: boolean, retentionDays: number): Promise<void> =>
     ipcRenderer.invoke("update-persistence-config", enablePersistence, retentionDays),
 
+  // Phase 4: Cleanup Worker (NEW)
+  runCleanupNow: (): Promise<void> => ipcRenderer.invoke("run-cleanup-now"),
+
+  getCleanupConfig: (): Promise<{ cleanupIntervalHours: number; dryRunMode: boolean }> =>
+    ipcRenderer.invoke("get-cleanup-config"),
+
+  updateCleanupConfig: (cleanupIntervalHours: number, dryRunMode: boolean): Promise<void> =>
+    ipcRenderer.invoke("update-cleanup-config", cleanupIntervalHours, dryRunMode),
+
   // Window / Tray controls
   minimizeToTray: (): Promise<void> => ipcRenderer.invoke("minimize-to-tray"),
 
