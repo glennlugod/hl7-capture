@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import ConfigurationPanel from "./components/ConfigurationPanel";
 import MainLayout from "./components/MainLayout";
 import MessageDetailViewer from "./components/MessageDetailViewer";
+import SessionDetail from "./components/SessionDetail";
 import SessionList from "./components/SessionList";
 
 import type { HL7Session, MarkerConfig, NetworkInterface } from "../common/types";
@@ -33,6 +34,10 @@ type ElectronAPI = {
     }) => void
   ) => () => void;
   onError: (cb: (err: string) => void) => () => void;
+  // Phase 6: Session Submission Tracking IPC handlers
+  retrySubmission: (sessionId: string) => Promise<void>;
+  ignoreSession: (sessionId: string) => Promise<void>;
+  deleteSession: (sessionId: string) => Promise<void>;
 };
 
 export default function App(): JSX.Element {
@@ -53,6 +58,7 @@ export default function App(): JSX.Element {
   const [isPaused, setIsPaused] = useState(false);
   const [sessions, setSessions] = useState<HL7Session[]>([]);
   const [selectedSession, setSelectedSession] = useState<HL7Session | null>(null);
+  const [showSessionDetail, setShowSessionDetail] = useState(false);
   const [autoScroll, setAutoScroll] = useState(() => {
     const saved = localStorage.getItem("hl7-capture-autoscroll");
     return saved ? JSON.parse(saved) : true;
@@ -254,6 +260,61 @@ export default function App(): JSX.Element {
     setSelectedSession(session);
   };
 
+  // Phase 6: Session Submission Control Handlers
+  const handleRetrySubmission = async (sessionId: string) => {
+    try {
+      await api.retrySubmission(sessionId);
+      // Update local session state - reset to pending
+      setSessions((prev) =>
+        prev.map((s) =>
+          s.id === sessionId
+            ? { ...s, submissionStatus: "pending" as const, submissionAttempts: 0 }
+            : s
+        )
+      );
+      // Update selected session if it matches
+      if (selectedSession?.id === sessionId) {
+        setSelectedSession((prev) =>
+          prev ? { ...prev, submissionStatus: "pending" as const, submissionAttempts: 0 } : null
+        );
+      }
+    } catch (err) {
+      console.error("Failed to retry submission:", err);
+    }
+  };
+
+  const handleIgnoreSession = async (sessionId: string) => {
+    try {
+      await api.ignoreSession(sessionId);
+      // Update local session state
+      setSessions((prev) =>
+        prev.map((s) => (s.id === sessionId ? { ...s, submissionStatus: "ignored" as const } : s))
+      );
+      // Update selected session if it matches
+      if (selectedSession?.id === sessionId) {
+        setSelectedSession((prev) =>
+          prev ? { ...prev, submissionStatus: "ignored" as const } : null
+        );
+      }
+    } catch (err) {
+      console.error("Failed to ignore session:", err);
+    }
+  };
+
+  const handleDeleteSession = async (sessionId: string) => {
+    try {
+      await api.deleteSession(sessionId);
+      // Remove from local session state
+      setSessions((prev) => prev.filter((s) => s.id !== sessionId));
+      // Clear selected session if it was deleted
+      if (selectedSession?.id === sessionId) {
+        setSelectedSession(null);
+      }
+    } catch (err) {
+      console.error("Failed to delete session:", err);
+    }
+  };
+
   // Keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -339,6 +400,17 @@ export default function App(): JSX.Element {
           autoScroll={autoScroll}
           onAutoScrollChange={setAutoScroll}
         />
+      }
+      sessionDetail={
+        selectedSession ? (
+          <SessionDetail
+            session={selectedSession}
+            onRetry={handleRetrySubmission}
+            onIgnore={handleIgnoreSession}
+            onDelete={handleDeleteSession}
+            onClose={() => setSelectedSession(null)}
+          />
+        ) : undefined
       }
       messageDetail={<MessageDetailViewer session={selectedSession} onNavigateMessage={() => {}} />}
       isCapturing={isCapturing}

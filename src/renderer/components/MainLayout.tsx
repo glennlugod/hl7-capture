@@ -9,6 +9,7 @@ import type { NetworkInterface } from "../../common/types";
 interface MainLayoutProps {
   configPanel: React.ReactNode;
   sessionList: React.ReactNode;
+  sessionDetail?: React.ReactNode;
   messageDetail: React.ReactNode;
   isCapturing: boolean;
   isPaused: boolean;
@@ -26,6 +27,7 @@ interface MainLayoutProps {
 export default function MainLayout({
   configPanel,
   sessionList,
+  sessionDetail,
   messageDetail,
   isCapturing,
   isPaused,
@@ -124,7 +126,7 @@ export default function MainLayout({
             {/* Resize Handle - Modern gradient */}
             <PanelResizeHandle className="w-1.5 bg-gradient-to-b from-slate-200 via-slate-300 to-slate-200 transition-all hover:w-2 hover:from-primary hover:via-primary hover:to-primary hover:shadow-lg active:from-primary/90 active:via-primary/90 active:to-primary/90" />
 
-            {/* Message Detail Panel - Modern glass effect */}
+            {/* Message/Session Detail Panel - Modern glass effect */}
             <Panel
               defaultSize={60}
               minSize={50}
@@ -132,10 +134,10 @@ export default function MainLayout({
             >
               <div className="flex h-14 items-center border-b border-slate-200/50 bg-gradient-to-r from-blue-50/30 to-teal-50/20 px-6 shadow-sm">
                 <h2 className="text-base font-semibold text-slate-900 tracking-tight">
-                  Message Details
+                  {sessionDetail ? "Session Details" : "Message Details"}
                 </h2>
               </div>
-              <div className="flex-1 overflow-auto">{messageDetail}</div>
+              <div className="flex-1 overflow-auto">{sessionDetail || messageDetail}</div>
             </Panel>
           </PanelGroup>
         </div>
