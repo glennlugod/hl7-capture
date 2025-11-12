@@ -61,6 +61,18 @@ export interface AppConfig {
   submissionIntervalMinutes?: number;
 }
 
+/**
+ * Submission worker configuration
+ * Used for runtime submission settings and IPC communication
+ */
+export interface SubmissionConfig {
+  submissionEndpoint: string;
+  submissionAuthHeader: string;
+  submissionConcurrency: number;
+  submissionMaxRetries: number;
+  submissionIntervalMinutes: number;
+}
+
 export interface Marker {
   id: string;
   name: string;

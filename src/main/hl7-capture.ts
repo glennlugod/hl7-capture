@@ -21,6 +21,7 @@ import type {
   PcapPacket,
   NormalizedPacket,
   CaptureStatus,
+  SubmissionConfig,
 } from "../common/types";
 
 // Local lightweight types for external packet sources and packet shapes
@@ -1029,13 +1030,7 @@ export class HL7CaptureManager extends EventEmitter {
   /**
    * Phase 5: Get submission worker configuration
    */
-  public getSubmissionConfig(): {
-    submissionEndpoint: string;
-    submissionAuthHeader: string;
-    submissionConcurrency: number;
-    submissionMaxRetries: number;
-    submissionIntervalMinutes: number;
-  } {
+  public getSubmissionConfig(): SubmissionConfig {
     return {
       submissionEndpoint: this.submissionEndpoint,
       submissionAuthHeader: this.submissionAuthHeader,

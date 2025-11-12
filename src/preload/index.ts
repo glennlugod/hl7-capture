@@ -6,6 +6,7 @@ import type {
   HL7Session,
   NetworkInterface,
   AppConfig,
+  SubmissionConfig,
 } from "../common/types";
 
 /**
@@ -81,13 +82,7 @@ const electronAPI = {
   // Phase 5: Submission Worker (NEW)
   triggerSubmissionNow: (): Promise<void> => ipcRenderer.invoke("trigger-submission-now"),
 
-  getSubmissionConfig: (): Promise<{
-    submissionEndpoint: string;
-    submissionAuthHeader: string;
-    submissionConcurrency: number;
-    submissionMaxRetries: number;
-    submissionIntervalMinutes: number;
-  }> => ipcRenderer.invoke("get-submission-config"),
+  getSubmissionConfig: (): Promise<SubmissionConfig> => ipcRenderer.invoke("get-submission-config"),
 
   updateSubmissionConfig: (
     endpoint: string,

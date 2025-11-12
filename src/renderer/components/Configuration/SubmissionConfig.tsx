@@ -1,13 +1,9 @@
 import React, { useEffect, useState } from "react";
 
+import type { SubmissionConfig } from "../../../common/types";
+
 type ElectronAPI = {
-  getSubmissionConfig: () => Promise<{
-    submissionEndpoint: string;
-    submissionAuthHeader: string;
-    submissionConcurrency: number;
-    submissionMaxRetries: number;
-    submissionIntervalMinutes: number;
-  }>;
+  getSubmissionConfig: () => Promise<SubmissionConfig>;
   updateSubmissionConfig: (
     endpoint: string,
     authHeader: string,
@@ -18,7 +14,7 @@ type ElectronAPI = {
 };
 
 export default function SubmissionConfig(): JSX.Element {
-  const [config, setConfig] = useState({
+  const [config, setConfig] = useState<SubmissionConfig>({
     submissionEndpoint: "",
     submissionAuthHeader: "",
     submissionConcurrency: 2,
