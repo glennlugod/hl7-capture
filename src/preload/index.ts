@@ -167,6 +167,45 @@ const electronAPI = {
     ipcRenderer.on("capture-error", listener);
     return () => ipcRenderer.removeListener("capture-error", listener);
   },
+
+  // Phase 6: Real-time submission event listeners
+  onSubmissionProgress: (
+    callback: (progress: { inFlight: number; queueSize: number }) => void
+  ): (() => void) => {
+    const listener = (
+      _event: Electron.IpcRendererEvent,
+      progress: { inFlight: number; queueSize: number }
+    ) => {
+      callback(progress);
+    };
+    ipcRenderer.on("submission-progress", listener);
+    return () => ipcRenderer.removeListener("submission-progress", listener);
+  },
+
+  onSubmissionResult: (
+    callback: (result: {
+      sessionId: string;
+      status: "pending" | "submitted" | "failed" | "ignored";
+      attempts: number;
+      submittedAt?: number;
+      error?: string;
+    }) => void
+  ): (() => void) => {
+    const listener = (
+      _event: Electron.IpcRendererEvent,
+      result: {
+        sessionId: string;
+        status: "pending" | "submitted" | "failed" | "ignored";
+        attempts: number;
+        submittedAt?: number;
+        error?: string;
+      }
+    ) => {
+      callback(result);
+    };
+    ipcRenderer.on("submission-result", listener);
+    return () => ipcRenderer.removeListener("submission-result", listener);
+  },
 };
 
 /**

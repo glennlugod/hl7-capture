@@ -324,6 +324,20 @@ function initializeCaptureManager(): void {
       mainWindow.webContents.send("capture-error", error.message);
     }
   });
+
+  // Phase 6: Listen for submission progress updates
+  captureManager.on("submission-progress", (progress) => {
+    if (mainWindow) {
+      mainWindow.webContents.send("submission-progress", progress);
+    }
+  });
+
+  // Phase 6: Listen for submission result updates
+  captureManager.on("submission-result", (result) => {
+    if (mainWindow) {
+      mainWindow.webContents.send("submission-result", result);
+    }
+  });
 }
 
 /**

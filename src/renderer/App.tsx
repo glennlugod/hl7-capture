@@ -38,6 +38,19 @@ type ElectronAPI = {
   retrySubmission: (sessionId: string) => Promise<void>;
   ignoreSession: (sessionId: string) => Promise<void>;
   deleteSession: (sessionId: string) => Promise<void>;
+  // Phase 6: Real-time submission event listeners
+  onSubmissionProgress: (
+    cb: (progress: { inFlight: number; queueSize: number }) => void
+  ) => () => void;
+  onSubmissionResult: (
+    cb: (result: {
+      sessionId: string;
+      status: "pending" | "submitted" | "failed" | "ignored";
+      attempts: number;
+      submittedAt?: number;
+      error?: string;
+    }) => void
+  ) => () => void;
 };
 
 export default function App(): JSX.Element {
@@ -58,7 +71,6 @@ export default function App(): JSX.Element {
   const [isPaused, setIsPaused] = useState(false);
   const [sessions, setSessions] = useState<HL7Session[]>([]);
   const [selectedSession, setSelectedSession] = useState<HL7Session | null>(null);
-  const [showSessionDetail, setShowSessionDetail] = useState(false);
   const [autoScroll, setAutoScroll] = useState(() => {
     const saved = localStorage.getItem("hl7-capture-autoscroll");
     return saved ? JSON.parse(saved) : true;
@@ -80,6 +92,22 @@ export default function App(): JSX.Element {
 
     const unsubError = api.onError((errorMsg: string) => {
       console.error("Capture error:", errorMsg);
+    });
+
+    // Phase 6: Listen for submission progress updates
+    const unsubSubmissionProgress = api.onSubmissionProgress(() => {
+      // Submission progress tracked in real-time (not stored in state yet)
+    });
+
+    // Phase 6: Listen for submission result updates
+    const unsubSubmissionResult = api.onSubmissionResult((result) => {
+      // Update the session in the list with the new submission status
+      updateSessionSubmissionStatus(result.sessionId, {
+        status: result.status,
+        attempts: result.attempts,
+        submittedAt: result.submittedAt,
+        error: result.error,
+      });
     });
 
     return () => {
@@ -111,6 +139,20 @@ export default function App(): JSX.Element {
       } catch (e) {
         // eslint-disable-next-line no-console
         console.warn("Failed to remove capture-error listener:", e);
+      }
+
+      try {
+        unsubSubmissionProgress?.();
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.warn("Failed to remove submission-progress listener:", e);
+      }
+
+      try {
+        unsubSubmissionResult?.();
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.warn("Failed to remove submission-result listener:", e);
       }
     };
   }, []);
@@ -166,11 +208,7 @@ export default function App(): JSX.Element {
   const handleInterfaceChange = async (newInterface: NetworkInterface | null) => {
     setSelectedInterface(newInterface);
     try {
-      if (newInterface !== null) {
-        await api.saveInterfaceSelection(newInterface.name);
-      } else {
-        await api.saveInterfaceSelection(null);
-      }
+      await api.saveInterfaceSelection(newInterface?.name || null);
     } catch (e) {
       console.error("Failed to save interface selection", e);
     }
@@ -260,6 +298,21 @@ export default function App(): JSX.Element {
     setSelectedSession(session);
   };
 
+  const updateSessionSubmissionStatus = (
+    sessionId: string,
+    update: {
+      status: "pending" | "submitted" | "failed" | "ignored";
+      attempts: number;
+      submittedAt?: number;
+      error?: string;
+    }
+  ) => {
+    setSessions((prev) => prev.map((s) => (s.id === sessionId ? { ...s, ...update } : s)));
+    if (selectedSession?.id === sessionId) {
+      setSelectedSession((prev) => (prev ? { ...prev, ...update } : null));
+    }
+  };
+
   // Phase 6: Session Submission Control Handlers
   const handleRetrySubmission = async (sessionId: string) => {
     try {
@@ -317,68 +370,69 @@ export default function App(): JSX.Element {
 
   // Keyboard navigation
   useEffect(() => {
+    const handleToggleCaptureKey = () => {
+      if (isCapturing) {
+        handleStopCapture();
+      } else {
+        handleStartCapture();
+      }
+    };
+
+    const handleClearSessionsKey = () => {
+      if (sessions.length > 0 && globalThis.confirm("Clear all captured sessions?")) {
+        handleClearSessions();
+      }
+    };
+
+    const handleNavigateSessionsKey = (direction: "up" | "down") => {
+      if (sessions.length === 0) return;
+
+      const currentIndex = selectedSession
+        ? sessions.findIndex((s) => s.id === selectedSession.id)
+        : -1;
+
+      let newIndex: number;
+      if (direction === "up") {
+        newIndex = currentIndex <= 0 ? sessions.length - 1 : currentIndex - 1;
+      } else {
+        newIndex = currentIndex >= sessions.length - 1 ? 0 : currentIndex + 1;
+      }
+
+      setSelectedSession(sessions[newIndex]);
+    };
+
     const handleKeyDown = (e: KeyboardEvent) => {
       // Ctrl/Cmd + S: Toggle Start/Stop capture
       if ((e.ctrlKey || e.metaKey) && e.key === "s") {
         e.preventDefault();
-        if (isCapturing) {
-          handleStopCapture();
-        } else {
-          handleStartCapture();
-        }
+        handleToggleCaptureKey();
         return;
       }
 
       // Ctrl/Cmd + K: Clear sessions
       if ((e.ctrlKey || e.metaKey) && e.key === "k") {
         e.preventDefault();
-        if (sessions.length > 0) {
-          if (
-            (globalThis as unknown as { confirm: (s: string) => boolean }).confirm(
-              "Clear all captured sessions?"
-            )
-          ) {
-            handleClearSessions();
-          }
-        }
+        handleClearSessionsKey();
         return;
       }
 
       // Escape: Close modals, collapse panels
       if (e.key === "Escape") {
         e.preventDefault();
-        // Clear modal/panel state if any are open
-        // This global handler prevents default browser behavior and allows parent components to handle modal closing
-        return;
       }
 
       // Arrow Up/Down: Navigate sessions
-      if (e.key === "ArrowUp" || e.key === "ArrowDown") {
-        if (sessions.length === 0) return;
-
+      if (e.key === "ArrowUp") {
         e.preventDefault();
-        const currentIndex = selectedSession
-          ? sessions.findIndex((s) => s.id === selectedSession.id)
-          : -1;
-
-        let newIndex: number;
-        if (e.key === "ArrowUp") {
-          newIndex = currentIndex <= 0 ? sessions.length - 1 : currentIndex - 1;
-        } else {
-          newIndex = currentIndex >= sessions.length - 1 ? 0 : currentIndex + 1;
-        }
-
-        setSelectedSession(sessions[newIndex]);
-        return;
+        handleNavigateSessionsKey("up");
+      } else if (e.key === "ArrowDown") {
+        e.preventDefault();
+        handleNavigateSessionsKey("down");
       }
     };
 
-    (globalThis as unknown as { addEventListener: any }).addEventListener("keydown", handleKeyDown);
-    return () =>
-      (globalThis as unknown as { removeEventListener: any }).removeEventListener(
-        "keydown",
-        handleKeyDown
-      );
+    globalThis.addEventListener("keydown", handleKeyDown);
+    return () => globalThis.removeEventListener("keydown", handleKeyDown);
   }, [sessions, selectedSession, isCapturing]);
 
   const renderConfigPanel = () => (

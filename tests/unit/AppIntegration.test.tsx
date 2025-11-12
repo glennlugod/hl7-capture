@@ -43,6 +43,12 @@ const mockElectronAPI = {
   loadPresets: jest.fn().mockResolvedValue([]),
   savePreset: jest.fn().mockResolvedValue(undefined),
   deletePreset: jest.fn().mockResolvedValue(undefined),
+  // Phase 6: Session Submission Tracking IPC handlers
+  retrySubmission: jest.fn().mockResolvedValue(undefined),
+  ignoreSession: jest.fn().mockResolvedValue(undefined),
+  deleteSession: jest.fn().mockResolvedValue(undefined),
+  onSubmissionProgress: jest.fn(() => jest.fn()),
+  onSubmissionResult: jest.fn(() => jest.fn()),
 };
 
 describe("App Integration - Layout and Components", () => {
