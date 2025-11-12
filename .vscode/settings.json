@@ -1,4 +1,7 @@
 {
   "prettier.semi": true,
-  "prettier.singleQuote": false
+  "prettier.singleQuote": false,
+  "importSorter.importStringConfiguration.hasSemicolon": true,
+  "importSorter.generalConfiguration.sortOnBeforeSave": true,
+  "importSorter.importStringConfiguration.quoteMark": "double"
 }
