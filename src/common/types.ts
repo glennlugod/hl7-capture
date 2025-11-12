@@ -76,6 +76,15 @@ export interface HL7Session {
   elements: HL7Element[];
   messages: string[]; // Decoded HL7 messages only
   isComplete: boolean; // true when 0x04 received
+
+  // Session Persistence Fields (AC 1-5 from story-session-persistence)
+  persistedUntil?: number; // Unix timestamp (ms) when session expires; calculated as startTime + (retentionDays * 86400000)
+
+  // Session Submission Fields (for submission-worker and tracking stories)
+  submissionStatus?: "pending" | "submitted" | "failed" | "ignored"; // Submission state
+  submissionAttempts?: number; // Number of submission attempts made
+  submittedAt?: number; // Unix timestamp (ms) of successful submission
+  submissionError?: string; // Last submission error message if failed
 }
 
 /**
