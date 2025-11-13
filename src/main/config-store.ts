@@ -37,7 +37,7 @@ const DEFAULT_APP_CONFIG: AppConfig = {
   submissionAuthHeader: "",
   submissionConcurrency: 2,
   submissionMaxRetries: 3,
-  submissionIntervalMinutes: 5,
+  submissionIntervalMinutes: 1,
 };
 
 /**

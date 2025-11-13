@@ -1,4 +1,5 @@
 ﻿# Phase 5: Submission Worker Implementation Report
+
 **Status**: ✅ COMPLETE (5/5 tests passing)
 
 Generated: November 12, 2025
@@ -23,14 +24,16 @@ Phase 5 delivers **background submission** of persisted HL7 sessions to a config
 ## Acceptance Criteria Fulfillment
 
 ### AC 1: Submission Queue Management ✅
+
 - **Requirement**: Background worker discovers sessions with `submissionStatus: pending` from sessions directory; queues them for submission in FIFO order
 - **Implementation**: `_discoverPendingSessions()` method scans directory, populates queue, prevents duplicates
 - **Test Coverage**: Test "should initialize with config" validates queue structure
 - **Status**: COMPLETE
 
 ### AC 2: Configurable Endpoint and Authentication ✅
+
 - **Requirement**: Settings expose `submissionEndpoint` (URL) and optional `submissionAuthHeader`; worker reads config on startup and on config changes
-- **Implementation**: 
+- **Implementation**:
   - AppConfig extended with `submissionEndpoint`, `submissionAuthHeader`
   - Worker constructor accepts both parameters
   - `updateConfig()` allows dynamic changes
@@ -39,6 +42,7 @@ Phase 5 delivers **background submission** of persisted HL7 sessions to a config
 - **Status**: COMPLETE
 
 ### AC 3: Concurrency and Retry Policy ✅
+
 - **Requirement**: Configurable concurrency (default: 2, range 1-10) with exponential backoff (default: 3 attempts, delays 1/2/4s)
 - **Implementation**:
   - SubmissionWorker maintains `inFlight` counter
@@ -49,6 +53,7 @@ Phase 5 delivers **background submission** of persisted HL7 sessions to a config
 - **Status**: COMPLETE
 
 ### AC 4: Non-Blocking Submission ✅
+
 - **Requirement**: Worker runs on timer (every 5 minutes default) off main capture loop; failures non-blocking
 - **Implementation**:
   - `setInterval()` with configurable interval (default: 5 minutes)
@@ -58,6 +63,7 @@ Phase 5 delivers **background submission** of persisted HL7 sessions to a config
 - **Status**: COMPLETE
 
 ### AC 5: Idempotency and Audit Trail ✅
+
 - **Requirement**: Each POST includes `sessionId` for deduplication; on success: `submissionStatus=submitted`, `submittedAt=now`; on failure: `submissionStatus=failed`, `submissionAttempts++`
 - **Implementation**:
   - POST body includes `sessionId`, `startTime`, `endTime`, `messages`, device/LIS IPs
@@ -69,6 +75,7 @@ Phase 5 delivers **background submission** of persisted HL7 sessions to a config
 - **Status**: COMPLETE
 
 ### AC 6: Observability and IPC Events ✅
+
 - **Requirement**: Expose IPC events `onSubmissionProgress` (in-flight, queue size) and `onSubmissionResult` (success/failure with sessionId, attempts, error)
 - **Implementation**:
   - EventEmitter-based architecture
@@ -84,9 +91,11 @@ Phase 5 delivers **background submission** of persisted HL7 sessions to a config
 ## Architecture & Design
 
 ### SubmissionWorker Class (270 lines)
+
 **Location**: `src/main/submission-worker.ts`
 
 **Core Methods**:
+
 - `start()` - Initialize timer, run immediate submission
 - `stop()` - Graceful shutdown, drain queue
 - `triggerNow()` - Manual submission trigger
@@ -94,6 +103,7 @@ Phase 5 delivers **background submission** of persisted HL7 sessions to a config
 - `getConfig()` - Configuration getter
 
 **Private Methods**:
+
 - `_runSubmission()` - Main submission loop with concurrency control
 - `_discoverPendingSessions()` - Scan disk for pending sessions
 - `_submitSession(session)` - Single session submission with retry
@@ -102,12 +112,14 @@ Phase 5 delivers **background submission** of persisted HL7 sessions to a config
 - `_delay(ms)` - Backoff timer
 
 **Event Emission**:
+
 - `onSubmissionProgress` - Progress tracking
 - `onSubmissionResult` - Success/failure reporting
 
 ### HL7CaptureManager Integration (5 new methods, ~100 LOC)
 
 **New Methods**:
+
 1. `initializeSubmissionWorker(endpoint, authHeader, concurrency, maxRetries, intervalMinutes)` - Lifecycle start
 2. `stopSubmissionWorker()` - Graceful shutdown
 3. `triggerSubmissionNow()` - Manual trigger via IPC
@@ -115,6 +127,7 @@ Phase 5 delivers **background submission** of persisted HL7 sessions to a config
 5. `getSubmissionConfig()` - Configuration query
 
 **Property Additions**:
+
 - `submissionWorker: SubmissionWorker | null`
 - `submissionEndpoint: string`
 - `submissionAuthHeader: string`
@@ -125,6 +138,7 @@ Phase 5 delivers **background submission** of persisted HL7 sessions to a config
 ### Type System Extension
 
 **AppConfig** (src/common/types.ts):
+
 ```typescript
 // Phase 5: Submission Worker Configuration
 submissionEndpoint?: string;           // Default: ""
@@ -137,11 +151,13 @@ submissionIntervalMinutes?: number;    // Default: 5 (1-60)
 ### IPC Integration
 
 **New Handlers** (src/main/index.ts):
+
 - `trigger-submission-now` → `captureManager.triggerSubmissionNow()`
 - `get-submission-config` → Returns full config object
 - `update-submission-config` → Updates all 5 parameters
 
 **Preload Bridge** (src/preload/index.ts):
+
 ```typescript
 triggerSubmissionNow(): Promise<void>
 getSubmissionConfig(): Promise<SubmissionConfig>
@@ -149,12 +165,14 @@ updateSubmissionConfig(endpoint, authHeader, concurrency, maxRetries, intervalMi
 ```
 
 **Event Forwarding**:
+
 - Main process listens to `submission-progress` and `submission-result` events
 - Can be wired to renderer for real-time UI updates
 
 ### Startup Initialization (src/main/index.ts)
 
 In `app.on("ready")`:
+
 1. Load `AppConfig` from config-store
 2. Extract submission settings: endpoint, authHeader, concurrency, retries, interval
 3. If endpoint configured: `captureManager.initializeSubmissionWorker(...)`
@@ -166,19 +184,21 @@ In `app.on("ready")`:
 ## Configuration Defaults
 
 ```yaml
-submissionEndpoint: ""                   # Disabled by default
-submissionAuthHeader: ""                 # No auth by default
-submissionConcurrency: 2                 # Max 2 concurrent requests
-submissionMaxRetries: 3                  # Retry up to 3 times
-submissionIntervalMinutes: 5             # Scan every 5 minutes
+submissionEndpoint: "" # Disabled by default
+submissionAuthHeader: "" # No auth by default
+submissionConcurrency: 2 # Max 2 concurrent requests
+submissionMaxRetries: 3 # Retry up to 3 times
+submissionIntervalMinutes: 1 # Scan every minute
 ```
 
 **Ranges**:
+
 - Concurrency: 1-10 (enforced in validation)
 - Max Retries: 1-10
 - Interval: 1-60 minutes
 
 **Behavior**:
+
 - Submissions skipped if endpoint is empty string
 - No auth header sent if not configured
 - HTTP timeout: 30 seconds
@@ -189,6 +209,7 @@ submissionIntervalMinutes: 5             # Scan every 5 minutes
 ## Test Coverage
 
 ### New Unit Tests (5 passing)
+
 **File**: `tests/unit/submission-worker.test.ts`
 
 1. **test("should initialize with config")** ✅
@@ -212,6 +233,7 @@ submissionIntervalMinutes: 5             # Scan every 5 minutes
    - Partial parameter updates
 
 ### Integration Points Tested
+
 - ✅ Type system integration (AppConfig)
 - ✅ Configuration store persistence
 - ✅ IPC handler wiring
@@ -223,10 +245,12 @@ submissionIntervalMinutes: 5             # Scan every 5 minutes
 ## Code Changes Summary
 
 ### Files Created (1)
+
 - ✅ `src/main/submission-worker.ts` (270 lines)
 - ✅ `tests/unit/submission-worker.test.ts` (100+ lines, 5 tests)
 
 ### Files Modified (5)
+
 1. **src/common/types.ts**
    - Added 5 AppConfig submission fields
    - ✅ Type-safe configuration
@@ -251,6 +275,7 @@ submissionIntervalMinutes: 5             # Scan every 5 minutes
    - ✅ Renderer access
 
 ### Files Updated (Sprint Status)
+
 - `docs/sprint-status.yaml`: Marked as `in-progress`
 
 ---
@@ -258,6 +283,7 @@ submissionIntervalMinutes: 5             # Scan every 5 minutes
 ## Quality Metrics
 
 **Code Quality**:
+
 - ✅ TypeScript strict mode
 - ✅ No `any` types
 - ✅ Error handling throughout
@@ -265,11 +291,13 @@ submissionIntervalMinutes: 5             # Scan every 5 minutes
 - ✅ Fire-and-forget non-blocking
 
 **Test Coverage**:
+
 - New tests: 5 passing
 - Total project tests: 178/181 passing (98% pass rate)
 - Pre-existing failures: 3 (unrelated to Phase 5)
 
 **Performance**:
+
 - Concurrency-limited to prevent resource exhaustion
 - Non-blocking design preserves main capture loop
 - Exponential backoff prevents server overload
@@ -316,6 +344,7 @@ submissionIntervalMinutes: 5             # Scan every 5 minutes
 ## Next Steps
 
 **Phase 6: React UI Components**
+
 - Submission settings dialog
 - Endpoint URL input with validation
 - Auth header field
@@ -324,6 +353,7 @@ submissionIntervalMinutes: 5             # Scan every 5 minutes
 - Test/validate endpoint button
 
 **Phase 7: Submission Tracking UI**
+
 - Display pending session count
 - Show in-flight submissions
 - Track submission history
@@ -331,6 +361,7 @@ submissionIntervalMinutes: 5             # Scan every 5 minutes
 - Retry indicators
 
 **Phase 8: Integration Testing**
+
 - Mock HTTP server for submission endpoints
 - End-to-end submission workflow
 - Failure recovery testing

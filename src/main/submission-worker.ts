@@ -10,6 +10,7 @@ interface SubmissionConfig {
   concurrency: number;
   maxRetries: number;
   submissionIntervalMinutes: number;
+  performer?: string;
 }
 interface SubmissionResult {
   sessionId: string;
@@ -165,17 +166,21 @@ export class SubmissionWorker extends EventEmitter {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 30000);
     try {
+      const body: Record<string, unknown> = {
+        sessionId: session.id,
+        startTime: session.startTime,
+        endTime: session.endTime,
+        messages: session.messages,
+        deviceIP: session.deviceIP,
+        lisIP: session.lisIP,
+      };
+      if (this.config.performer) {
+        body.performer = this.config.performer;
+      }
       return await fetch(this.config.endpoint, {
         method: "POST",
         headers,
-        body: JSON.stringify({
-          sessionId: session.id,
-          startTime: session.startTime,
-          endTime: session.endTime,
-          messages: session.messages,
-          deviceIP: session.deviceIP,
-          lisIP: session.lisIP,
-        }),
+        body: JSON.stringify(body),
         signal: controller.signal,
       });
     } finally {

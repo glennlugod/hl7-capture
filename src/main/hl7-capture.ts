@@ -68,7 +68,8 @@ export class HL7CaptureManager extends EventEmitter {
   private submissionAuthHeader: string = "";
   private submissionConcurrency: number = 2;
   private submissionMaxRetries: number = 3;
-  private submissionIntervalMinutes: number = 5;
+  private submissionIntervalMinutes: number = 1;
+  private submissionPerformer: string = "";
 
   constructor() {
     super();
@@ -943,7 +944,8 @@ export class HL7CaptureManager extends EventEmitter {
     authHeader?: string,
     concurrency?: number,
     maxRetries?: number,
-    intervalMinutes?: number
+    intervalMinutes?: number,
+    performer?: string
   ): Promise<void> {
     try {
       const sessionsDir = path.join(os.homedir(), ".hl7-capture", "sessions");
@@ -952,7 +954,8 @@ export class HL7CaptureManager extends EventEmitter {
       this.submissionAuthHeader = authHeader || "";
       this.submissionConcurrency = concurrency || 2;
       this.submissionMaxRetries = maxRetries || 3;
-      this.submissionIntervalMinutes = intervalMinutes || 5;
+      this.submissionIntervalMinutes = intervalMinutes || 1;
+      this.submissionPerformer = performer || "";
 
       this.submissionWorker = new SubmissionWorker({
         sessionsDir,
@@ -961,6 +964,7 @@ export class HL7CaptureManager extends EventEmitter {
         concurrency: this.submissionConcurrency,
         maxRetries: this.submissionMaxRetries,
         submissionIntervalMinutes: this.submissionIntervalMinutes,
+        performer: this.submissionPerformer,
       });
 
       this.submissionWorker.on("onSubmissionProgress", (progress) => {
@@ -1009,13 +1013,15 @@ export class HL7CaptureManager extends EventEmitter {
     authHeader?: string,
     concurrency?: number,
     maxRetries?: number,
-    intervalMinutes?: number
+    intervalMinutes?: number,
+    performer?: string
   ): void {
     this.submissionEndpoint = endpoint;
     this.submissionAuthHeader = authHeader || "";
     this.submissionConcurrency = concurrency || 2;
     this.submissionMaxRetries = maxRetries || 3;
-    this.submissionIntervalMinutes = intervalMinutes || 5;
+    this.submissionIntervalMinutes = intervalMinutes || 1;
+    this.submissionPerformer = performer || "";
 
     if (this.submissionWorker) {
       this.submissionWorker.updateConfig({
@@ -1024,6 +1030,7 @@ export class HL7CaptureManager extends EventEmitter {
         concurrency: this.submissionConcurrency,
         maxRetries: this.submissionMaxRetries,
         submissionIntervalMinutes: this.submissionIntervalMinutes,
+        performer: this.submissionPerformer,
       });
     }
   }
@@ -1038,6 +1045,7 @@ export class HL7CaptureManager extends EventEmitter {
       submissionConcurrency: this.submissionConcurrency,
       submissionMaxRetries: this.submissionMaxRetries,
       submissionIntervalMinutes: this.submissionIntervalMinutes,
+      submissionPerformer: this.submissionPerformer,
     };
   }
 

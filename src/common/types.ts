@@ -59,6 +59,8 @@ export interface AppConfig {
   submissionMaxRetries?: number;
   // Submission interval in minutes (1-60). Defaults to 5.
   submissionIntervalMinutes?: number;
+  // FHIR resource reference for the performer (e.g., "Organization/d7a15200-dc66-40da-b2c9").
+  submissionPerformer?: string;
 }
 
 /**
@@ -71,6 +73,7 @@ export interface SubmissionConfig {
   submissionConcurrency: number;
   submissionMaxRetries: number;
   submissionIntervalMinutes: number;
+  submissionPerformer: string;
 }
 
 export interface Marker {

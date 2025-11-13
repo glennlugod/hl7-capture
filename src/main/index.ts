@@ -155,7 +155,8 @@ app.on("ready", () => {
     const submissionAuthHeader = appCfg?.submissionAuthHeader ?? "";
     const submissionConcurrency = appCfg?.submissionConcurrency ?? 2;
     const submissionMaxRetries = appCfg?.submissionMaxRetries ?? 3;
-    const submissionIntervalMinutes = appCfg?.submissionIntervalMinutes ?? 5;
+    const submissionIntervalMinutes = appCfg?.submissionIntervalMinutes ?? 1;
+    const submissionPerformer = appCfg?.submissionPerformer ?? "";
 
     if (submissionEndpoint) {
       captureManager
@@ -164,7 +165,8 @@ app.on("ready", () => {
           submissionAuthHeader,
           submissionConcurrency,
           submissionMaxRetries,
-          submissionIntervalMinutes
+          submissionIntervalMinutes,
+          submissionPerformer
         )
         .catch((err) => console.error("Failed to initialize submission worker:", err));
     }
@@ -478,7 +480,8 @@ ipcMain.handle("get-submission-config", async () => {
     submissionAuthHeader: appConfig.submissionAuthHeader || "",
     submissionConcurrency: appConfig.submissionConcurrency || 2,
     submissionMaxRetries: appConfig.submissionMaxRetries || 3,
-    submissionIntervalMinutes: appConfig.submissionIntervalMinutes || 5,
+    submissionIntervalMinutes: appConfig.submissionIntervalMinutes || 1,
+    submissionPerformer: appConfig.submissionPerformer || "",
   };
 });
 
@@ -490,7 +493,8 @@ ipcMain.handle(
     authHeader: string,
     concurrency: number,
     maxRetries: number,
-    intervalMinutes: number
+    intervalMinutes: number,
+    performer: string
   ) => {
     try {
       const appConfig = configStore.loadAppConfig();
@@ -501,6 +505,7 @@ ipcMain.handle(
         submissionConcurrency: concurrency,
         submissionMaxRetries: maxRetries,
         submissionIntervalMinutes: intervalMinutes,
+        submissionPerformer: performer,
       };
       configStore.saveAppConfig(updatedConfig);
 
@@ -510,7 +515,8 @@ ipcMain.handle(
         authHeader,
         concurrency,
         maxRetries,
-        intervalMinutes
+        intervalMinutes,
+        performer
       );
     } catch (error) {
       throw new Error(`Failed to update submission config: ${error}`);

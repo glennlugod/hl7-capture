@@ -89,7 +89,8 @@ const electronAPI = {
     authHeader: string,
     concurrency: number,
     maxRetries: number,
-    intervalMinutes: number
+    intervalMinutes: number,
+    performer: string
   ): Promise<void> =>
     ipcRenderer.invoke(
       "update-submission-config",
@@ -97,7 +98,8 @@ const electronAPI = {
       authHeader,
       concurrency,
       maxRetries,
-      intervalMinutes
+      intervalMinutes,
+      performer
     ),
 
   // Phase 6: Submission Tracking UI (NEW)

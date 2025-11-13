@@ -9,7 +9,8 @@ type ElectronAPI = {
     authHeader: string,
     concurrency: number,
     maxRetries: number,
-    intervalMinutes: number
+    intervalMinutes: number,
+    performer: string
   ) => Promise<void>;
 };
 
@@ -19,7 +20,8 @@ export default function SubmissionConfig(): JSX.Element {
     submissionAuthHeader: "",
     submissionConcurrency: 2,
     submissionMaxRetries: 3,
-    submissionIntervalMinutes: 5,
+    submissionIntervalMinutes: 1,
+    submissionPerformer: "",
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -52,7 +54,8 @@ export default function SubmissionConfig(): JSX.Element {
         config.submissionAuthHeader,
         config.submissionConcurrency,
         config.submissionMaxRetries,
-        config.submissionIntervalMinutes
+        config.submissionIntervalMinutes,
+        config.submissionPerformer
       );
     } catch (err) {
       console.error("Failed to save submission config", err);
@@ -102,6 +105,25 @@ export default function SubmissionConfig(): JSX.Element {
           />
           <p className="text-xs text-slate-500 mt-1">
             Optional authentication header (e.g., "Bearer token" or "Basic base64").
+          </p>
+        </div>
+
+        <div>
+          <label htmlFor="performer" className="block text-sm font-medium text-slate-700 mb-1">
+            Performer Reference
+          </label>
+          <input
+            id="performer"
+            type="text"
+            value={config.submissionPerformer}
+            onChange={(e) => updateConfig("submissionPerformer", e.target.value)}
+            placeholder="Organization/d7a15200-1234-5678-90ab-5c784acbdb13"
+            className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            disabled={loading}
+          />
+          <p className="text-xs text-slate-500 mt-1">
+            FHIR resource reference for the organization performing the test (e.g.,
+            Organization/id).
           </p>
         </div>
 
