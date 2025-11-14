@@ -1,6 +1,6 @@
 {
   "name": "hl7-capture",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Network traffic capture desktop application built with Electron and React",
   "main": ".vite/build/main.js",
   "author": "Glenn",
