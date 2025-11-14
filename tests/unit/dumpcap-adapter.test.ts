@@ -2,6 +2,14 @@
 // before importing the module under test so the module gets the mocked
 // implementations during initialization.
 jest.mock("node:child_process", () => ({ spawn: jest.fn() }));
+jest.mock("../../src/main/logger", () => ({
+  logger: {
+    debug: jest.fn(),
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+  },
+}));
 
 import * as child_process from "node:child_process";
 import { EventEmitter } from "node:events";
@@ -47,6 +55,8 @@ describe("DumpcapAdapter (unit)", () => {
     // Start adapter (will use mocked spawn and mocked pcap-parser)
     const startPromise = adapter.start();
 
+    await expect(startPromise).resolves.toBeUndefined();
+
     // Emit a fake packet from the parser
     // Create a synthetic Ethernet + IPv4 + TCP frame with a small payload
     const eth = Buffer.alloc(14);
@@ -83,8 +93,6 @@ describe("DumpcapAdapter (unit)", () => {
 
     // End parsing
     parserEE.emit("end");
-
-    await expect(startPromise).resolves.toBeUndefined();
 
     // Allow event loop to process
     await new Promise((r) => process.nextTick(r));

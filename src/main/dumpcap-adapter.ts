@@ -4,6 +4,8 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import * as pcapp from "pcap-parser";
 
+import { logger } from "./logger";
+
 import type {
   PcapPacket,
   PcapPacketHeader,
@@ -95,7 +97,7 @@ export class DumpcapAdapter extends EventEmitter {
     } catch (err: unknown) {
       // not found on PATH
       const msg = err instanceof Error ? err.message : String(err);
-      this.emit("log", `dumpcap lookup failed: ${msg}`);
+      logger.debug(`dumpcap lookup failed: ${msg}`);
     }
 
     // Common Windows install locations for Wireshark
@@ -122,6 +124,7 @@ export class DumpcapAdapter extends EventEmitter {
     const dumpcapPath = this.findDumpcap();
     if (!dumpcapPath) {
       const err = new Error("dumpcap not found on PATH or common locations");
+      logger.error("dumpcap not found on PATH or common locations");
       this.emit("error", err);
       throw err;
     }
@@ -139,7 +142,7 @@ export class DumpcapAdapter extends EventEmitter {
       // Hook stderr for diagnostics
       this.proc?.stderr?.on("data", (chunk: Buffer) => {
         const msg = chunk.toString("utf8");
-        this.emit("log", msg);
+        logger.info(`dumpcap stderr: ${msg}`);
       });
 
       if (this.proc?.stdout) {
@@ -155,6 +158,7 @@ export class DumpcapAdapter extends EventEmitter {
       this.proc = null;
       this.running = false;
       const errObj = err instanceof Error ? err : new Error(String(err));
+      logger.error(`dumpcap start failed: ${errObj.message}`);
       this.emit("error", errObj);
       throw errObj;
     }
@@ -175,6 +179,7 @@ export class DumpcapAdapter extends EventEmitter {
       // const parser = pcapp.parse(readableStream) as unknown as PcapParser;
 
       parser.on("packet", (p: PcapPacket) => {
+        logger.debug(`received packet: ${p.data?.length ?? 0} bytes`);
         // Normalize packet without throwing; defensive checks are used to avoid
         // corrupt reads. If normalization yields null, emit fallback shape.
         const hdr: PcapPacketHeader = p.header || p.packetHeader || {};
@@ -201,7 +206,7 @@ export class DumpcapAdapter extends EventEmitter {
       // here to prevent prematurely ending capture sessions. Emit a
       // diagnostic event instead so upper layers can decide how to react.
       parser.on("end", () => {
-        this.emit("log", "pcap-parser stream ended");
+        logger.info("pcap-parser stream ended");
         this.emit("parser-end");
         // Do not modify `this.running` or emit the public "stop" here. The
         // process lifecycle is managed by spawn/stop helpers which will emit
@@ -209,13 +214,17 @@ export class DumpcapAdapter extends EventEmitter {
         // explicitly called.
       });
 
-      parser.on("error", (err: Error) => this.emit("error", err));
+      parser.on("error", (err: Error) => {
+        logger.error(`pcap-parser error: ${err.message}`);
+        this.emit("error", err);
+      });
     } catch (err: unknown) {
       const e = new Error(
         "Required dependency 'pcap-parser' not found or parser initialization failed. Install it and retry: npm install pcap-parser"
       );
       // Attach original error if possible. If this throws, let it propagate — avoid nested try-catch.
       (e as unknown as { cause?: unknown }).cause = err;
+      logger.error(`parser initialization failed: ${e.message}`);
       this.emit("error", e);
       throw e;
     }
@@ -278,7 +287,7 @@ export class DumpcapAdapter extends EventEmitter {
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      this.emit("log", `kill-after-spawn-failure: ${msg}`);
+      logger.warn(`kill-after-spawn-failure: ${msg}`);
     }
   }
 
@@ -290,7 +299,7 @@ export class DumpcapAdapter extends EventEmitter {
       (proc as unknown as NodeJS.EventEmitter).removeAllListeners("close");
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      this.emit("log", `remove-listeners-failed: ${msg}`);
+      logger.warn(`remove-listeners-failed: ${msg}`);
     }
   }
 
@@ -300,7 +309,7 @@ export class DumpcapAdapter extends EventEmitter {
       proc.kill();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      this.emit("log", `kill-error: ${msg}`);
+      logger.error(`kill-error: ${msg}`);
     }
   }
 
@@ -316,7 +325,7 @@ export class DumpcapAdapter extends EventEmitter {
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      this.emit("log", `escalation-kill-failed: ${msg}`);
+      logger.error(`escalation-kill-failed: ${msg}`);
     }
   }
 

@@ -1,6 +1,14 @@
 // Ensure child_process.spawn is a mock we can control
 /* eslint-disable @typescript-eslint/no-explicit-any */
 jest.mock("node:child_process", () => ({ spawn: jest.fn() }));
+jest.mock("../../src/main/logger", () => ({
+  logger: {
+    debug: jest.fn(),
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+  },
+}));
 
 import * as child_process from "node:child_process";
 import { EventEmitter } from "node:events";
