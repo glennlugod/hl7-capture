@@ -40,6 +40,7 @@ export class DumpcapAdapter extends EventEmitter {
           const idx = m[1];
           const desc = m[2];
           if (desc.includes(iface) || desc.toLowerCase().includes(iface.toLowerCase())) {
+            logger.debug(`interface resolution for "${iface}": found index ${idx}`);
             return idx;
           }
         }
@@ -47,6 +48,7 @@ export class DumpcapAdapter extends EventEmitter {
     } catch {
       // ignore
     }
+    logger.debug(`interface resolution for "${iface}": not found`);
     return null;
   }
 

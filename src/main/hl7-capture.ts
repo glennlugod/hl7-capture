@@ -10,6 +10,7 @@ import * as path from "node:path";
 
 import { CleanupWorker } from "./cleanup-worker";
 import { DumpcapAdapter } from "./dumpcap-adapter";
+import { logger } from "./logger";
 import { SessionStore } from "./session-store";
 import { SubmissionWorker } from "./submission-worker";
 
@@ -184,6 +185,7 @@ export class HL7CaptureManager extends EventEmitter {
       }
     }
 
+    logger.debug(`found ${interfaces.length} network interfaces`);
     return interfaces;
   }
 
