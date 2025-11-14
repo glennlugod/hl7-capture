@@ -23,7 +23,8 @@ function bumpVersion(version) {
 
 function runCommand(cmd, args, opts = {}) {
   return new Promise((resolve, reject) => {
-    const ps = spawn(cmd, args, { stdio: "inherit", shell: false, ...opts });
+    const defaultShell = process.platform === "win32";
+    const ps = spawn(cmd, args, { stdio: "inherit", shell: opts.shell ?? defaultShell, ...opts });
     ps.on("error", (err) => reject(err));
     ps.on("close", (code) =>
       code === 0 ? resolve() : reject(new Error(`${cmd} ${args.join(" ")} exited ${code}`))
@@ -65,7 +66,7 @@ async function main() {
     // If there's nothing to commit, allow this to continue (exit code 0 or non-zero depending on git config). We'll attempt commit and ignore failure if no changes.
     try {
       spawnSync("git", ["commit", "-m", commitMsg], { stdio: "inherit" });
-    } catch (e) {
+    } catch {
       // commit may fail if no changes; continue
     }
     const tagName = `v${newVersion}`;
