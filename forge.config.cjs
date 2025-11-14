@@ -8,10 +8,20 @@ const config = {
   packagerConfig: {
     asar: true,
     executableName: "hl7-capture",
-    icon: "./public/icon",
+    // For Windows packaging, Electron Packager expects the base path (no extension).
+    // Ensure the .ico lives at public/img/icon.ico
+    icon: "./public/img/icon",
   },
   rebuildConfig: {},
-  makers: [new MakerSquirrel({}), new MakerZIP({}), new MakerDeb({}), new MakerRPM({})],
+  makers: [
+    new MakerSquirrel({
+      // Use the same ICO for the Squirrel installer (Setup.exe)
+      setupIcon: "./public/img/icon.ico",
+    }),
+    new MakerZIP({}),
+    new MakerDeb({}),
+    new MakerRPM({}),
+  ],
   plugins: [
     new VitePlugin({
       build: [
