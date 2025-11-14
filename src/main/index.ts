@@ -1,4 +1,5 @@
 import { app, BrowserWindow, ipcMain, Menu, nativeImage, Tray } from "electron";
+import squirrelStartup from "electron-squirrel-startup";
 import fs from "node:fs";
 import * as os from "node:os";
 import path from "node:path";
@@ -13,6 +14,15 @@ let captureManager: HL7CaptureManager;
 let appTray: Tray | null = null;
 
 const isDev = process.env.NODE_ENV === "development" || process.env.VITE_DEV_SERVER_URL;
+
+// Handle Squirrel.Windows install/uninstall events on Windows. When Squirrel runs
+// during install/update/uninstall, it passes special command line flags. The
+// `electron-squirrel-startup` package handles those and returns `true` when it
+// consumed the event; in that case we should quit the app early so Squirrel can
+// complete its installer work (creating shortcuts, etc.).
+if (process.platform === "win32" && squirrelStartup) {
+  app.quit();
+}
 
 // Prefer the repo public icon during development, and the renderer bundle icon in production.
 const iconPath = isDev

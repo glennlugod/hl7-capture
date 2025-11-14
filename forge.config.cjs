@@ -11,6 +11,10 @@ const config = {
     // For Windows packaging, Electron Packager expects the base path (no extension).
     // Ensure the .ico lives at public/img/icon.ico
     icon: "./public/img/icon",
+    // Friendly product name used by Windows shortcuts / installer
+    win32metadata: {
+      ProductName: "HL7 Capture",
+    },
   },
   rebuildConfig: {},
   makers: [
