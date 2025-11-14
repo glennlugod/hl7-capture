@@ -61,6 +61,11 @@ export interface AppConfig {
   submissionIntervalMinutes?: number;
   // FHIR resource reference for the performer (e.g., "Organization/d7a15200-dc66-40da-b2c9").
   submissionPerformer?: string;
+  // Logging configuration
+  // Log level for file and console output: error, warn, info, debug. Defaults to info.
+  logLevel?: "error" | "warn" | "info" | "debug";
+  // Directory path for log files. Defaults to userData/logs.
+  logsDir?: string;
 }
 
 /**

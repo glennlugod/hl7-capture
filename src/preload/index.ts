@@ -203,6 +203,18 @@ const electronAPI = {
     ipcRenderer.on("submission-result", listener);
     return () => ipcRenderer.removeListener("submission-result", listener);
   },
+
+  // Phase 7: Logging configuration (NEW)
+  getLoggingConfig: (): Promise<{ logLevel: string; logsDir: string }> =>
+    ipcRenderer.invoke("get-logging-config"),
+
+  updateLoggingConfig: (
+    logLevel: string,
+    logsDir: string
+  ): Promise<{ success: boolean; logLevel: string; logsDir: string }> =>
+    ipcRenderer.invoke("update-logging-config", logLevel, logsDir),
+
+  openLogsFolder: (): Promise<{ success: boolean }> => ipcRenderer.invoke("open-logs-folder"),
 };
 
 /**

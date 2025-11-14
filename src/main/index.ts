@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, Menu, nativeImage, Tray } from "electron";
+import { app, BrowserWindow, ipcMain, Menu, nativeImage, shell, Tray } from "electron";
 import squirrelStartup from "electron-squirrel-startup";
 import fs from "node:fs";
 import * as os from "node:os";
@@ -6,6 +6,7 @@ import path from "node:path";
 
 import { configStore } from "./config-store";
 import { HL7CaptureManager } from "./hl7-capture";
+import { logger } from "./logger";
 
 import type { NetworkInterface, AppConfig } from "../common/types";
 
@@ -308,8 +309,16 @@ app.on("activate", () => {
 function initializeCaptureManager(): void {
   captureManager = new HL7CaptureManager();
 
-  // Initialize submission config from persisted settings
+  // Initialize logging service
   const appConfig = configStore.loadAppConfig();
+  logger.initialize({
+    logLevel: appConfig.logLevel || "info",
+    logsDir: appConfig.logsDir || path.join(app.getPath("userData"), "logs"),
+  });
+
+  logger.info("HL7 Capture application started");
+
+  // Initialize submission config from persisted settings
   captureManager.updateSubmissionConfig(
     appConfig.submissionEndpoint || "",
     appConfig.submissionAuthHeader || "",
@@ -610,5 +619,65 @@ ipcMain.handle("restore-from-tray", async () => {
   if (mainWindow) {
     mainWindow.show();
     mainWindow.focus();
+  }
+});
+
+// Phase 7: Logging configuration handlers
+ipcMain.handle("get-logging-config", async () => {
+  try {
+    const appConfig = configStore.loadAppConfig();
+    const logsDir = appConfig.logsDir || path.join(app.getPath("userData"), "logs");
+    const logLevel = appConfig.logLevel || "info";
+    return {
+      logLevel,
+      logsDir,
+    };
+  } catch (error) {
+    throw new Error(`Failed to get logging config: ${error}`);
+  }
+});
+
+ipcMain.handle("update-logging-config", async (_event, logLevel: string, logsDir: string) => {
+  try {
+    // Validate log level
+    if (!["error", "warn", "info", "debug"].includes(logLevel)) {
+      throw new Error(`Invalid log level: ${logLevel}`);
+    }
+
+    // Update config store
+    const appConfig = configStore.loadAppConfig();
+    appConfig.logLevel = logLevel as "error" | "warn" | "info" | "debug";
+    appConfig.logsDir = logsDir;
+    configStore.saveAppConfig(appConfig);
+
+    // Update active logger instance
+    logger.setLogLevel(logLevel as "error" | "warn" | "info" | "debug");
+
+    logger.info("Logging configuration updated", {
+      logLevel,
+      logsDir,
+    });
+
+    return {
+      success: true,
+      logLevel,
+      logsDir,
+    };
+  } catch (error) {
+    logger.error(`Failed to update logging config: ${error}`);
+    throw new Error(`Failed to update logging config: ${error}`);
+  }
+});
+
+ipcMain.handle("open-logs-folder", async () => {
+  try {
+    const appConfig = configStore.loadAppConfig();
+    const logsDir = appConfig.logsDir || path.join(app.getPath("userData"), "logs");
+    await shell.openPath(logsDir);
+    logger.info("Opened logs folder", { logsDir });
+    return { success: true };
+  } catch (error) {
+    logger.error(`Failed to open logs folder: ${error}`);
+    throw new Error(`Failed to open logs folder: ${error}`);
   }
 });

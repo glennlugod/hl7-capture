@@ -38,6 +38,9 @@ const DEFAULT_APP_CONFIG: AppConfig = {
   submissionConcurrency: 2,
   submissionMaxRetries: 3,
   submissionIntervalMinutes: 1,
+  // Logging defaults
+  logLevel: "info",
+  logsDir: path.join(app.getPath("userData"), "logs"),
 };
 
 /**

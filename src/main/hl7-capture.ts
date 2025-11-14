@@ -1127,4 +1127,28 @@ export class HL7CaptureManager extends EventEmitter {
       throw err;
     }
   }
+
+  /**
+   * Phase 7: Get current logging configuration
+   */
+  public getLoggingConfig(): { logLevel: string; logsDir: string } {
+    return {
+      logLevel: "info", // Default, would come from config store in main/index.ts
+      logsDir: path.join(os.homedir(), ".hl7-capture", "logs"),
+    };
+  }
+
+  /**
+   * Phase 7: Update logging configuration at runtime
+   * @param logLevel New log level (error, warn, info, debug)
+   */
+  public async updateLoggingConfig(logLevel: "error" | "warn" | "info" | "debug"): Promise<void> {
+    try {
+      // Emit event for main process to update logger
+      this.emit("logging-config-update", { logLevel });
+    } catch (err) {
+      console.error("Failed to update logging config:", err);
+      throw err;
+    }
+  }
 }
