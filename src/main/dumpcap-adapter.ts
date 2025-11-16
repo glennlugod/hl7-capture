@@ -29,7 +29,14 @@ export class DumpcapAdapter extends EventEmitter {
 
   private resolveInterfaceIndex(iface: string): string | null {
     try {
-      const out = execSync("dumpcap -D", { encoding: "utf8" }).trim();
+      // Prefer the explicit dumpcap path (found via `findDumpcap`) so we
+      // consistently call the same binary that `start()` uses instead of
+      // relying on PATH lookup. Fall back to `dumpcap` on PATH if we can't
+      // find an absolute path.
+      const dumpcapPath = this.findDumpcap() || "dumpcap";
+      // Quote the path to handle spaces on Windows paths
+      const cmd = `"${dumpcapPath}" -D`;
+      const out = execSync(cmd, { encoding: "utf8" }).trim();
       const lines = out
         .split(/\r?\n/)
         .map((l: string) => l.trim())
