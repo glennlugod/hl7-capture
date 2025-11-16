@@ -1,4 +1,4 @@
-import { ChildProcess, execSync, spawn } from "node:child_process";
+import { ChildProcess, execFileSync, execSync, spawn } from "node:child_process";
 import { EventEmitter } from "node:events";
 import * as fs from "node:fs";
 import * as path from "node:path";
@@ -34,9 +34,13 @@ export class DumpcapAdapter extends EventEmitter {
       // relying on PATH lookup. Fall back to `dumpcap` on PATH if we can't
       // find an absolute path.
       const dumpcapPath = this.findDumpcap() || "dumpcap";
-      // Quote the path to handle spaces on Windows paths
-      const cmd = `"${dumpcapPath}" -D`;
-      const out = execSync(cmd, { encoding: "utf8" }).trim();
+      // If we have an absolute path to the dumpcap binary, run the command
+      // from the same directory (`cwd`) to reduce surprises from relative
+      // dependencies; otherwise, use the current working directory.
+      const dumpcapCwd = path.isAbsolute(dumpcapPath) ? path.dirname(dumpcapPath) : process.cwd();
+      // Use execFileSync to execute the binary directly and avoid shell
+      // quoting issues with execSync + string commands.
+      const out = execFileSync(dumpcapPath, ["-D"], { encoding: "utf8", cwd: dumpcapCwd }).trim();
       const lines = out
         .split(/\r?\n/)
         .map((l: string) => l.trim())
@@ -142,8 +146,14 @@ export class DumpcapAdapter extends EventEmitter {
 
     // Single try-catch for spawn + parser initialization
     try {
-      // Force stdout to be binary
-      this.proc = spawn(dumpcapPath, args, { stdio: ["ignore", "pipe", "pipe"] });
+      // Force stdout to be binary. Set cwd to the parent folder of the
+      // resolved dumpcap binary to ensure the process runs in the directory
+      // where dumpcap resides (this helps when dumpcap expects relative
+      // files or dependencies located next to the binary). If dumpcapPath
+      // is not an absolute path (e.g., fallback to `dumpcap`), fall back
+      // to the current working directory so behavior remains unchanged.
+      const dumpcapCwd = path.isAbsolute(dumpcapPath) ? path.dirname(dumpcapPath) : process.cwd();
+      this.proc = spawn(dumpcapPath, args, { cwd: dumpcapCwd, stdio: ["ignore", "pipe", "pipe"] });
 
       this.running = true;
       this.emit("start");
