@@ -18,6 +18,7 @@ const iconPath = path.join(__dirname, "../public/img/icon.ico");
   }
 
   const results = [];
+  const resourceFiles = [];
   const exeNamesToPatch = new Set(["update.exe", "squirrel.exe", "setup.exe", "hl7-capture.exe"]);
   function walk(dir) {
     const files = fs.readdirSync(dir);
@@ -28,6 +29,8 @@ const iconPath = path.join(__dirname, "../public/img/icon.ico");
       else if (path.extname(p).toLowerCase() === ".exe") {
         const lower = path.basename(p).toLowerCase();
         if (exeNamesToPatch.has(lower) || lower.endsWith("setup.exe")) results.push(p);
+      } else if (path.basename(p).toLowerCase() === "app.ico") {
+        resourceFiles.push(p);
       }
     }
   }
@@ -45,6 +48,17 @@ const iconPath = path.join(__dirname, "../public/img/icon.ico");
       console.log("Updated", exePath);
     } catch (err) {
       console.error("Failed to update", exePath, err);
+    }
+  }
+
+  // Replace any app.ico found in resources with our custom app.ico
+  for (const resPath of resourceFiles) {
+    try {
+      console.log("Replacing resource icon at", resPath);
+      fs.copyFileSync(iconPath, resPath);
+      console.log("Replaced", resPath);
+    } catch (err) {
+      console.error("Failed to replace resource icon at", resPath, err);
     }
   }
 })();
