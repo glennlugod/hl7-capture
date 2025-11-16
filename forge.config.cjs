@@ -8,6 +8,8 @@ const pkg = require("./package.json");
 const config = {
   packagerConfig: {
     asar: true,
+    // Recommended: `name` without spaces for packaging artifacts and Squirrel IDs
+    name: "hl7-capture",
     executableName: "hl7-capture",
     // For Windows packaging, Electron Packager expects the base path (no extension).
     // Ensure the .ico lives at public/img/icon.ico
@@ -25,9 +27,10 @@ const config = {
   rebuildConfig: {},
   makers: [
     new MakerSquirrel({
-      // Use the same ICO for the Squirrel installer (Setup.exe) and provide a name
+      // Use the same ICO for the Squirrel installer (Setup.exe)
       setupIcon: "./public/img/icon.ico",
-      name: "HL7 Capture",
+      // Squirrel package ID cannot contain spaces; use short ID here
+      name: "HL7Capture",
     }),
     new MakerZIP({}),
     new MakerDeb({}),
