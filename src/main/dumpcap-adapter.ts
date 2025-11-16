@@ -53,6 +53,8 @@ export class DumpcapAdapter extends EventEmitter {
           if (desc.includes(iface) || desc.toLowerCase().includes(iface.toLowerCase())) {
             logger.debug(`interface resolution for "${iface}": found index ${idx}`);
             return idx;
+          } else {
+            logger.debug(`resolveInterfaceIndex: checking interface: ${desc}`);
           }
         }
       }
@@ -102,15 +104,17 @@ export class DumpcapAdapter extends EventEmitter {
   }
 
   private findDumpcap(): string | null {
+    logger.debug("findDumpcap: searching for dumpcap binary");
     // Prefer dumpcap on PATH
     const which = process.platform === "win32" ? "where" : "which";
     try {
       const res = execSync(`${which} dumpcap`, { encoding: "utf8" }).trim();
+      logger.debug(`findDumpcap: PATH search result: ${res}`);
       if (res) return res.split(/\r?\n/)[0];
     } catch (err: unknown) {
       // not found on PATH
       const msg = err instanceof Error ? err.message : String(err);
-      logger.debug(`dumpcap lookup failed: ${msg}`);
+      logger.debug(`findDumpcap: PATH lookup failed: ${msg}`);
     }
 
     // Common Windows install locations for Wireshark
@@ -122,17 +126,26 @@ export class DumpcapAdapter extends EventEmitter {
       if (process.env["ProgramFiles(x86)"]) {
         candidates.push(path.join(process.env["ProgramFiles(x86)"], "Wireshark", "dumpcap.exe"));
       }
-
+      logger.debug(`findDumpcap: checking Windows candidates: ${JSON.stringify(candidates)}`);
       for (const c of candidates) {
-        if (fs.existsSync(c)) return c;
+        logger.debug(`findDumpcap: checking candidate ${c}`);
+        if (fs.existsSync(c)) {
+          logger.debug(`findDumpcap: found dumpcap at ${c}`);
+          return c;
+        }
       }
     }
 
+    logger.debug("findDumpcap: dumpcap not found");
     return null;
   }
 
   public async start(): Promise<void> {
-    if (this.running) return;
+    if (this.running) {
+      logger.debug("start: called but already running");
+      return;
+    }
+    logger.debug("start: called");
 
     const dumpcapPath = this.findDumpcap();
     if (!dumpcapPath) {
@@ -153,8 +166,9 @@ export class DumpcapAdapter extends EventEmitter {
       // is not an absolute path (e.g., fallback to `dumpcap`), fall back
       // to the current working directory so behavior remains unchanged.
       const dumpcapCwd = path.isAbsolute(dumpcapPath) ? path.dirname(dumpcapPath) : process.cwd();
+      logger.debug(`start: spawn cwd: ${dumpcapCwd}`);
       this.proc = spawn(dumpcapPath, args, { cwd: dumpcapCwd, stdio: ["ignore", "pipe", "pipe"] });
-
+      logger.debug(`start: spawned dumpcap pid=${this.proc?.pid}`);
       this.running = true;
       this.emit("start");
 
@@ -177,6 +191,7 @@ export class DumpcapAdapter extends EventEmitter {
       this.proc = null;
       this.running = false;
       const errObj = err instanceof Error ? err : new Error(String(err));
+      logger.debug("start: failed: cleanup and emit error");
       logger.error(`dumpcap start failed: ${errObj.message}`);
       this.emit("error", errObj);
       throw errObj;
