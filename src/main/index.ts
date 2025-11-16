@@ -129,6 +129,15 @@ function createWindow(): void {
  * App lifecycle: ready
  */
 app.on("ready", () => {
+  // Ensure Windows AppUserModelID is set early so Start Menu and Installed apps
+  // associate tiles and notifications with the correct app identity and icon.
+  if (process.platform === "win32") {
+    try {
+      app.setAppUserModelId("com.hl7.capture");
+    } catch (e) {
+      console.warn("Failed to set AppUserModelId:", e);
+    }
+  }
   createWindow();
   initializeCaptureManager();
 
