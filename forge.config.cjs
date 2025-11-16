@@ -4,6 +4,7 @@ const MakerSquirrel = require("@electron-forge/maker-squirrel").default;
 const MakerZIP = require("@electron-forge/maker-zip").default;
 const { VitePlugin } = require("@electron-forge/plugin-vite");
 
+const pkg = require("./package.json");
 const config = {
   packagerConfig: {
     asar: true,
@@ -12,15 +13,21 @@ const config = {
     // Ensure the .ico lives at public/img/icon.ico
     icon: "./public/img/icon",
     // Friendly product name used by Windows shortcuts / installer
+    appId: "com.hl7.capture",
     win32metadata: {
       ProductName: "HL7 Capture",
+      CompanyName: "HL7 Capture",
+      FileDescription: "Network HL7 capture and debugging tool",
+      FileVersion: pkg.version,
+      ProductVersion: pkg.version,
     },
   },
   rebuildConfig: {},
   makers: [
     new MakerSquirrel({
-      // Use the same ICO for the Squirrel installer (Setup.exe)
+      // Use the same ICO for the Squirrel installer (Setup.exe) and provide a name
       setupIcon: "./public/img/icon.ico",
+      name: "HL7 Capture",
     }),
     new MakerZIP({}),
     new MakerDeb({}),
