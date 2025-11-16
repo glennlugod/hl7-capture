@@ -14,6 +14,9 @@ const config = {
     // For Windows packaging, Electron Packager expects the base path (no extension).
     // Ensure the .ico lives at public/img/icon.ico
     icon: "./public/img/icon",
+    // Include the app.ico file from public/img as a resource so the installed app can
+    // use it directly (Squirrel may extract a separate app.ico file during install).
+    extraResource: ["public/img/app.ico"],
     // Friendly product name used by Windows shortcuts / installer
     appId: "com.hl7.capture",
     win32metadata: {

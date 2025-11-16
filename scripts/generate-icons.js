@@ -16,7 +16,10 @@ const pngToIcoFn = typeof pngToIco === "function" ? pngToIco : pngToIco.default;
     console.log("Generating multi-size .ico from", iconPng);
     const buf = await pngToIcoFn(iconPng);
     fs.writeFileSync(iconIco, buf);
-    console.log("Generated", iconIco);
+    // Also write app.ico (used by Squirrel / Start Menu shortcuts) alongside icon.ico
+    const appIco = path.join(__dirname, "../public/img/app.ico");
+    fs.writeFileSync(appIco, buf);
+    console.log("Generated", iconIco, "and", appIco);
   } catch (err) {
     console.error("Failed to generate icon.ico:", err);
     process.exit(1);
