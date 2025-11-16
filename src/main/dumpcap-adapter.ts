@@ -76,7 +76,7 @@ export class DumpcapAdapter extends EventEmitter {
       if (/^\d+$/.test(ifaceStr)) {
         args.push("-i", ifaceStr);
       } else {
-        const resolved = this.resolveInterfaceIndex(ifaceStr);
+        const resolved = this.resolveInterfaceIndex(iface.name);
         if (resolved) args.push("-i", resolved);
         else args.push("-i", ifaceStr);
       }
