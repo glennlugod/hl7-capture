@@ -13,6 +13,7 @@
     "premake": "node scripts/generate-icons.js",
     "make": "node scripts/make-and-tag.js",
     "postmake": "node scripts/update-exe-icon.js",
+    "make:all": "npm run premake && npm run make && npm run postmake",
     "fix-update-icons": "node scripts/update-exe-icon.js",
     "postinstall": "electron-rebuild && node scripts/setup-npcap.js",
     "send-hl7": "node scripts/send-hl7.js --host 127.0.0.1 --port 6000 --message-file scripts/samples/msg1.hl7 --proto tcp --frame stx --listen --reply-message ACK --reply-frame stx",
