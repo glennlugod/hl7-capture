@@ -324,7 +324,7 @@ export class DumpcapAdapter extends EventEmitter {
 
   /**
    * Safely attempt to extract packet fields from a loopback (127.0.0.1) packet.
-   * Loopback packets bypass the Ethernet layer and may arrive as raw IPv4 or IPv4+TCP.
+   * Windows loopback captures may include a 4-byte prefix (link-layer type) before the IPv4 header.
    * Returns a normalized shape or null if the packet doesn't match loopback format.
    * This routine avoids throwing by performing length checks before reads.
    */
@@ -335,38 +335,92 @@ export class DumpcapAdapter extends EventEmitter {
   ): NormalizedPacket | null {
     if (!raw || !Buffer.isBuffer(raw)) return null;
 
-    // Minimum length: IPv4 (20)
-    if (raw.length < 20) return null;
+    logger.debug(
+      `normalizeLoopbackPacket: buffer length=${raw.length}, first 20 bytes hex=${raw.slice(0, Math.min(20, raw.length)).toString("hex")}`
+    );
+
+    // Minimum length check before reading any bytes
+    if (raw.length < 1) return null;
 
     // Check if this looks like an IPv4 packet (first nibble should be 4 for IPv4)
-    const verIhl = raw.readUInt8(0);
-    const version = (verIhl >> 4) & 0x0f;
-    if (version !== 4) {
-      return null; // not IPv4
+    let offset = 0;
+    let verIhl = raw.readUInt8(0);
+    let version = (verIhl >> 4) & 0x0f;
+    let ihlBits = verIhl & 0x0f;
+    logger.debug(
+      `normalizeLoopbackPacket: byte[0]=0x${verIhl.toString(16)}, version=${version}, ihlBits=${ihlBits}`
+    );
+
+    // If version is not 4, check if there's a 4-byte prefix (common on Windows loopback)
+    if (version !== 4 && raw.length >= 8) {
+      logger.debug(
+        `normalizeLoopbackPacket: version=${version} at offset 0, trying offset 4 (4-byte prefix)`
+      );
+      offset = 4;
+      verIhl = raw.readUInt8(offset);
+      version = (verIhl >> 4) & 0x0f;
+      ihlBits = verIhl & 0x0f;
+      logger.debug(
+        `normalizeLoopbackPacket: byte[${offset}]=0x${verIhl.toString(16)}, version=${version}, ihlBits=${ihlBits}`
+      );
     }
 
-    const ihl = (verIhl & 0x0f) * 4;
-    const protocol = raw.readUInt8(9);
+    // If version is still 0 or not 4, treat as raw payload
+    if (version === 0 || version !== 4) {
+      if (version === 0) {
+        logger.debug(
+          "normalizeLoopbackPacket: version=0 detected, treating as raw loopback payload (no IP header)"
+        );
+      } else {
+        logger.debug(
+          `normalizeLoopbackPacket: version is ${version}, not IPv4 (0x4), treating as raw payload`
+        );
+      }
+      const ts = tsSec * 1000 + Math.floor(tsUsec / 1000);
+      // Use synthetic loopback IPs for packets without identifiable headers
+      return { sourceIP: "127.0.0.1", destIP: "127.0.0.1", data: raw, ts };
+    }
+
+    // Proceed with IPv4 + TCP parsing
+    const minLen = offset + 20;
+    if (raw.length < minLen) {
+      logger.debug(
+        `normalizeLoopbackPacket: buffer too short for IPv4 header at offset ${offset}, returning null`
+      );
+      return null;
+    }
+
+    const ihl = ihlBits * 4;
+    const protocol = raw.readUInt8(offset + 9);
+    logger.debug(`normalizeLoopbackPacket: protocol=${protocol}, ihl=${ihl}`);
     if (protocol !== 6) {
+      logger.debug(`normalizeLoopbackPacket: protocol is ${protocol}, not TCP (6), returning null`);
       return null; // not TCP
     }
 
-    // Extract source and destination IPs from IPv4 header
-    const srcIP = `${raw.readUInt8(12)}.${raw.readUInt8(13)}.${raw.readUInt8(14)}.${raw.readUInt8(
-      15
+    // Extract source and destination IPs from IPv4 header (accounting for offset)
+    const srcIP = `${raw.readUInt8(offset + 12)}.${raw.readUInt8(offset + 13)}.${raw.readUInt8(offset + 14)}.${raw.readUInt8(
+      offset + 15
     )}`;
-    const dstIP = `${raw.readUInt8(16)}.${raw.readUInt8(17)}.${raw.readUInt8(18)}.${raw.readUInt8(
-      19
+    const dstIP = `${raw.readUInt8(offset + 16)}.${raw.readUInt8(offset + 17)}.${raw.readUInt8(offset + 18)}.${raw.readUInt8(
+      offset + 19
     )}`;
 
+    logger.debug(`normalizeLoopbackPacket: srcIP=${srcIP}, dstIP=${dstIP}`);
+
     // Verify this is actually a loopback packet
-    if (!srcIP.startsWith("127.") && !dstIP.startsWith("127.")) {
+    const loopbackPrefix = "127.";
+    if (!srcIP.startsWith(loopbackPrefix) && !dstIP.startsWith(loopbackPrefix)) {
+      logger.debug("normalizeLoopbackPacket: neither IP is loopback, returning null");
       return null;
     }
 
     // Extract TCP payload
-    const tcpOffset = ihl;
+    const tcpOffset = offset + ihl;
     if (raw.length < tcpOffset + 20) {
+      logger.debug(
+        `normalizeLoopbackPacket: not enough data for TCP header at offset ${tcpOffset}, returning null`
+      );
       return null; // not enough data for TCP header
     }
     const dataOffsetByte = raw.readUInt8(tcpOffset + 12);
@@ -375,6 +429,7 @@ export class DumpcapAdapter extends EventEmitter {
     const payload = payloadStart < raw.length ? raw.subarray(payloadStart) : Buffer.alloc(0);
     const ts = tsSec * 1000 + Math.floor(tsUsec / 1000);
 
+    logger.debug(`normalizeLoopbackPacket: success! payload length=${payload.length}`);
     return { sourceIP: srcIP, destIP: dstIP, data: payload, ts };
   }
 
