@@ -20,6 +20,47 @@ export interface DumpcapOptions {
   snaplen?: number;
 }
 
+/**
+ * Discover the dumpcap binary on disk or via PATH. Exported so other
+ * modules can probe for dumpcap consistently.
+ */
+export function findDumpcapBinary(): string | null {
+  logger.debug("findDumpcap: searching for dumpcap binary");
+  // Prefer dumpcap on PATH
+  const which = process.platform === "win32" ? "where" : "which";
+  try {
+    const res = execSync(`${which} dumpcap`, { encoding: "utf8" }).trim();
+    logger.debug(`findDumpcap: PATH search result: ${res}`);
+    if (res) return res.split(/\r?\n/)[0];
+  } catch (err: unknown) {
+    // not found on PATH
+    const msg = err instanceof Error ? err.message : String(err);
+    logger.debug(`findDumpcap: PATH lookup failed: ${msg}`);
+  }
+
+  // Common Windows install locations for Wireshark
+  if (process.platform === "win32") {
+    const candidates: string[] = [];
+    if (process.env["ProgramFiles"]) {
+      candidates.push(path.join(process.env["ProgramFiles"], "Wireshark", "dumpcap.exe"));
+    }
+    if (process.env["ProgramFiles(x86)"]) {
+      candidates.push(path.join(process.env["ProgramFiles(x86)"], "Wireshark", "dumpcap.exe"));
+    }
+    logger.debug(`findDumpcap: checking Windows candidates: ${JSON.stringify(candidates)}`);
+    for (const c of candidates) {
+      logger.debug(`findDumpcap: checking candidate ${c}`);
+      if (fs.existsSync(c)) {
+        logger.debug(`findDumpcap: found dumpcap at ${c}`);
+        return c;
+      }
+    }
+  }
+
+  logger.debug("findDumpcap: dumpcap not found");
+  return null;
+}
+
 // parser types imported from src/common/types.ts
 
 export class DumpcapAdapter extends EventEmitter {
@@ -104,40 +145,8 @@ export class DumpcapAdapter extends EventEmitter {
   }
 
   private findDumpcap(): string | null {
-    logger.debug("findDumpcap: searching for dumpcap binary");
-    // Prefer dumpcap on PATH
-    const which = process.platform === "win32" ? "where" : "which";
-    try {
-      const res = execSync(`${which} dumpcap`, { encoding: "utf8" }).trim();
-      logger.debug(`findDumpcap: PATH search result: ${res}`);
-      if (res) return res.split(/\r?\n/)[0];
-    } catch (err: unknown) {
-      // not found on PATH
-      const msg = err instanceof Error ? err.message : String(err);
-      logger.debug(`findDumpcap: PATH lookup failed: ${msg}`);
-    }
-
-    // Common Windows install locations for Wireshark
-    if (process.platform === "win32") {
-      const candidates: string[] = [];
-      if (process.env["ProgramFiles"]) {
-        candidates.push(path.join(process.env["ProgramFiles"], "Wireshark", "dumpcap.exe"));
-      }
-      if (process.env["ProgramFiles(x86)"]) {
-        candidates.push(path.join(process.env["ProgramFiles(x86)"], "Wireshark", "dumpcap.exe"));
-      }
-      logger.debug(`findDumpcap: checking Windows candidates: ${JSON.stringify(candidates)}`);
-      for (const c of candidates) {
-        logger.debug(`findDumpcap: checking candidate ${c}`);
-        if (fs.existsSync(c)) {
-          logger.debug(`findDumpcap: found dumpcap at ${c}`);
-          return c;
-        }
-      }
-    }
-
-    logger.debug("findDumpcap: dumpcap not found");
-    return null;
+    // Defer to shared exported locator to avoid duplicating lookup logic.
+    return findDumpcapBinary();
   }
 
   public async start(): Promise<void> {
@@ -223,7 +232,11 @@ export class DumpcapAdapter extends EventEmitter {
           hdr.capturedLength ?? hdr.inclLen ?? hdr.capLen ?? (p.data ? p.data.length : 0);
         const origLen = hdr.originalLength ?? hdr.origLen ?? inclLen;
 
-        const normalized = this.normalizePacket(p.data, tsSec, tsUsec);
+        // Try real network packet normalization first, then loopback
+        let normalized = this.normalizePacket(p.data, tsSec, tsUsec);
+        if (!normalized) {
+          normalized = this.normalizeLoopbackPacket(p.data, tsSec, tsUsec);
+        }
         const headerObj = { tsSec, tsUsec, inclLen, origLen };
         if (normalized) {
           // attach header information to normalized packet
@@ -265,7 +278,8 @@ export class DumpcapAdapter extends EventEmitter {
   }
 
   /**
-   * Safely attempt to extract packet fields and return a normalized shape or null.
+   * Safely attempt to extract packet fields from a real network adapter packet.
+   * Returns a normalized shape or null if the packet doesn't match expected Ethernet/IPv4/TCP structure.
    * This routine avoids throwing by performing length checks before reads.
    */
   private normalizePacket(
@@ -299,6 +313,62 @@ export class DumpcapAdapter extends EventEmitter {
     )}.${raw.readUInt8(ipOffset + 19)}`;
 
     const tcpOffset = ipOffset + ihl;
+    const dataOffsetByte = raw.readUInt8(tcpOffset + 12);
+    const tcpHeaderLen = ((dataOffsetByte & 0xf0) >> 4) * 4;
+    const payloadStart = tcpOffset + tcpHeaderLen;
+    const payload = payloadStart < raw.length ? raw.subarray(payloadStart) : Buffer.alloc(0);
+    const ts = tsSec * 1000 + Math.floor(tsUsec / 1000);
+
+    return { sourceIP: srcIP, destIP: dstIP, data: payload, ts };
+  }
+
+  /**
+   * Safely attempt to extract packet fields from a loopback (127.0.0.1) packet.
+   * Loopback packets bypass the Ethernet layer and may arrive as raw IPv4 or IPv4+TCP.
+   * Returns a normalized shape or null if the packet doesn't match loopback format.
+   * This routine avoids throwing by performing length checks before reads.
+   */
+  private normalizeLoopbackPacket(
+    raw: Buffer | undefined,
+    tsSec: number,
+    tsUsec: number
+  ): NormalizedPacket | null {
+    if (!raw || !Buffer.isBuffer(raw)) return null;
+
+    // Minimum length: IPv4 (20)
+    if (raw.length < 20) return null;
+
+    // Check if this looks like an IPv4 packet (first nibble should be 4 for IPv4)
+    const verIhl = raw.readUInt8(0);
+    const version = (verIhl >> 4) & 0x0f;
+    if (version !== 4) {
+      return null; // not IPv4
+    }
+
+    const ihl = (verIhl & 0x0f) * 4;
+    const protocol = raw.readUInt8(9);
+    if (protocol !== 6) {
+      return null; // not TCP
+    }
+
+    // Extract source and destination IPs from IPv4 header
+    const srcIP = `${raw.readUInt8(12)}.${raw.readUInt8(13)}.${raw.readUInt8(14)}.${raw.readUInt8(
+      15
+    )}`;
+    const dstIP = `${raw.readUInt8(16)}.${raw.readUInt8(17)}.${raw.readUInt8(18)}.${raw.readUInt8(
+      19
+    )}`;
+
+    // Verify this is actually a loopback packet
+    if (!srcIP.startsWith("127.") && !dstIP.startsWith("127.")) {
+      return null;
+    }
+
+    // Extract TCP payload
+    const tcpOffset = ihl;
+    if (raw.length < tcpOffset + 20) {
+      return null; // not enough data for TCP header
+    }
     const dataOffsetByte = raw.readUInt8(tcpOffset + 12);
     const tcpHeaderLen = ((dataOffsetByte & 0xf0) >> 4) * 4;
     const payloadStart = tcpOffset + tcpHeaderLen;

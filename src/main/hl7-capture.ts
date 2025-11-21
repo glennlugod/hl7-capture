@@ -3,13 +3,13 @@
  * Handles TCP packet capture, HL7 marker detection, and session management
  */
 
-import { execSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 import { EventEmitter } from "node:events";
 import * as os from "node:os";
 import * as path from "node:path";
 
 import { CleanupWorker } from "./cleanup-worker";
-import { DumpcapAdapter } from "./dumpcap-adapter";
+import { DumpcapAdapter, findDumpcapBinary } from "./dumpcap-adapter";
 import { logger } from "./logger";
 import { SessionStore } from "./session-store";
 import { SubmissionWorker } from "./submission-worker";
@@ -146,7 +146,12 @@ export class HL7CaptureManager extends EventEmitter {
     // Attempt to use dumpcap -D to enumerate interfaces (gives stable numeric indices)
     try {
       // spawn a synchronous process to get a small amount of output
-      const out = execSync("dumpcap -D", { encoding: "utf8" }).trim();
+      // Use the shared dumpcap locator to prefer an absolute dumpcap path
+      // (e.g., Program Files\Wireshark\dumpcap.exe) and avoid relying on
+      // PATH lookup which may differ across environments.
+      const dumpcapPath = findDumpcapBinary() || "dumpcap";
+      const dumpcapCwd = path.isAbsolute(dumpcapPath) ? path.dirname(dumpcapPath) : process.cwd();
+      const out = execFileSync(dumpcapPath, ["-D"], { encoding: "utf8", cwd: dumpcapCwd }).trim();
       // dumpcap -D output lines look like: "1. \t\t\t\Device\NPF_{...} (Ethernet)"
       const lines = out
         .split(/\r?\n/)
