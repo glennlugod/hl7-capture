@@ -22,6 +22,7 @@ type ElectronAPI = {
   startCapture: (iface: NetworkInterface, cfg: MarkerConfig) => Promise<void>;
   stopCapture: () => Promise<void>;
   clearSessions: () => Promise<void>;
+  getPersistedSessions: () => Promise<HL7Session[]>;
   getCaptureStatus: () => Promise<{ isCapturing: boolean; isPaused?: boolean }>;
   onNewElement: (cb: () => void) => () => void;
   onSessionComplete: (cb: (s: HL7Session) => void) => () => void;
@@ -45,8 +46,8 @@ type ElectronAPI = {
   onSubmissionResult: (
     cb: (result: {
       sessionId: string;
-      status: "pending" | "submitted" | "failed" | "ignored";
-      attempts: number;
+      submissionStatus: "submitted" | "failed";
+      submissionAttempts: number;
       submittedAt?: number;
       error?: string;
     }) => void
@@ -103,10 +104,10 @@ export default function App(): JSX.Element {
     const unsubSubmissionResult = api.onSubmissionResult((result) => {
       // Update the session in the list with the new submission status
       updateSessionSubmissionStatus(result.sessionId, {
-        status: result.status,
-        attempts: result.attempts,
+        submissionStatus: result.submissionStatus,
+        submissionAttempts: result.submissionAttempts,
         submittedAt: result.submittedAt,
-        error: result.error,
+        submissionError: result.error,
       });
     });
 
@@ -205,6 +206,15 @@ export default function App(): JSX.Element {
     }
   };
 
+  const loadPersistedSessions = async (): Promise<void> => {
+    try {
+      const persistedSessions = await api.getPersistedSessions();
+      setSessions(persistedSessions);
+    } catch (e) {
+      console.error("Failed to load persisted sessions", e);
+    }
+  };
+
   const handleInterfaceChange = async (newInterface: NetworkInterface | null) => {
     setSelectedInterface(newInterface);
     try {
@@ -217,6 +227,7 @@ export default function App(): JSX.Element {
   useEffect(() => {
     loadInterfaces();
     loadMarkerConfig();
+    loadPersistedSessions();
   }, []);
 
   const handlePauseCapture = async () => {
@@ -284,7 +295,7 @@ export default function App(): JSX.Element {
   const handleClearSessions = async () => {
     try {
       await api.clearSessions();
-      setSessions([]);
+      await loadPersistedSessions();
     } catch (err) {
       console.error(`Failed to clear sessions: ${err}`);
     }
@@ -301,10 +312,10 @@ export default function App(): JSX.Element {
   const updateSessionSubmissionStatus = (
     sessionId: string,
     update: {
-      status: "pending" | "submitted" | "failed" | "ignored";
-      attempts: number;
+      submissionStatus?: "pending" | "submitted" | "failed" | "ignored";
+      submissionAttempts?: number;
       submittedAt?: number;
-      error?: string;
+      submissionError?: string;
     }
   ) => {
     setSessions((prev) => prev.map((s) => (s.id === sessionId ? { ...s, ...update } : s)));
@@ -321,14 +332,26 @@ export default function App(): JSX.Element {
       setSessions((prev) =>
         prev.map((s) =>
           s.id === sessionId
-            ? { ...s, submissionStatus: "pending" as const, submissionAttempts: 0 }
+            ? {
+                ...s,
+                submissionStatus: "pending" as const,
+                submissionAttempts: 0,
+                submissionError: undefined,
+              }
             : s
         )
       );
       // Update selected session if it matches
       if (selectedSession?.id === sessionId) {
         setSelectedSession((prev) =>
-          prev ? { ...prev, submissionStatus: "pending" as const, submissionAttempts: 0 } : null
+          prev
+            ? {
+                ...prev,
+                submissionStatus: "pending" as const,
+                submissionAttempts: 0,
+                submissionError: undefined,
+              }
+            : null
         );
       }
     } catch (err) {

@@ -15,6 +15,7 @@ interface SubmissionConfig {
 interface SubmissionResult {
   sessionId: string;
   success: boolean;
+  submissionStatus: "submitted" | "failed";
   submissionAttempts: number;
   error?: string;
   submittedAt?: number;
@@ -134,6 +135,7 @@ export class SubmissionWorker extends EventEmitter {
           this.emit("onSubmissionResult", {
             sessionId: session.id,
             success: true,
+            submissionStatus: "submitted",
             submissionAttempts: session.submissionAttempts,
             submittedAt: session.submittedAt,
           } as SubmissionResult);
@@ -156,6 +158,7 @@ export class SubmissionWorker extends EventEmitter {
     this.emit("onSubmissionResult", {
       sessionId: session.id,
       success: false,
+      submissionStatus: "failed",
       submissionAttempts: session.submissionAttempts,
       error: lastError,
     } as SubmissionResult);

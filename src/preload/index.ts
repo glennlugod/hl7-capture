@@ -182,8 +182,8 @@ const electronAPI = {
   onSubmissionResult: (
     callback: (result: {
       sessionId: string;
-      status: "pending" | "submitted" | "failed" | "ignored";
-      attempts: number;
+      submissionStatus: "submitted" | "failed";
+      submissionAttempts: number;
       submittedAt?: number;
       error?: string;
     }) => void
@@ -192,8 +192,8 @@ const electronAPI = {
       _event: Electron.IpcRendererEvent,
       result: {
         sessionId: string;
-        status: "pending" | "submitted" | "failed" | "ignored";
-        attempts: number;
+        submissionStatus: "submitted" | "failed";
+        submissionAttempts: number;
         submittedAt?: number;
         error?: string;
       }
