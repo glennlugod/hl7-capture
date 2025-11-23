@@ -72,6 +72,7 @@ export default function App(): JSX.Element {
   const [isPaused, setIsPaused] = useState(false);
   const [sessions, setSessions] = useState<HL7Session[]>([]);
   const [selectedSession, setSelectedSession] = useState<HL7Session | null>(null);
+  const [activeDetail, setActiveDetail] = useState<"session" | "message">("message");
   const [autoScroll, setAutoScroll] = useState(() => {
     const saved = localStorage.getItem("hl7-capture-autoscroll");
     return saved ? JSON.parse(saved) : true;
@@ -307,6 +308,8 @@ export default function App(): JSX.Element {
 
   const handleSelectSession = (session: HL7Session) => {
     setSelectedSession(session);
+    // reset detail view to session whenever selecting a new session
+    setActiveDetail("session");
   };
 
   const updateSessionSubmissionStatus = (
@@ -479,17 +482,22 @@ export default function App(): JSX.Element {
         />
       }
       sessionDetail={
-        selectedSession ? (
-          <SessionDetail
-            session={selectedSession}
-            onRetry={handleRetrySubmission}
-            onIgnore={handleIgnoreSession}
-            onDelete={handleDeleteSession}
-            onClose={() => setSelectedSession(null)}
-          />
-        ) : undefined
+        <SessionDetail
+          session={selectedSession}
+          onRetry={handleRetrySubmission}
+          onIgnore={handleIgnoreSession}
+          onDelete={handleDeleteSession}
+          onClose={() => {
+            setSelectedSession(null);
+            setActiveDetail("message");
+          }}
+          onOpenMessageViewer={() => setActiveDetail("message")}
+        />
       }
       messageDetail={<MessageDetailViewer session={selectedSession} onNavigateMessage={() => {}} />}
+      activeDetail={activeDetail}
+      onActiveDetailChange={setActiveDetail}
+      isSessionSelected={!!selectedSession}
       isCapturing={isCapturing}
       isPaused={isPaused}
       onStartCapture={handleStartCapture}

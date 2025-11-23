@@ -8,6 +8,7 @@ interface SessionDetailProps {
   onIgnore?: (sessionId: string) => void;
   onDelete?: (sessionId: string) => void;
   onClose?: () => void;
+  onOpenMessageViewer?: (initialIndex?: number) => void;
 }
 
 const SessionDetail: React.FC<SessionDetailProps> = ({
@@ -245,6 +246,14 @@ const SessionDetail: React.FC<SessionDetailProps> = ({
 
       <div className="border-t border-slate-200 bg-slate-50 px-4 py-4 sm:px-6">
         <div className="space-y-2">
+          <button
+            onClick={() => onOpenMessageViewer?.(0)}
+            className="w-full rounded-lg px-4 py-2.5 text-sm font-medium transition-all duration-200 flex items-center justify-center gap-2 bg-slate-200 text-slate-900 hover:bg-slate-300 active:bg-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2"
+            title="View messages in this session"
+          >
+            View Messages
+          </button>
+
           <button
             onClick={handleRetry}
             disabled={isRetryDisabled}
